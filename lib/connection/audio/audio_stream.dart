@@ -6,8 +6,8 @@ class AudioStreamApi {
     final params = {
       'bvid': bvid,
       'cid': cid,
-      'qn': 80, // 默认 1080P
-      'fnval': 16, // DASH 格式
+      'qn': 80,
+      'fnval': 16,
       'fnver': 0,
       'fourk': 1,
     };
