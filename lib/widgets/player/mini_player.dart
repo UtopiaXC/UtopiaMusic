@@ -41,13 +41,11 @@ class MiniPlayer extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // 关闭按钮
             IconButton(
               onPressed: onClose,
               icon: const Icon(Icons.close, size: 20),
               tooltip: '关闭',
             ),
-            // 迷你封面
             Container(
               width: 48,
               height: 48,
@@ -62,7 +60,6 @@ class MiniPlayer extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // 标题和歌手
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -83,8 +80,6 @@ class MiniPlayer extends StatelessWidget {
                 ],
               ),
             ),
-            // 迷你控制按钮
-            // 播放按钮改为圆形背景
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,

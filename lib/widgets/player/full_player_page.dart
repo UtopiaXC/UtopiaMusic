@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:utopia_music/data/mock_data.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/audio_player_service.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
@@ -31,12 +30,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Duration _position = Duration.zero;
   bool _isDragging = false;
   double _dragValue = 0.0;
-  
-  // 循环模式：0-列表顺序, 1-列表循环, 2-单曲循环, 3-随机播放
+
   int _loopMode = 0; 
 
-  // 使用 MockData 中的数据作为播放列表
-  final List<Song> _playlist = MockData.songs;
+  final List<Song> _playlist = [];
 
   @override
   void initState() {
@@ -70,8 +67,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         });
       }
     });
-    
-    // 监听播放完成，自动播放下一首
+
     _audioPlayerService.player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
         _playNext();
@@ -90,31 +86,23 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   void _playNext() {
     if (_playlist.isEmpty) return;
     
-    int currentIndex = _playlist.indexWhere((s) => s.audioUrl == widget.song.audioUrl);
+    int currentIndex = _playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
     int nextIndex = 0;
 
     if (_loopMode == 2) {
-      // 单曲循环
       nextIndex = currentIndex;
-      // 需要重新 seek 到 0 并播放
       _audioPlayerService.player.seek(Duration.zero);
       _audioPlayerService.resume();
       return;
     } else if (_loopMode == 3) {
-      // 随机播放 (简单实现：随机选一个非当前的)
-      // 实际应用中应该维护一个 shuffle indices 列表
       nextIndex = (DateTime.now().millisecondsSinceEpoch % _playlist.length);
     } else {
-      // 列表顺序 / 列表循环
       if (currentIndex < _playlist.length - 1) {
         nextIndex = currentIndex + 1;
       } else {
-        // 列表末尾
         if (_loopMode == 1) {
-          // 列表循环 -> 回到开头
           nextIndex = 0;
         } else {
-          // 列表顺序 -> 停止播放
           _audioPlayerService.stop();
           return;
         }
@@ -129,17 +117,15 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   void _playPrevious() {
     if (_playlist.isEmpty) return;
     
-    int currentIndex = _playlist.indexWhere((s) => s.audioUrl == widget.song.audioUrl);
+    int currentIndex = _playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
     int prevIndex = 0;
 
     if (_loopMode == 3) {
-       // 随机模式下的上一首通常也是随机，或者回退历史记录。这里简单处理为上一首
        prevIndex = (currentIndex - 1 + _playlist.length) % _playlist.length;
     } else {
       if (currentIndex > 0) {
         prevIndex = currentIndex - 1;
       } else {
-        // 列表开头 -> 回到末尾 (如果是循环模式)
         prevIndex = _playlist.length - 1;
       }
     }
@@ -257,14 +243,14 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   isLoading: _isLoading,
                   duration: _duration,
                   position: _isDragging ? Duration(seconds: _dragValue.toInt()) : _position,
-                  loopMode: _loopMode, // 传递循环模式
+                  loopMode: _loopMode,
                   onSeek: _onSeekEnd,
                   onSeekStart: _onSeekStart,
                   onSeekUpdate: _onSeekUpdate,
                   onPlayPause: _togglePlayPause,
-                  onNext: _playNext, // 绑定下一首逻辑
-                  onPrevious: _playPrevious, // 绑定上一首逻辑
-                  onShuffle: _toggleLoopMode, // 绑定切换循环模式逻辑
+                  onNext: _playNext,
+                  onPrevious: _playPrevious,
+                  onShuffle: _toggleLoopMode,
                   onPlaylist: _showPlaylist,
                 ),
               ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:utopia_music/connection/video/video_api.dart';
+import 'package:utopia_music/connection/video/video_list.dart';
 import 'package:utopia_music/models/song.dart';
 
 class HomePage extends StatefulWidget {
@@ -49,7 +49,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
     setState(() {
       _isLoading = true;
     });
-    final songs = await _videoApi.getRcmdVideos();
+    final songs = await _videoApi.getRecommentVideos();
     if (mounted) {
       setState(() {
         _songs = songs;
@@ -62,7 +62,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
     setState(() {
       _isLoadingMore = true;
     });
-    final newSongs = await _videoApi.getRcmdVideos();
+    final newSongs = await _videoApi.getRecommentVideos();
     if (mounted) {
       setState(() {
         _songs.addAll(newSongs);
@@ -252,15 +252,6 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (song.album.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            song.album,
-                            style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
                       ],
                     ),
                   ),

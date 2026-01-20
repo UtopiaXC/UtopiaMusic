@@ -30,7 +30,6 @@ class PlayerProvider extends ChangeNotifier {
     _showFullPlayer = true;
     notifyListeners();
 
-    // 延迟展开播放器，以配合动画
     Future.delayed(Duration.zero, () {
       _isPlayerExpanded = true;
       notifyListeners();
@@ -40,7 +39,6 @@ class PlayerProvider extends ChangeNotifier {
       await _audioPlayerService.playSong(song);
     } catch (e) {
       print("Play error: $e");
-      // 这里可以考虑添加一个错误状态或者回调机制通知 UI
     }
   }
 

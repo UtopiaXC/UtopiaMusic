@@ -4,7 +4,7 @@ class PlayerControls extends StatelessWidget {
   final VoidCallback onPlayPause;
   final VoidCallback onNext;
   final VoidCallback onPrevious;
-  final VoidCallback onShuffle; // 实际上是切换循环模式
+  final VoidCallback onShuffle;
   final VoidCallback onPlaylist;
   final bool isPlaying;
   final bool isLoading;
@@ -13,7 +13,7 @@ class PlayerControls extends StatelessWidget {
   final ValueChanged<double> onSeek;
   final ValueChanged<double>? onSeekStart;
   final ValueChanged<double>? onSeekUpdate;
-  final int loopMode; // 0-列表顺序, 1-列表循环, 2-单曲循环, 3-随机播放
+  final int loopMode;
 
   const PlayerControls({
     super.key,
@@ -41,16 +41,15 @@ class PlayerControls extends StatelessWidget {
 
   IconData _getLoopModeIcon() {
     switch (loopMode) {
-      case 0: return Icons.repeat; // 列表顺序 (暂时用 repeat 表示，通常顺序播放没有特定图标或用灰色 repeat)
-      case 1: return Icons.repeat; // 列表循环
-      case 2: return Icons.repeat_one; // 单曲循环
-      case 3: return Icons.shuffle; // 随机播放
+      case 0: return Icons.repeat;
+      case 1: return Icons.repeat;
+      case 2: return Icons.repeat_one;
+      case 3: return Icons.shuffle;
       default: return Icons.repeat;
     }
   }
   
   Color? _getLoopModeColor(BuildContext context) {
-    // 列表顺序通常显示为灰色，其他模式显示为激活色
     if (loopMode == 0) {
       return Theme.of(context).disabledColor;
     }
@@ -66,7 +65,6 @@ class PlayerControls extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 进度条
         Slider(
           value: sliderValue,
           min: 0,
@@ -86,7 +84,6 @@ class PlayerControls extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        // 控制按钮行
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [

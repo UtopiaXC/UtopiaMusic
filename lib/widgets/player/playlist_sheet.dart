@@ -45,7 +45,7 @@ class PlaylistSheet extends StatelessWidget {
               itemCount: playlist.length,
               itemBuilder: (context, index) {
                 final song = playlist[index];
-                final isPlaying = song == currentSong;
+                final isPlaying = song.bvid == currentSong?.bvid && song.cid == currentSong?.cid;
                 return ListTile(
                   leading: Container(
                     width: 40,
@@ -66,16 +66,15 @@ class PlaylistSheet extends StatelessWidget {
                     ),
                   ),
                   subtitle: Text(song.artist),
-                  // 使用简单的动态图标模拟
                   trailing: isPlaying 
                       ? Icon(
-                          Icons.graphic_eq, // 使用 graphic_eq 图标模拟动态效果
+                          Icons.graphic_eq,
                           color: Theme.of(context).colorScheme.primary,
                         ) 
                       : null,
                   onTap: () {
                     onSongSelected(song);
-                    Navigator.pop(context); // 选择后关闭列表
+                    Navigator.pop(context);
                   },
                 );
               },

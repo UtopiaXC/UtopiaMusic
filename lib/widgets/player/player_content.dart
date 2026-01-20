@@ -10,7 +10,6 @@ class PlayerContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageView(
       children: [
-        // 封面页
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -33,22 +32,8 @@ class PlayerContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            // 显示专辑信息
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Text(
-                song.album,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
           ],
         ),
-        // 歌词页
         Center(
           child: Padding(
             padding: const EdgeInsets.all(32.0),
