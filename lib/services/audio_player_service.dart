@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
@@ -48,7 +49,8 @@ class AudioPlayerService {
           tag: MediaItem(
             id: '${song.bvid}_${song.cid}',
             title: song.title,
-            artUri: Uri.parse(song.coverUrl),
+            artist: song.artist,
+            artUri: song.coverUrl.isNotEmpty ? Uri.parse(song.coverUrl) : null,
           ),
         );
 

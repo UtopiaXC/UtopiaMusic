@@ -1,4 +1,4 @@
-package com.utopiaxc.bilimusic.utopia_music;
+package com.utopiaxc.utopia.bilimusic;
 
 import io.flutter.embedding.android.FlutterActivity;
 

@@ -3,9 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/app.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.utopiaxc.utopia.bilimusic',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
   JustAudioMediaKit.ensureInitialized();
   runApp(
     MultiProvider(
