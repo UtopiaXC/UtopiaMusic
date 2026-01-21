@@ -17,12 +17,16 @@ class SearchApi {
         useWbi: true,
       );
 
-      if (data != null && data['code'] == 0) {
-        final List<dynamic> list = data['data']['result'] ?? [];
-        return list.map((item) => _mapToSong(item)).toList();
+      if (data != null && data is Map && data['code'] == 0) {
+        final result = data['data']?['result'];
+        if (result is List) {
+          return result.map((item) => _mapToSong(item)).toList();
+        } else {
+          return [];
+        }
       } else {
         print(
-          'Failed to search videos: ${data?['message']} (${data?['code']})',
+          'Failed to search videos: ${data is Map ? data['message'] : 'Unknown error'} (${data is Map ? data['code'] : 'Unknown code'})',
         );
         return [];
       }
@@ -62,7 +66,7 @@ class SearchApi {
         Api.urlVideoDetail,
         params: {'bvid': bvid},
       );
-      if (detailData != null && detailData['code'] == 0) {
+      if (detailData != null && detailData is Map && detailData['code'] == 0) {
         return detailData['data']['cid'] ?? 0;
       }
     } catch (e) {
