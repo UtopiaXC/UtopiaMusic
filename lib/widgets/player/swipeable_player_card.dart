@@ -1,0 +1,180 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+
+class SwipeablePlayerCard extends StatefulWidget {
+  final Widget child;
+  final Widget? previousChild;
+  final Widget? nextChild;
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
+  final bool enableSwipe;
+
+  const SwipeablePlayerCard({
+    super.key,
+    required this.child,
+    this.previousChild,
+    this.nextChild,
+    this.onNext,
+    this.onPrevious,
+    this.enableSwipe = true,
+  });
+
+  @override
+  State<SwipeablePlayerCard> createState() => SwipeablePlayerCardState();
+}
+
+class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  double _dragExtent = 0.0;
+  double _width = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void handleDragStart(DragStartDetails details) {
+    if (!widget.enableSwipe) return;
+    setState(() {
+      _dragExtent = 0.0;
+    });
+  }
+
+  void handleDragUpdate(DragUpdateDetails details) {
+    if (!widget.enableSwipe) return;
+    setState(() {
+      _dragExtent += details.delta.dx;
+    });
+  }
+
+  void handleDragEnd(DragEndDetails details) {
+    if (!widget.enableSwipe) return;
+    
+    final velocity = details.primaryVelocity ?? 0;
+    final threshold = _width * 0.3;
+
+    if ((_dragExtent > threshold || velocity > 1000) && widget.onPrevious != null) {
+      // Swiped Right (Previous)
+      _animateOut(1.0);
+    } else if ((_dragExtent < -threshold || velocity < -1000) && widget.onNext != null) {
+      // Swiped Left (Next)
+      _animateOut(-1.0);
+    } else {
+      _animateBack();
+    }
+  }
+
+  void _animateBack() {
+    _controller.duration = const Duration(milliseconds: 300);
+    final start = _dragExtent;
+    
+    _controller.reset();
+    final animation = Tween<double>(begin: start, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    animation.addListener(() {
+      setState(() {
+        _dragExtent = animation.value;
+      });
+    });
+
+    _controller.forward();
+  }
+
+  void _animateOut(double direction) {
+    // direction: 1 for right (Previous), -1 for left (Next)
+    final end = direction * _width * 1.5;
+    final start = _dragExtent;
+    
+    _controller.duration = const Duration(milliseconds: 200);
+    _controller.reset();
+    
+    final animation = Tween<double>(begin: start, end: end).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+
+    animation.addListener(() {
+      setState(() {
+        _dragExtent = animation.value;
+      });
+    });
+
+    _controller.forward().then((_) {
+      if (direction > 0) {
+        widget.onPrevious?.call();
+      } else {
+        widget.onNext?.call();
+      }
+      
+      // Reset after a short delay to allow parent to rebuild
+      // We reset to 0 because the new content will replace the old one
+      if (mounted) {
+        setState(() {
+          _dragExtent = 0.0;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _width = constraints.maxWidth;
+        if (_width.isInfinite) {
+           _width = MediaQuery.of(context).size.width;
+        }
+        
+        final rotation = _dragExtent / _width * 0.05; // Slight rotation
+        final progress = min(_dragExtent.abs(), _width) / _width;
+        
+        Widget? background;
+        if (_dragExtent > 0) {
+          background = widget.previousChild;
+        } else if (_dragExtent < 0) {
+          background = widget.nextChild;
+        }
+
+        return GestureDetector(
+          onHorizontalDragStart: handleDragStart,
+          onHorizontalDragUpdate: handleDragUpdate,
+          onHorizontalDragEnd: handleDragEnd,
+          behavior: HitTestBehavior.translucent,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (background != null)
+                Positioned.fill(
+                  child: Transform.scale(
+                    scale: 0.9 + (0.1 * progress),
+                    child: Opacity(
+                      opacity: 0.5 + (0.5 * progress),
+                      child: background,
+                    ),
+                  ),
+                ),
+              Transform(
+                transform: Matrix4.identity()
+                  ..translate(_dragExtent)
+                  ..rotateZ(rotation),
+                alignment: Alignment.center,
+                child: widget.child,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

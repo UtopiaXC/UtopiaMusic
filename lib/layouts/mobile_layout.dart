@@ -69,7 +69,8 @@ class MobileLayout extends StatelessWidget {
                             isPlaying: isPlaying,
                             onTap: playerProvider.togglePlayerExpansion,
                             onPlayPause: playerProvider.togglePlayPause,
-                            onNext: () {},
+                            onNext: () {}, // Handled internally by MiniPlayer using Provider
+                            onPrevious: () {}, // Handled internally by MiniPlayer using Provider
                             onClose: playerProvider.closePlayer,
                           ),
                         )

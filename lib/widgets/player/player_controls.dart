@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 class PlayerControls extends StatelessWidget {
   final VoidCallback onPlayPause;
-  final VoidCallback onNext;
-  final VoidCallback onPrevious;
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
   final VoidCallback onShuffle;
   final VoidCallback onPlaylist;
   final bool isPlaying;
@@ -39,13 +39,18 @@ class PlayerControls extends StatelessWidget {
     return '$minutes:$seconds';
   }
 
-  IconData _getLoopModeIcon() {
+  Widget _getLoopModeIcon(BuildContext context) {
     switch (loopMode) {
-      case 0: return Icons.repeat;
-      case 1: return Icons.repeat;
-      case 2: return Icons.repeat_one;
-      case 3: return Icons.shuffle;
-      default: return Icons.repeat;
+      case 0: // Sequence
+        return const Icon(Icons.repeat, color: Colors.grey);
+      case 1: // Loop
+        return const Icon(Icons.repeat);
+      case 2: // Single
+        return const Icon(Icons.repeat_one);
+      case 3: // Shuffle
+        return const Icon(Icons.shuffle);
+      default:
+        return const Icon(Icons.repeat, color: Colors.grey);
     }
   }
   
@@ -56,15 +61,62 @@ class PlayerControls extends StatelessWidget {
     return Theme.of(context).colorScheme.primary;
   }
 
+  void _showToast(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final maxDuration = duration.inSeconds.toDouble();
     final currentPosition = position.inSeconds.toDouble();
     final sliderValue = currentPosition > maxDuration ? maxDuration : currentPosition;
+    
+    final isCompleted = !isPlaying && duration > Duration.zero && position >= duration;
+    final showPlayIcon = !isPlaying || isCompleted;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Top Controls (Timer, Free Play, Collection, Comment, Info)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              onPressed: () => _showToast(context, '定时停止 - 功能正在开发中'),
+              icon: const Icon(Icons.timer_outlined),
+              tooltip: '定时停止',
+            ),
+            IconButton(
+              onPressed: () => _showToast(context, '自由连播 - 功能正在开发中'),
+              icon: const Icon(Icons.auto_awesome_motion),
+              tooltip: '自由连播',
+            ),
+            IconButton(
+              onPressed: () => _showToast(context, '合集 - 功能正在开发中'),
+              icon: const Icon(Icons.subscriptions_outlined),
+              tooltip: '合集',
+            ),
+            IconButton(
+              onPressed: () => _showToast(context, '评论 - 功能正在开发中'),
+              icon: const Icon(Icons.comment_outlined),
+              tooltip: '评论',
+            ),
+            IconButton(
+              onPressed: () => _showToast(context, '详情 - 功能正在开发中'),
+              icon: const Icon(Icons.info_outline),
+              tooltip: '详情',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Progress Bar
         Slider(
           value: sliderValue,
           min: 0,
@@ -83,19 +135,20 @@ class PlayerControls extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        // Playback Controls (Mode, Prev, Play/Pause, Next, Playlist)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             IconButton(
               onPressed: onShuffle,
-              icon: Icon(_getLoopModeIcon()),
+              icon: _getLoopModeIcon(context),
               color: _getLoopModeColor(context),
               tooltip: '切换播放模式',
             ),
             IconButton(
               onPressed: onPrevious,
-              icon: const Icon(Icons.skip_previous, size: 32),
+              icon: const Icon(Icons.skip_previous, size: 36),
               tooltip: '上一首',
             ),
             Container(
@@ -116,7 +169,7 @@ class PlayerControls extends StatelessWidget {
                         ),
                       )
                     : Icon(
-                        isPlaying ? Icons.pause : Icons.play_arrow,
+                        showPlayIcon ? Icons.play_arrow : Icons.pause,
                         size: 32,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
@@ -124,7 +177,7 @@ class PlayerControls extends StatelessWidget {
             ),
             IconButton(
               onPressed: onNext,
-              icon: const Icon(Icons.skip_next, size: 32),
+              icon: const Icon(Icons.skip_next, size: 36),
               tooltip: '下一首',
             ),
             IconButton(

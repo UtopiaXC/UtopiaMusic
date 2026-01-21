@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/video/search_api.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/widgets/song_list/song_list.dart';
 
 class SearchVideoFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -98,35 +97,6 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
     }
   }
 
-  void _handleSongTap(Song song) {
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    
-    if (playerProvider.currentSong != null) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('提示'),
-          content: const Text('播放单曲将替换当前播放列表，是否继续？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close Dialog
-                playerProvider.playSong(song);
-              },
-              child: const Text('继续'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      playerProvider.playSong(song);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -142,100 +112,10 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       return const Center(child: Text('输入关键词开始搜索'));
     }
 
-    return ListView.separated(
-      controller: _scrollController,
-      itemCount: _songs.length + 1,
-      padding: const EdgeInsets.only(bottom: 120, top: 8),
-      separatorBuilder: (context, index) =>
-          const Divider(height: 1, indent: 72),
-      itemBuilder: (context, index) {
-        if (index == _songs.length) {
-          return _isLoadingMore
-              ? Container(
-                  height: 60,
-                  alignment: Alignment.center,
-                  child: const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                  ),
-                )
-              : const SizedBox(height: 60);
-        }
-
-        final song = _songs[index];
-        final String optimizedCover = song.coverUrl.isNotEmpty
-            ? '${song.coverUrl}@100w_100h.webp'
-            : '';
-
-        return InkWell(
-          onTap: () => _handleSongTap(song),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Color(song.colorValue),
-                    borderRadius: BorderRadius.circular(4),
-                    image: song.coverUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(optimizedCover),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: song.coverUrl.isEmpty
-                      ? const Center(
-                          child: Icon(
-                            Icons.music_note,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        song.artist,
-                        style: TextStyle(
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: () {},
-                  color: Colors.grey,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    return SongList(
+      songs: _songs,
+      scrollController: _scrollController,
+      isLoadingMore: _isLoadingMore,
     );
   }
 }

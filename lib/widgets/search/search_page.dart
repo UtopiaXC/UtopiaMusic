@@ -21,6 +21,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   late TabController _tabController;
   String _currentKeyword = '';
   final LayerLink _layerLink = LayerLink();
@@ -36,10 +37,25 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _searchController.addListener(_onSearchChanged);
     _loadHistory().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Auto focus when entering the page
+        _searchFocusNode.requestFocus();
         if (_searchController.text.isEmpty && _currentKeyword.isEmpty) {
-          _showHistoryOverlay();
+           _showHistoryOverlay(); 
         }
       });
+    });
+    
+    _searchFocusNode.addListener(() {
+      if (_searchFocusNode.hasFocus && _searchController.text.isEmpty) {
+        _showHistoryOverlay();
+      } else if (!_searchFocusNode.hasFocus) {
+        // Delay removal to allow tap on history item to register
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_searchFocusNode.hasFocus) {
+             _removeHistoryOverlay();
+          }
+        });
+      }
     });
   }
 
@@ -47,6 +63,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _tabController.dispose();
     _removeHistoryOverlay();
     super.dispose();
@@ -106,7 +123,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 
   void _onSearchChanged() {
     if (_searchController.text.isEmpty && _currentKeyword.isEmpty) {
-      _showHistoryOverlay();
+      if (_searchFocusNode.hasFocus) {
+         _showHistoryOverlay();
+      }
     } else {
       _removeHistoryOverlay();
     }
@@ -125,7 +144,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
               behavior: HitTestBehavior.translucent,
               onTap: () {
                 _removeHistoryOverlay();
-                FocusScope.of(context).unfocus();
+                _searchFocusNode.unfocus();
               },
               child: Container(color: Colors.transparent),
             ),
@@ -170,7 +189,13 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       _currentKeyword = keyword;
     });
     _removeHistoryOverlay();
-    FocusScope.of(context).unfocus();
+    _searchFocusNode.unfocus();
+  }
+
+  void _handleSongSelected(Song song) {
+    // Ensure focus is removed when a song is selected
+    _searchFocusNode.unfocus();
+    widget.onSongSelected(song);
   }
 
   @override
@@ -196,14 +221,23 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           final showFullPlayer = playerProvider.showFullPlayer;
           final isPlaying = playerProvider.isPlaying;
 
+          // If full player is expanded, ensure keyboard is dismissed
+          if (isPlayerExpanded && _searchFocusNode.hasFocus) {
+             WidgetsBinding.instance.addPostFrameCallback((_) {
+               _searchFocusNode.unfocus();
+             });
+          }
+
           return Stack(
             children: [
               Scaffold(
+                resizeToAvoidBottomInset: false, // Prevent resizing when keyboard appears
                 appBar: AppBar(
                   title: CompositedTransformTarget(
                     link: _layerLink,
                     child: TextField(
                       controller: _searchController,
+                      focusNode: _searchFocusNode,
                       decoration: InputDecoration(
                         hintText: '搜索视频...',
                         border: InputBorder.none,
@@ -212,7 +246,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       style: TextStyle(color: colorScheme.onSurface),
                       textInputAction: TextInputAction.search,
                       onSubmitted: _doSearch,
-                      autofocus: true,
+                      autofocus: true, 
                       onTap: () {
                         if (_searchController.text.isEmpty) {
                           _showHistoryOverlay();
@@ -241,7 +275,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                 ),
                 body: GestureDetector(
                   onTap: () {
-                    FocusScope.of(context).unfocus();
+                    _searchFocusNode.unfocus();
                     _removeHistoryOverlay();
                   },
                   child: Column(
@@ -251,22 +285,28 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                           controller: _tabController,
                           children: [
                             SearchVideoFragment(
-                              onSongSelected: widget.onSongSelected,
+                              onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
                             ),
                             SearchCollectionFragment(
-                              onSongSelected: widget.onSongSelected,
+                              onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
                             ),
                             SearchUserFragment(
-                              onSongSelected: widget.onSongSelected,
+                              onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
                             ),
                           ],
                         ),
                       ),
-                      if (currentSong != null && !isPlayerExpanded)
-                        const SizedBox(height: 80),
+                      // Add padding at the bottom equal to mini player height if it's visible
+                      // Use MediaQuery.of(context).viewInsets.bottom to adjust for keyboard
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        height: (currentSong != null && !isPlayerExpanded) 
+                            ? 80 + MediaQuery.of(context).viewInsets.bottom 
+                            : MediaQuery.of(context).viewInsets.bottom,
+                      ),
                     ],
                   ),
                 ),
@@ -290,7 +330,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
+                bottom: MediaQuery.of(context).viewInsets.bottom, // Float above keyboard
                 child: AnimatedSlide(
                   offset: (currentSong != null && !isPlayerExpanded)
                       ? Offset.zero
@@ -309,9 +349,13 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                               child: MiniPlayer(
                                 song: currentSong,
                                 isPlaying: isPlaying,
-                                onTap: playerProvider.togglePlayerExpansion,
+                                onTap: () {
+                                  _searchFocusNode.unfocus(); // Ensure keyboard is closed
+                                  playerProvider.togglePlayerExpansion();
+                                },
                                 onPlayPause: playerProvider.togglePlayPause,
-                                onNext: () {},
+                                onNext: () {}, // Handled internally by MiniPlayer using Provider
+                                onPrevious: () {}, // Handled internally by MiniPlayer using Provider
                                 onClose: playerProvider.closePlayer,
                               ),
                             ),

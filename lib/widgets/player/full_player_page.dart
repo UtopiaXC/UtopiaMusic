@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:provider/provider.dart';
+import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/services/audio_player_service.dart';
+import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
+import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -23,37 +26,17 @@ class FullPlayerPage extends StatefulWidget {
 }
 
 class _FullPlayerPageState extends State<FullPlayerPage> {
-  final AudioPlayerService _audioPlayerService = AudioPlayerService();
-  bool _isPlaying = false;
-  bool _isLoading = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
   bool _isDragging = false;
   double _dragValue = 0.0;
-
-  int _loopMode = 0;
-
-  final List<Song> _playlist = [];
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _initAudioPlayer();
-  }
-
-  void _initAudioPlayer() {
-    _audioPlayerService.player.playerStateStream.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state.playing;
-          _isLoading =
-              state.processingState == ProcessingState.buffering ||
-              state.processingState == ProcessingState.loading;
-        });
-      }
-    });
-
-    _audioPlayerService.player.positionStream.listen((position) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    
+    playerProvider.player.positionStream.listen((position) {
       if (mounted && !_isDragging) {
         setState(() {
           _position = position;
@@ -61,111 +44,13 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       }
     });
 
-    _audioPlayerService.player.durationStream.listen((duration) {
+    playerProvider.player.durationStream.listen((duration) {
       if (mounted && duration != null) {
         setState(() {
           _duration = duration;
         });
       }
     });
-
-    _audioPlayerService.player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        _playNext();
-      }
-    });
-  }
-
-  void _togglePlayPause() {
-    if (_isPlaying) {
-      _audioPlayerService.pause();
-    } else {
-      _audioPlayerService.resume();
-    }
-  }
-
-  void _playNext() {
-    if (_playlist.isEmpty) return;
-
-    int currentIndex = _playlist.indexWhere(
-      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
-    );
-    int nextIndex = 0;
-
-    if (_loopMode == 2) {
-      nextIndex = currentIndex;
-      _audioPlayerService.player.seek(Duration.zero);
-      _audioPlayerService.resume();
-      return;
-    } else if (_loopMode == 3) {
-      nextIndex = (DateTime.now().millisecondsSinceEpoch % _playlist.length);
-    } else {
-      if (currentIndex < _playlist.length - 1) {
-        nextIndex = currentIndex + 1;
-      } else {
-        if (_loopMode == 1) {
-          nextIndex = 0;
-        } else {
-          _audioPlayerService.stop();
-          return;
-        }
-      }
-    }
-
-    if (nextIndex >= 0 && nextIndex < _playlist.length) {
-      widget.onSongSelected(_playlist[nextIndex]);
-    }
-  }
-
-  void _playPrevious() {
-    if (_playlist.isEmpty) return;
-
-    int currentIndex = _playlist.indexWhere(
-      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
-    );
-    int prevIndex = 0;
-
-    if (_loopMode == 3) {
-      prevIndex = (currentIndex - 1 + _playlist.length) % _playlist.length;
-    } else {
-      if (currentIndex > 0) {
-        prevIndex = currentIndex - 1;
-      } else {
-        prevIndex = _playlist.length - 1;
-      }
-    }
-
-    if (prevIndex >= 0 && prevIndex < _playlist.length) {
-      widget.onSongSelected(_playlist[prevIndex]);
-    }
-  }
-
-  void _toggleLoopMode() {
-    setState(() {
-      _loopMode = (_loopMode + 1) % 4;
-    });
-
-    String modeName;
-    switch (_loopMode) {
-      case 0:
-        modeName = '列表顺序';
-        break;
-      case 1:
-        modeName = '列表循环';
-        break;
-      case 2:
-        modeName = '单曲循环';
-        break;
-      case 3:
-        modeName = '随机播放';
-        break;
-      default:
-        modeName = '列表顺序';
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(modeName), duration: const Duration(seconds: 1)),
-    );
   }
 
   void _onSeekStart(double value) {
@@ -182,8 +67,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   void _onSeekEnd(double value) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final position = Duration(seconds: value.toInt());
-    _audioPlayerService.player.seek(position);
+    playerProvider.player.seek(position);
+    
+    // If paused or completed, resume playback after seek
+    if (!playerProvider.isPlaying || 
+        playerProvider.player.processingState == ProcessingState.completed) {
+      playerProvider.player.play();
+    }
+
     setState(() {
       _isDragging = false;
       _position = position;
@@ -191,14 +84,49 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   void _showPlaylist() {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => PlaylistSheet(
-        playlist: _playlist,
+        playlist: playerProvider.playlist,
         currentSong: widget.song,
         onSongSelected: widget.onSongSelected,
+      ),
+    );
+  }
+
+  Widget _buildCardContent(BuildContext context, Song song, {bool isCurrent = false}) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Column(
+        children: [
+          Expanded(child: PlayerContent(song: song)),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+            child: PlayerControls(
+              isPlaying: isCurrent ? playerProvider.isPlaying : false,
+              isLoading: isCurrent ? (playerProvider.player.processingState == ProcessingState.buffering ||
+                  playerProvider.player.processingState == ProcessingState.loading) : false,
+              duration: isCurrent ? _duration : Duration.zero,
+              position: isCurrent ? (_isDragging
+                  ? Duration(seconds: _dragValue.toInt())
+                  : _position) : Duration.zero,
+              loopMode: playerProvider.playMode.index,
+              onSeek: isCurrent ? _onSeekEnd : (v){},
+              onSeekStart: isCurrent ? _onSeekStart : null,
+              onSeekUpdate: isCurrent ? _onSeekUpdate : null,
+              onPlayPause: isCurrent ? playerProvider.togglePlayPause : (){},
+              onNext: isCurrent && playerProvider.hasNext ? () => playerProvider.playNext() : null,
+              onPrevious: isCurrent && playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+              onShuffle: isCurrent ? playerProvider.togglePlayMode : (){},
+              onPlaylist: isCurrent ? _showPlaylist : (){},
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -206,6 +134,33 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final playerProvider = Provider.of<PlayerProvider>(context);
+
+    // Determine if next/prev buttons should be enabled based on PlayMode and playlist position
+    final hasNext = playerProvider.hasNext;
+    final hasPrevious = playerProvider.hasPrevious;
+
+    Song? previousSong;
+    Song? nextSong;
+    
+    final playlist = playerProvider.playlist;
+    final currentIndex = playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
+    
+    if (currentIndex != -1 && playlist.isNotEmpty) {
+       if (hasPrevious) {
+         int prevIndex = currentIndex - 1;
+         if (prevIndex < 0) prevIndex = playlist.length - 1;
+         previousSong = playlist[prevIndex];
+       }
+       if (hasNext) {
+         int nextIndex = currentIndex + 1;
+         if (nextIndex >= playlist.length) nextIndex = 0;
+         nextSong = playlist[nextIndex];
+       }
+    }
+    // Fallback if playlist logic fails or empty
+    if (hasPrevious && previousSong == null) previousSong = widget.song;
+    if (hasNext && nextSong == null) nextSong = widget.song;
 
     return PopScope(
       canPop: false,
@@ -216,7 +171,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         widget.onCollapse();
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Make Scaffold transparent
+        backgroundColor: Colors.transparent,
         body: GestureDetector(
           onVerticalDragUpdate: (details) {
             if (details.primaryDelta! > 10) {
@@ -259,25 +214,13 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     centerMiddle: true,
                   ),
                 ),
-                Expanded(child: PlayerContent(song: widget.song)),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                  child: PlayerControls(
-                    isPlaying: _isPlaying,
-                    isLoading: _isLoading,
-                    duration: _duration,
-                    position: _isDragging
-                        ? Duration(seconds: _dragValue.toInt())
-                        : _position,
-                    loopMode: _loopMode,
-                    onSeek: _onSeekEnd,
-                    onSeekStart: _onSeekStart,
-                    onSeekUpdate: _onSeekUpdate,
-                    onPlayPause: _togglePlayPause,
-                    onNext: _playNext,
-                    onPrevious: _playPrevious,
-                    onShuffle: _toggleLoopMode,
-                    onPlaylist: _showPlaylist,
+                Expanded(
+                  child: SwipeablePlayerCard(
+                    onNext: hasNext ? () => playerProvider.playNext() : null,
+                    onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                    previousChild: previousSong != null ? _buildCardContent(context, previousSong) : null,
+                    nextChild: nextSong != null ? _buildCardContent(context, nextSong) : null,
+                    child: _buildCardContent(context, widget.song, isCurrent: true),
                   ),
                 ),
               ],
