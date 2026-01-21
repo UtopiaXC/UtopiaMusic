@@ -14,7 +14,7 @@ class VideoApi {
       'y_num': 4,
       'fresh_idx': _freshIdx,
       'fresh_idx_1h': _freshIdx,
-      'ps': 10,
+      'ps': 20,
       'plat': 1,
       'web_location': 1430650,
     };

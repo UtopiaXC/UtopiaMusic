@@ -28,9 +28,10 @@ class PlayerProvider extends ChangeNotifier {
     _currentSong = song;
     _isPlaying = true;
     _showFullPlayer = true;
+    _isPlayerExpanded = false;
     notifyListeners();
 
-    Future.delayed(Duration.zero, () {
+    Future.delayed(const Duration(milliseconds: 50), () {
       _isPlayerExpanded = true;
       notifyListeners();
     });
