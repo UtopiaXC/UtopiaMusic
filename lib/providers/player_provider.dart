@@ -40,7 +40,12 @@ class PlayerProvider extends ChangeNotifier {
 
   void expandPlayer() {
     _showFullPlayer = true;
-    _isPlayerExpanded = true;
+    // Delay setting _isPlayerExpanded to true to allow the full player to be mounted first
+    // This ensures the slide animation works correctly
+    Future.delayed(const Duration(milliseconds: 50), () {
+      _isPlayerExpanded = true;
+      notifyListeners();
+    });
     notifyListeners();
   }
 

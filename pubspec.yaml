@@ -44,6 +44,7 @@ dependencies:
   just_audio_media_kit: ^2.1.0
   media_kit_libs_windows_audio: ^1.0.9
   just_audio_background: ^0.0.1-beta.17
+  shared_preferences: ^2.5.4
 
 dev_dependencies:
   flutter_test:

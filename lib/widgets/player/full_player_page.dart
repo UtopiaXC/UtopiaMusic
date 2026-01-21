@@ -216,6 +216,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         widget.onCollapse();
       },
       child: Scaffold(
+        backgroundColor: Colors.transparent, // Make Scaffold transparent
         body: GestureDetector(
           onVerticalDragUpdate: (details) {
             if (details.primaryDelta! > 10) {

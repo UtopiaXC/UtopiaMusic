@@ -25,6 +25,11 @@ class MiniPlayer extends StatelessWidget {
     
     return GestureDetector(
       onTap: onTap,
+      onVerticalDragUpdate: (details) {
+        if (details.primaryDelta! < -10) {
+          onTap();
+        }
+      },
       child: Container(
         height: 64,
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

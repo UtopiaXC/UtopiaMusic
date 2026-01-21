@@ -99,36 +99,32 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
   }
 
   void _handleSongTap(Song song) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('提示'),
-        content: const Text('播放单曲将替换当前播放列表，是否继续？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close Dialog
-              Navigator.of(context).pop(); // Close SearchPage
-              
-              // Use Provider to control the player
-              final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-              playerProvider.playSong(song);
-              
-              // Delay expansion to allow SearchPage close animation to finish (or start)
-              // and then slide up the player.
-              Future.delayed(const Duration(milliseconds: 300), () {
-                 playerProvider.expandPlayer();
-              });
-            },
-            child: const Text('继续'),
-          ),
-        ],
-      ),
-    );
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    
+    if (playerProvider.currentSong != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('提示'),
+          content: const Text('播放单曲将替换当前播放列表，是否继续？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close Dialog
+                playerProvider.playSong(song);
+              },
+              child: const Text('继续'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      playerProvider.playSong(song);
+    }
   }
 
   @override

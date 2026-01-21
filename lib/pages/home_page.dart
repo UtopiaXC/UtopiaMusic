@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/pages/fragments/dynamic_fragment.dart';
 import 'package:utopia_music/pages/fragments/music_rank_fragment.dart';
 import 'package:utopia_music/pages/fragments/rank_fragment.dart';
 import 'package:utopia_music/pages/fragments/recommend_fragment.dart';
+import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/search/search_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -104,6 +106,16 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
     );
   }
 
+  void _handleSongSelected(Song song) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    if (playerProvider.currentSong == null) {
+      playerProvider.playSong(song);
+      playerProvider.expandPlayer();
+    } else {
+      playerProvider.playSong(song);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -156,7 +168,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
               controller: _tabController,
               children: [
                 RecommendFragment(
-                  onSongSelected: widget.onSongSelected,
+                  onSongSelected: _handleSongSelected,
                   scrollController: _scrollControllers[0],
                   refreshIndicatorKey: _refreshKeys[0],
                 ),

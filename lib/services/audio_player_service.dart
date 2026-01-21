@@ -9,6 +9,7 @@ import 'package:utopia_music/connection/utils/constants.dart';
 
 class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
+  static const Duration _staleThreshold = Duration(hours: 24);
   static const int _maxCacheSize = 10 * 1024 * 1024;
   factory AudioPlayerService() => _instance;
   AudioPlayerService._internal();
@@ -90,34 +91,48 @@ class AudioPlayerService {
     try {
       final dirPath = await _getCacheDir();
       final dir = Directory(dirPath);
-
       if (!await dir.exists()) return;
-      final List<FileSystemEntity> files = dir.listSync().where((e) {
-        return e is File && e.path.endsWith('.m4s');
-      }).toList();
-      int totalSize = 0;
-      for (var file in files) {
-        if (file is File) {
-          totalSize += await file.length();
+      final List<FileSystemEntity> entities = dir.listSync();
+      int totalM4sSize = 0;
+      List<File> m4sFiles = [];
+      for (var entity in entities) {
+        if (entity is! File) continue;
+        final path = entity.path;
+        if (path.endsWith('.part')) {
+          try {
+            final stat = await entity.stat();
+            final age = DateTime.now().difference(stat.modified);
+            if (age > _staleThreshold) {
+              print("Cleaning stale temp file: ${path.split(Platform.pathSeparator).last}");
+              await entity.delete();
+            }
+          } catch (e) {
+            print("Skipped locked temp file: ${path.split(Platform.pathSeparator).last}");
+          }
+        }
+        else if (path.endsWith('.m4s')) {
+          m4sFiles.add(entity);
+          totalM4sSize += await entity.length();
         }
       }
-      if (totalSize < _maxCacheSize) return;
-      print("Cache size (${totalSize / 1024 / 1024} MB) exceeds limit. Cleaning up...");
-      files.sort((a, b) {
-        return a.statSync().modified.compareTo(b.statSync().modified);
-      });
-      for (var file in files) {
-        if (totalSize < _maxCacheSize) break;
-        if (file is File) {
-          final size = await file.length();
-          await file.delete();
-          totalSize -= size;
-          print("Deleted old cache: ${file.path.split('/').last}");
-        }
-      }
+      if (totalM4sSize > _maxCacheSize) {
+        print("Cache full (${totalM4sSize ~/ 1024 ~/ 1024}MB). Trimming...");
+        m4sFiles.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+        for (var file in m4sFiles) {
+          if (totalM4sSize < _maxCacheSize) break;
 
+          try {
+            final size = await file.length();
+            await file.delete();
+            totalM4sSize -= size;
+            print("Deleted old cache: ${file.path.split(Platform.pathSeparator).last}");
+          } catch (e) {
+            print("Skipped locked cache file: ${file.path.split(Platform.pathSeparator).last}");
+          }
+        }
+      }
     } catch (e) {
-      print("Auto cache cleanup failed: $e");
+      print("Cleanup routine warning: $e");
     }
   }
 
