@@ -3,9 +3,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
+import 'package:utopia_music/connection/video/search_api.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 
 class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
@@ -15,6 +15,7 @@ class AudioPlayerService {
 
   final AudioPlayer _player = AudioPlayer();
   final AudioStreamApi _audioStreamApi = AudioStreamApi();
+  final SearchApi _searchApi = SearchApi();
   String? _cacheDir;
 
   AudioPlayer get player => _player;
@@ -29,14 +30,23 @@ class AudioPlayerService {
   Future<void> playSong(Song song) async {
     try {
       _performLRUCacheCleanup();
+      int cid = song.cid;
+      if (cid == 0 && song.bvid.isNotEmpty) {
+        cid = await _searchApi.fetchCid(song.bvid);
+        if (cid == 0) {
+          print("Failed to fetch CID for song: ${song.title}");
+          return;
+        }
+      }
+
       String? audioUrl;
-      if (song.bvid.isNotEmpty && song.cid != 0) {
-        audioUrl = await _audioStreamApi.getAudioStream(song.bvid, song.cid);
+      if (song.bvid.isNotEmpty && cid != 0) {
+        audioUrl = await _audioStreamApi.getAudioStream(song.bvid, cid);
       }
 
       if (audioUrl != null && audioUrl.isNotEmpty) {
         final dirPath = await _getCacheDir();
-        final String fileName = 'song_${song.bvid}_${song.cid}.m4s';
+        final String fileName = 'song_${song.bvid}_$cid.m4s';
         final File cacheFile = File('$dirPath/$fileName');
 
         final source = LockCachingAudioSource(
@@ -47,7 +57,7 @@ class AudioPlayerService {
             'Referer': HttpConstants.referer,
           },
           tag: MediaItem(
-            id: '${song.bvid}_${song.cid}',
+            id: '${song.bvid}_$cid',
             title: song.title,
             artist: song.artist,
             artUri: song.coverUrl.isNotEmpty ? Uri.parse(song.coverUrl) : null,

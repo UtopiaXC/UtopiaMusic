@@ -28,19 +28,20 @@ class PlayerProvider extends ChangeNotifier {
     _currentSong = song;
     _isPlaying = true;
     _showFullPlayer = true;
-    _isPlayerExpanded = false;
+    
     notifyListeners();
-
-    Future.delayed(const Duration(milliseconds: 50), () {
-      _isPlayerExpanded = true;
-      notifyListeners();
-    });
 
     try {
       await _audioPlayerService.playSong(song);
     } catch (e) {
       print("Play error: $e");
     }
+  }
+
+  void expandPlayer() {
+    _showFullPlayer = true;
+    _isPlayerExpanded = true;
+    notifyListeners();
   }
 
   Future<void> togglePlayPause() async {

@@ -4,6 +4,7 @@ import 'package:utopia_music/pages/fragments/dynamic_fragment.dart';
 import 'package:utopia_music/pages/fragments/music_rank_fragment.dart';
 import 'package:utopia_music/pages/fragments/rank_fragment.dart';
 import 'package:utopia_music/pages/fragments/recommend_fragment.dart';
+import 'package:utopia_music/widgets/search/search_page.dart';
 
 class HomePage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -95,6 +96,14 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
     handleTabTap(_currentTabIndex);
   }
 
+  void _openSearchPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SearchPage(onSongSelected: widget.onSongSelected),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -102,6 +111,35 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
       bottom: false,
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: GestureDetector(
+              onTap: _openSearchPage,
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '搜索音乐、视频...',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           TabBar(
             controller: _tabController,
             isScrollable: true,
