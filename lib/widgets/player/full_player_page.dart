@@ -8,7 +8,7 @@ import 'package:utopia_music/widgets/player/playlist_sheet.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
-  final VoidCallback onCollapse;
+  final VoidCallback  onCollapse;
   final Function(Song) onSongSelected;
 
   const FullPlayerPage({
@@ -31,7 +31,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   bool _isDragging = false;
   double _dragValue = 0.0;
 
-  int _loopMode = 0; 
+  int _loopMode = 0;
 
   final List<Song> _playlist = [];
 
@@ -46,7 +46,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       if (mounted) {
         setState(() {
           _isPlaying = state.playing;
-          _isLoading = state.processingState == ProcessingState.buffering ||
+          _isLoading =
+              state.processingState == ProcessingState.buffering ||
               state.processingState == ProcessingState.loading;
         });
       }
@@ -85,8 +86,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   void _playNext() {
     if (_playlist.isEmpty) return;
-    
-    int currentIndex = _playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
+
+    int currentIndex = _playlist.indexWhere(
+      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
+    );
     int nextIndex = 0;
 
     if (_loopMode == 2) {
@@ -116,12 +119,14 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   void _playPrevious() {
     if (_playlist.isEmpty) return;
-    
-    int currentIndex = _playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
+
+    int currentIndex = _playlist.indexWhere(
+      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
+    );
     int prevIndex = 0;
 
     if (_loopMode == 3) {
-       prevIndex = (currentIndex - 1 + _playlist.length) % _playlist.length;
+      prevIndex = (currentIndex - 1 + _playlist.length) % _playlist.length;
     } else {
       if (currentIndex > 0) {
         prevIndex = currentIndex - 1;
@@ -134,21 +139,30 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       widget.onSongSelected(_playlist[prevIndex]);
     }
   }
-  
+
   void _toggleLoopMode() {
     setState(() {
       _loopMode = (_loopMode + 1) % 4;
     });
-    
+
     String modeName;
     switch (_loopMode) {
-      case 0: modeName = '列表顺序'; break;
-      case 1: modeName = '列表循环'; break;
-      case 2: modeName = '单曲循环'; break;
-      case 3: modeName = '随机播放'; break;
-      default: modeName = '列表顺序';
+      case 0:
+        modeName = '列表顺序';
+        break;
+      case 1:
+        modeName = '列表循环';
+        break;
+      case 2:
+        modeName = '单曲循环';
+        break;
+      case 3:
+        modeName = '随机播放';
+        break;
+      default:
+        modeName = '列表顺序';
     }
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(modeName), duration: const Duration(seconds: 1)),
     );
@@ -193,68 +207,80 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      body: GestureDetector(
-        onVerticalDragUpdate: (details) {
-          if (details.primaryDelta! > 10) {
-            widget.onCollapse();
-          }
-        },
-        child: Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: Column(
-            children: [
-              SizedBox(height: topPadding + 12),
-              SizedBox(
-                height: kToolbarHeight,
-                child: NavigationToolbar(
-                  leading: IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    onPressed: widget.onCollapse,
-                    tooltip: '收起',
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        widget.onCollapse();
+      },
+      child: Scaffold(
+        body: GestureDetector(
+          onVerticalDragUpdate: (details) {
+            if (details.primaryDelta! > 10) {
+              widget.onCollapse();
+            }
+          },
+          child: Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Column(
+              children: [
+                SizedBox(height: topPadding + 12),
+                SizedBox(
+                  height: kToolbarHeight,
+                  child: NavigationToolbar(
+                    leading: IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down),
+                      onPressed: widget.onCollapse,
+                      tooltip: '收起',
+                    ),
+                    middle: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.song.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          widget.song.artist,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                    centerMiddle: true,
                   ),
-                  middle: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        widget.song.title, 
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        widget.song.artist,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                ),
+                Expanded(child: PlayerContent(song: widget.song)),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+                  child: PlayerControls(
+                    isPlaying: _isPlaying,
+                    isLoading: _isLoading,
+                    duration: _duration,
+                    position: _isDragging
+                        ? Duration(seconds: _dragValue.toInt())
+                        : _position,
+                    loopMode: _loopMode,
+                    onSeek: _onSeekEnd,
+                    onSeekStart: _onSeekStart,
+                    onSeekUpdate: _onSeekUpdate,
+                    onPlayPause: _togglePlayPause,
+                    onNext: _playNext,
+                    onPrevious: _playPrevious,
+                    onShuffle: _toggleLoopMode,
+                    onPlaylist: _showPlaylist,
                   ),
-                  centerMiddle: true,
                 ),
-              ),
-              Expanded(
-                child: PlayerContent(song: widget.song),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                child: PlayerControls(
-                  isPlaying: _isPlaying,
-                  isLoading: _isLoading,
-                  duration: _duration,
-                  position: _isDragging ? Duration(seconds: _dragValue.toInt()) : _position,
-                  loopMode: _loopMode,
-                  onSeek: _onSeekEnd,
-                  onSeekStart: _onSeekStart,
-                  onSeekUpdate: _onSeekUpdate,
-                  onPlayPause: _togglePlayPause,
-                  onNext: _playNext,
-                  onPrevious: _playPrevious,
-                  onShuffle: _toggleLoopMode,
-                  onPlaylist: _showPlaylist,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

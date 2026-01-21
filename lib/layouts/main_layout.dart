@@ -31,6 +31,10 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _onItemTapped(int index) {
+    if (_selectedIndex == index && index == 0) {
+      _homePageKey.currentState?.handleBottomTabReselect();
+    }
+
     setState(() {
       _selectedIndex = index;
       final playerProvider = Provider.of<PlayerProvider>(context, listen: false);

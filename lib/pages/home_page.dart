@@ -15,9 +15,13 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-  final ScrollController _scrollController = ScrollController();
-  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
   late TabController _tabController;
+  int _currentTabIndex = 0;
+
+  final List<ScrollController> _scrollControllers = [];
+  final List<GlobalKey<RefreshIndicatorState>> _refreshKeys = [];
+
+  DateTime? _lastTapTime;
 
   @override
   bool get wantKeepAlive => true;
@@ -26,13 +30,69 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        if (_currentTabIndex != _tabController.index) {
+          setState(() {
+            _currentTabIndex = _tabController.index;
+          });
+        }
+      }
+    });
+
+    for (int i = 0; i < 4; i++) {
+      _scrollControllers.add(ScrollController());
+      _refreshKeys.add(GlobalKey<RefreshIndicatorState>());
+    }
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _tabController.dispose();
+    for (var controller in _scrollControllers) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  void handleTabTap(int index) {
+    if (_currentTabIndex != index) {
+      setState(() {
+        _currentTabIndex = index;
+      });
+      _lastTapTime = null;
+      return;
+    }
+    final controller = _scrollControllers[index];
+
+    if (controller.hasClients && controller.offset > 0) {
+      controller.animateTo(
+        0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutQuart,
+      );
+      _lastTapTime = null;
+    } else {
+      final now = DateTime.now();
+      if (_lastTapTime != null && now.difference(_lastTapTime!) < const Duration(seconds: 1)) {
+        _refreshKeys[index].currentState?.show();
+        _lastTapTime = null;
+      } else {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('再次点击刷新列表'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _lastTapTime = now;
+      }
+    }
+  }
+
+  void handleBottomTabReselect() {
+    handleTabTap(_currentTabIndex);
   }
 
   @override
@@ -45,6 +105,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
           TabBar(
             controller: _tabController,
             isScrollable: true,
+            onTap: handleTabTap,
             tabs: const [
               Tab(text: '推荐'),
               Tab(text: '动态'),
@@ -58,12 +119,21 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
               children: [
                 RecommendFragment(
                   onSongSelected: widget.onSongSelected,
-                  scrollController: _scrollController,
-                  refreshIndicatorKey: _refreshIndicatorKey,
+                  scrollController: _scrollControllers[0],
+                  refreshIndicatorKey: _refreshKeys[0],
                 ),
-                const DynamicFragment(),
-                const RankFragment(),
-                const MusicRankFragment(),
+                DynamicFragment(
+                  scrollController: _scrollControllers[1],
+                  refreshIndicatorKey: _refreshKeys[1],
+                ),
+                RankFragment(
+                  scrollController: _scrollControllers[2],
+                  refreshIndicatorKey: _refreshKeys[2],
+                ),
+                MusicRankFragment(
+                  scrollController: _scrollControllers[3],
+                  refreshIndicatorKey: _refreshKeys[3],
+                ),
               ],
             ),
           ),
