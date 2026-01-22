@@ -113,7 +113,9 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("Switch play mode"),
     "weight_play_list_label_confirm_clean_message":
         MessageLookupByLibrary.simpleMessage("Confirm to clean play list?"),
-    "weight_play_list_label_name": MessageLookupByLibrary.simpleMessage("播放列表"),
+    "weight_play_list_label_name": MessageLookupByLibrary.simpleMessage(
+      "Play list",
+    ),
     "weight_search_label_confirm_clean_history_message":
         MessageLookupByLibrary.simpleMessage("Confirm to clean history?"),
     "weight_search_label_confirm_clean_history_title":

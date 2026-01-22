@@ -36,8 +36,12 @@ class PlayerControls extends StatelessWidget {
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
+    if (hours > 0) {
+      return '$hours:$minutes:$seconds';
+    }
     return '$minutes:$seconds';
   }
 
@@ -115,7 +119,6 @@ class PlayerControls extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        // Progress Bar
         Slider(
           value: sliderValue,
           min: 0,

@@ -13,15 +13,14 @@ class AudioProxyService {
 
   HttpServer? _server;
   final int _port = 0;
-  String? _cacheDir;
+  String? _cacheDirectory;
   final AudioStreamApi _audioStreamApi = AudioStreamApi();
   final SearchApi _searchApi = SearchApi();
   final Set<String> _activeDownloads = {};
 
   Function(String bvid)? onCacheFinished;
-
   void setCacheDir(String path) {
-    _cacheDir = path;
+    _cacheDirectory = path;
   }
 
   bool isBvidDownloading(String bvid) {
@@ -32,54 +31,58 @@ class AudioProxyService {
     if (_server != null) return;
 
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, _port);
-    print('AudioProxy running on port: ${_server!.port}');
 
     _server!.listen((HttpRequest request) async {
       try {
         final bvid = request.uri.queryParameters['bvid'];
-        String? cidStr = request.uri.queryParameters['cid'];
+        String? cidString = request.uri.queryParameters['cid'];
 
-        if (bvid == null || _cacheDir == null) {
+        if (bvid == null || _cacheDirectory == null) {
           request.response.statusCode = HttpStatus.badRequest;
           request.response.close();
           return;
         }
 
-        final File cacheFile = File('$_cacheDir/song_$bvid.m4s');
-        if (await cacheFile.exists()) {
-          await _serveLocalFile(request, cacheFile);
+        final File localCacheFile = File('$_cacheDirectory/song_$bvid.m4s');
+        if (await localCacheFile.exists()) {
+          await _serveLocalFile(request, localCacheFile);
           return;
         }
 
-        bool isAlreadyDownloading = _activeDownloads.contains(bvid);
-        int cid = int.tryParse(cidStr ?? '0') ?? 0;
+        int cid = int.tryParse(cidString ?? '0') ?? 0;
         if (cid == 0) {
           try {
             cid = await _searchApi.fetchCid(bvid);
-          } catch (e) {
+          } catch (error) {
             request.response.statusCode = HttpStatus.notFound;
             request.response.close();
             return;
           }
         }
 
-        String? realAudioUrl;
+        String? remoteAudioUrl;
         try {
-          realAudioUrl = await _audioStreamApi.getAudioStream(bvid, cid);
-        } catch (e) {
-          print('Stream link fetched failed: $e');
+          remoteAudioUrl = await _audioStreamApi.getAudioStream(bvid, cid);
+        } catch (error) {
+          print(error);
         }
 
-        if (realAudioUrl == null) {
+        if (remoteAudioUrl == null) {
           request.response.statusCode = HttpStatus.notFound;
           request.response.close();
           return;
         }
+
+        if (request.method == 'HEAD') {
+          await _handleHeadRequest(request, remoteAudioUrl);
+          return;
+        }
+
+        bool isAlreadyDownloading = _activeDownloads.contains(bvid);
         bool enableCaching = !isAlreadyDownloading;
 
-        await _proxyAndCache(request, realAudioUrl, bvid, enableCaching);
-      } catch (e) {
-        print('Proxy Error: $e');
+        await _proxyAndCache(request, remoteAudioUrl, bvid, enableCaching);
+      } catch (error) {
         try {
           request.response.statusCode = HttpStatus.internalServerError;
           request.response.close();
@@ -91,6 +94,16 @@ class AudioProxyService {
   Future<void> _serveLocalFile(HttpRequest request, File file) async {
     try {
       final fileLength = await file.length();
+
+      request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
+      request.response.headers.contentType = ContentType.parse("audio/mp4");
+
+      if (request.method == 'HEAD') {
+        request.response.headers.set(HttpHeaders.contentLengthHeader, fileLength);
+        request.response.close();
+        return;
+      }
+
       final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
 
       if (rangeHeader != null) {
@@ -115,8 +128,6 @@ class AudioProxyService {
           HttpHeaders.contentRangeHeader,
           'bytes $start-$end/$fileLength',
         );
-        request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
-        request.response.headers.contentType = ContentType.parse("audio/mp4");
 
         await file.openRead(start, end + 1).pipe(request.response);
       } else {
@@ -124,115 +135,154 @@ class AudioProxyService {
           HttpHeaders.contentLengthHeader,
           fileLength,
         );
-        request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
-        request.response.headers.contentType = ContentType.parse("audio/mp4");
         await file.openRead().pipe(request.response);
       }
-    } catch (e) {}
+    } catch (error) {
+      try {
+        request.response.close();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _handleHeadRequest(HttpRequest request, String remoteUrl) async {
+    final client = HttpClient();
+    try {
+      final HttpClientRequest targetRequest = await client.headUrl(Uri.parse(remoteUrl));
+      targetRequest.headers.set('User-Agent', HttpConstants.userAgent);
+      targetRequest.headers.set('Referer', HttpConstants.referer);
+
+      final HttpClientResponse targetResponse = await targetRequest.close();
+
+      request.response.statusCode = targetResponse.statusCode;
+      request.response.headers.contentType = targetResponse.headers.contentType;
+      request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
+
+      if (targetResponse.headers.value(HttpHeaders.contentLengthHeader) != null) {
+        request.response.headers.set(
+          HttpHeaders.contentLengthHeader,
+          targetResponse.headers.value(HttpHeaders.contentLengthHeader)!,
+        );
+      }
+
+      await request.response.close();
+    } catch (error) {
+      request.response.statusCode = HttpStatus.internalServerError;
+      request.response.close();
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> _proxyAndCache(
-    HttpRequest request,
-    String remoteUrl,
-    String bvid,
-    bool enableCaching,
-  ) async {
+      HttpRequest request,
+      String remoteUrl,
+      String bvid,
+      bool enableCaching,
+      ) async {
     final client = HttpClient();
-    final HttpClientRequest targetRequest = await client.getUrl(
-      Uri.parse(remoteUrl),
-    );
+    try {
+      final HttpClientRequest targetRequest = await client.getUrl(Uri.parse(remoteUrl));
 
-    targetRequest.headers.set('User-Agent', HttpConstants.userAgent);
-    targetRequest.headers.set('Referer', HttpConstants.referer);
-    final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
-    if (rangeHeader != null) {
-      targetRequest.headers.set(HttpHeaders.rangeHeader, rangeHeader);
-      enableCaching = false;
-    }
+      targetRequest.headers.set('User-Agent', HttpConstants.userAgent);
+      targetRequest.headers.set('Referer', HttpConstants.referer);
 
-    final HttpClientResponse targetResponse = await targetRequest.close();
-    request.response.statusCode = targetResponse.statusCode;
-    request.response.headers.contentType = targetResponse.headers.contentType;
-    if (targetResponse.headers.value(HttpHeaders.contentLengthHeader) != null) {
-      request.response.headers.set(
-        HttpHeaders.contentLengthHeader,
-        targetResponse.headers.value(HttpHeaders.contentLengthHeader)!,
-      );
-    }
-    request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
-    if (targetResponse.headers.value(HttpHeaders.contentRangeHeader) != null) {
-      request.response.headers.set(
-        HttpHeaders.contentRangeHeader,
-        targetResponse.headers.value(HttpHeaders.contentRangeHeader)!,
-      );
-    }
+      final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
+      if (rangeHeader != null) {
+        targetRequest.headers.set(HttpHeaders.rangeHeader, rangeHeader);
+        enableCaching = false;
+      }
 
-    IOSink? fileSink;
-    File? tempFile;
-    if (enableCaching && targetResponse.statusCode == 200) {
-      _activeDownloads.add(bvid);
-      tempFile = File('$_cacheDir/song_$bvid.part');
-      fileSink = tempFile.openWrite();
-    }
+      final HttpClientResponse targetResponse = await targetRequest.close();
 
-    StreamSubscription<List<int>>? subscription;
-    final Completer<void> streamCompleter = Completer();
+      request.response.statusCode = targetResponse.statusCode;
+      request.response.headers.contentType = targetResponse.headers.contentType;
+      request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
 
-    subscription = targetResponse.listen(
-      (data) {
-        if (fileSink != null) {
-          fileSink.add(data);
-        }
-        try {
-          request.response.add(data);
-        } catch (e) {
-          print("Play stop, cancel download: $bvid");
-          subscription?.cancel();
+      if (targetResponse.headers.value(HttpHeaders.contentLengthHeader) != null) {
+        request.response.headers.set(
+          HttpHeaders.contentLengthHeader,
+          targetResponse.headers.value(HttpHeaders.contentLengthHeader)!,
+        );
+      }
+
+      if (targetResponse.headers.value(HttpHeaders.contentRangeHeader) != null) {
+        request.response.headers.set(
+          HttpHeaders.contentRangeHeader,
+          targetResponse.headers.value(HttpHeaders.contentRangeHeader)!,
+        );
+      }
+
+      IOSink? fileSink;
+      File? tempFile;
+      if (enableCaching && targetResponse.statusCode == HttpStatus.ok) {
+        _activeDownloads.add(bvid);
+        tempFile = File('$_cacheDirectory/song_$bvid.part');
+        fileSink = tempFile.openWrite();
+      }
+
+      StreamSubscription<List<int>>? subscription;
+      final Completer<void> streamCompleter = Completer();
+
+      subscription = targetResponse.listen(
+            (data) {
+          if (fileSink != null) {
+            fileSink.add(data);
+          }
+          try {
+            request.response.add(data);
+          } catch (error) {
+            subscription?.cancel();
+            _abortDownload(fileSink, tempFile, bvid);
+            _activeDownloads.remove(bvid);
+            try {
+              request.response.close();
+            } catch (_) {}
+            if (!streamCompleter.isCompleted) streamCompleter.complete();
+          }
+        },
+        onDone: () async {
+          if (fileSink != null) {
+            await fileSink.close();
+            final finalFile = File('$_cacheDirectory/song_$bvid.m4s');
+            if (await tempFile!.exists()) {
+              await tempFile.rename(finalFile.path);
+              onCacheFinished?.call(bvid);
+            }
+            _activeDownloads.remove(bvid);
+          }
+          try {
+            await request.response.close();
+          } catch (_) {}
+          if (!streamCompleter.isCompleted) streamCompleter.complete();
+        },
+        onError: (error) {
           _abortDownload(fileSink, tempFile, bvid);
           _activeDownloads.remove(bvid);
-
           try {
             request.response.close();
           } catch (_) {}
-          if (!streamCompleter.isCompleted) streamCompleter.complete();
-        }
-      },
-      onDone: () async {
-        if (fileSink != null) {
-          await fileSink.close();
-          final finalFile = File('$_cacheDir/song_$bvid.m4s');
-          if (await tempFile!.exists()) {
-            await tempFile.rename(finalFile.path);
-            print('Cached over: $bvid');
-            onCacheFinished?.call(bvid);
-          }
-          _activeDownloads.remove(bvid);
-        }
-        try {
-          await request.response.close();
-        } catch (_) {}
-        if (!streamCompleter.isCompleted) streamCompleter.complete();
-      },
-      onError: (e) {
-        print("Stream error: $e");
-        _abortDownload(fileSink, tempFile, bvid);
-        _activeDownloads.remove(bvid);
-        try {
-          request.response.close();
-        } catch (_) {}
-        if (!streamCompleter.isCompleted) streamCompleter.completeError(e);
-      },
-      cancelOnError: true,
-    );
+          if (!streamCompleter.isCompleted) streamCompleter.completeError(error);
+        },
+        cancelOnError: true,
+      );
 
-    await streamCompleter.future;
+      await streamCompleter.future;
+
+    } catch (error) {
+      _activeDownloads.remove(bvid);
+      try {
+        request.response.close();
+      } catch (_) {}
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> _abortDownload(
-    IOSink? fileSink,
-    File? tempFile,
-    String bvid,
-  ) async {
+      IOSink? fileSink,
+      File? tempFile,
+      String bvid,
+      ) async {
     if (fileSink != null) {
       try {
         await fileSink.close();
@@ -241,16 +291,13 @@ class AudioProxyService {
       if (tempFile != null && await tempFile.exists()) {
         try {
           await tempFile.delete();
-          print("Cache cleaned: $bvid");
-        } catch (e) {
-          print("Fail to clean cache: $e");
-        }
+        } catch (_) {}
       }
     }
   }
 
   String buildUrl(String bvid, int cid) {
-    if (_server == null) throw Exception("Proxy server not started!");
+    if (_server == null) throw Exception("Proxy server not started");
     return 'http://127.0.0.1:${_server!.port}/stream?bvid=$bvid&cid=$cid';
   }
 

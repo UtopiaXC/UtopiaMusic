@@ -78,7 +78,7 @@ class DesktopLayout extends StatelessWidget {
                     left: 0,
                     right: 0,
                     child: AnimatedSlide(
-                      offset: (currentSong != null && !isPlayerExpanded)
+                      offset: (!isPlayerExpanded)
                           ? Offset.zero
                           : const Offset(0, 1),
                       duration: const Duration(milliseconds: 300),

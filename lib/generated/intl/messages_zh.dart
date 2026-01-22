@@ -71,7 +71,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "输入关键词开始搜索",
     ),
     "pages_tag_home": MessageLookupByLibrary.simpleMessage("主页"),
-    "pages_tag_library": MessageLookupByLibrary.simpleMessage("库"),
+    "pages_tag_library": MessageLookupByLibrary.simpleMessage("曲库"),
     "pages_tag_settings": MessageLookupByLibrary.simpleMessage("设置"),
     "play_control_mode_loop": MessageLookupByLibrary.simpleMessage("列表循环"),
     "play_control_mode_random_collection": MessageLookupByLibrary.simpleMessage(

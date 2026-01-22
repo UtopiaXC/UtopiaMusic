@@ -12,7 +12,7 @@
   "common_no_lyrics" : "暂无歌词",
 
   "pages_tag_home": "主页",
-  "pages_tag_library": "库",
+  "pages_tag_library": "曲库",
   "pages_tag_settings": "设置",
   "pages_search_hint_search_input": "搜索...",
   "pages_search_tag_live": "直播",
@@ -27,7 +27,6 @@
   "pages_home_tag_ranking": "全站排行",
   "pages_home_tag_ranking_category_music": "音乐区排行",
   "pages_home_tag_ranking_category_kichiku": "鬼畜区排行",
-
 
   "play_control_next": "下一曲",
   "play_control_previous": "上一曲",
@@ -58,5 +57,4 @@
   "weight_play_list_label_confirm_clean_history_title": "清空播放列表",
   "weight_play_list_label_confirm_clean_message": "是否清空当前播放列表",
   "weight_play_control_label_switch_paly_mode": "切换播放模式"
-
 }

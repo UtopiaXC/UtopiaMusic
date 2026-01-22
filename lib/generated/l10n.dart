@@ -494,10 +494,10 @@ class S {
     );
   }
 
-  /// `播放列表`
+  /// `Play list`
   String get weight_play_list_label_name {
     return Intl.message(
-      '播放列表',
+      'Play list',
       name: 'weight_play_list_label_name',
       desc: '',
       args: [],

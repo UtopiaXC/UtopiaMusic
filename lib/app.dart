@@ -37,6 +37,20 @@ class UtopiaMusicApp extends StatelessWidget {
           fontFamilyFallback: FontUtils.systemFontFamilyFallback,
         ),
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+        useMaterial3: true,
+        fontFamily: _getMainFontFamily(),
+        fontFamilyFallback: FontUtils.systemFontFamilyFallback,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(),
+          bodyMedium: TextStyle(),
+          titleMedium: TextStyle(),
+        ).apply(
+          fontFamilyFallback: FontUtils.systemFontFamilyFallback,
+        ),
+      ),
+      themeMode: ThemeMode.system,
       home: const MainLayout(),
     );
   }

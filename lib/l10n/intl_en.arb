@@ -53,7 +53,7 @@
 
   "weight_search_label_serach_history": "Search history",
   "weight_search_label_confirm_clean_history_message": "Confirm to clean history?",
-  "weight_play_list_label_name": "播放列表",
+  "weight_play_list_label_name": "Play list",
   "weight_play_list_label_confirm_clean_message": "Confirm to clean play list?",
   "weight_search_label_confirm_clean_history_title": "Clean play list",
   "weight_play_control_label_switch_paly_mode": "Switch play mode"
