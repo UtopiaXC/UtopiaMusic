@@ -27,6 +27,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
   late AnimationController _controller;
   double _dragExtent = 0.0;
   double _width = 0.0;
+  bool _isAnimatingOut = false;
 
   @override
   void initState() {
@@ -44,21 +45,21 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
   }
 
   void handleDragStart(DragStartDetails details) {
-    if (!widget.enableSwipe) return;
+    if (!widget.enableSwipe || _isAnimatingOut) return;
     setState(() {
       _dragExtent = 0.0;
     });
   }
 
   void handleDragUpdate(DragUpdateDetails details) {
-    if (!widget.enableSwipe) return;
+    if (!widget.enableSwipe || _isAnimatingOut) return;
     setState(() {
       _dragExtent += details.delta.dx;
     });
   }
 
   void handleDragEnd(DragEndDetails details) {
-    if (!widget.enableSwipe) return;
+    if (!widget.enableSwipe || _isAnimatingOut) return;
     
     final velocity = details.primaryVelocity ?? 0;
     final threshold = _width * 0.3;
@@ -91,6 +92,9 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
   }
 
   void _animateOut(double direction) {
+    setState(() {
+      _isAnimatingOut = true;
+    });
     final end = direction * _width * 1.5;
     final start = _dragExtent;
     
@@ -102,9 +106,11 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
     );
 
     animation.addListener(() {
-      setState(() {
-        _dragExtent = animation.value;
-      });
+      if (mounted) {
+        setState(() {
+          _dragExtent = animation.value;
+        });
+      }
     });
 
     _controller.forward().then((_) {
@@ -113,13 +119,28 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
       } else {
         widget.onNext?.call();
       }
-
-      if (mounted) {
-        setState(() {
-          _dragExtent = 0.0;
-        });
-      }
+      
+      // Do NOT reset _dragExtent here immediately.
+      // Wait for the widget to update with the new child.
+      // The didUpdateWidget method will handle the reset.
     });
+  }
+
+  @override
+  void didUpdateWidget(SwipeablePlayerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the child changed (meaning the song changed), we should ensure we are reset.
+    if (widget.child.key != oldWidget.child.key) {
+       if (_isAnimatingOut) {
+         // If we were animating out and the child changed, it means the parent processed the callback.
+         // We can now safely reset.
+         _controller.stop();
+         setState(() {
+           _dragExtent = 0.0;
+           _isAnimatingOut = false;
+         });
+       }
+    }
   }
 
   @override

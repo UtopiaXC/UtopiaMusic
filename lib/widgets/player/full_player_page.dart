@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/utils/html_utils.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
@@ -191,17 +193,29 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     middle: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          widget.song.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        SizedBox(
+                          height: 24,
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          child: Marquee(
+                            text: HtmlUtils.unescape(widget.song.title),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            scrollAxis: Axis.horizontal,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            blankSpace: 20.0,
+                            velocity: 30.0,
+                            pauseAfterRound: const Duration(seconds: 1),
+                            startPadding: 0.0,
+                            accelerationDuration: const Duration(seconds: 1),
+                            accelerationCurve: Curves.linear,
+                            decelerationDuration: const Duration(milliseconds: 500),
+                            decelerationCurve: Curves.easeOut,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          widget.song.artist,
+                          HtmlUtils.unescape(widget.song.artist),
                           style: Theme.of(context).textTheme.bodySmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

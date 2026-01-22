@@ -49,6 +49,8 @@ dependencies:
   sqflite_common_ffi: ^2.3.2
   path: ^1.9.1
   flutter_launcher_icons: "^0.14.4"
+  marquee: ^2.3.0
+  html_unescape: ^2.0.0
 
 dev_dependencies:
   flutter_test:

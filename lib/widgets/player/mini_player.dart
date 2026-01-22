@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/utils/html_utils.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
@@ -89,14 +91,25 @@ class MiniPlayer extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displaySong.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  SizedBox(
+                    height: 24,
+                    child: Marquee(
+                      text: HtmlUtils.unescape(displaySong.title),
+                      style: Theme.of(context).textTheme.titleMedium,
+                      scrollAxis: Axis.horizontal,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      blankSpace: 20.0,
+                      velocity: 30.0,
+                      pauseAfterRound: const Duration(seconds: 1),
+                      startPadding: 0.0,
+                      accelerationDuration: const Duration(seconds: 1),
+                      accelerationCurve: Curves.linear,
+                      decelerationDuration: const Duration(milliseconds: 500),
+                      decelerationCurve: Curves.easeOut,
+                    ),
                   ),
                   Text(
-                    displaySong.artist,
+                    HtmlUtils.unescape(displaySong.artist),
                     style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
