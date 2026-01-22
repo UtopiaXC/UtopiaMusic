@@ -6,16 +6,19 @@
 
 开发初衷：最近用了 [Biu](https://github.com/wood3n/biu) 和 [BBPlayer](https://github.com/bbplayer-app/BBPlayer)
 ，发现两个应用都很优秀。可惜Biu用的 Electron 只支持桌面端，BBPlayer虽然是React Native
-Expo开发的，但是我尝试打包成iOS的ipa的时候发现作者在播放引擎上针对安卓做了优化，在iOS上用不了，我尝试替换了一下播放库，结果还是不行，遂作罢。查了半天，发现好多人都做过flutter版的
-bili music，但是没有找到符合我使用习惯的，于是自己开发一个。
+Expo开发的，但是我尝试打包成iOS的ipa的时候发现作者在播放引擎上针对安卓做了优化，在iOS上用不了，我尝试替换了一下播放库，结果还是不行，遂作罢。查了半天，发现好多人都做过flutter版的bili
+music，但是没有找到符合我使用习惯的，于是自己开发一个。  
 <br>
-此前只做过原生安卓开发和安卓OS开发，对flutter可以说是一窍不通，但是AI时代确实大大降低了简单项目的开发难度，一个小时就把框架搭起来了。
+此前只做过原生安卓开发和安卓OS开发，对flutter可以说是一窍不通，但是AI时代确实大大降低了简单项目的开发难度，一个小时就把框架搭起来了。  
 <br>
-目前，我将会把主要精力放在移动端样式适配上，希望使用桌面端的可以尝试[Biu](https://github.com/wood3n/biu)，完成度真的很高。
+目前，我将会把主要精力放在移动端样式适配上，希望使用桌面端的可以尝试[Biu](https://github.com/wood3n/biu)，完成度真的很高。  
 <br>
-本项目适用平台：iOS，Android，macOS，Windows，Linux。Web端由于CORS限制暂不考虑。
+本项目适用平台：iOS，Android，macOS，Windows，Linux。Web端由于CORS限制暂不考虑。  
 <br>
-警告：本项目大量使用Gemini等生成式AI。开发工具：idea + Gemini Code Assist插件
+警告：本项目大量使用Gemini等生成式AI。开发工具：idea + Gemini Code Assist插件  
+<br>
+（我不会说我就是为了用CarPlay听小马音乐才开发的这个，乐）  
+<br>
 
 | Home Ranking (Android)                       | Player (Android)                             | Settings (Android)                                | Home Ranking (iOS)                           |
 |----------------------------------------------|----------------------------------------------|---------------------------------------------------|----------------------------------------------|
