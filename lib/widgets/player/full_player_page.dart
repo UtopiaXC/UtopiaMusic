@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/utils/html_utils.dart';
+import 'package:utopia_music/widgets/player/lyrics_page.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
@@ -32,6 +33,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   double _dragValue = 0.0;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  bool _showLyrics = false;
 
   @override
   void initState() {
@@ -98,6 +100,98 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     );
   }
 
+  void _toggleLyrics() {
+    setState(() {
+      _showLyrics = !_showLyrics;
+    });
+  }
+
+  void _showTimerDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => const _TimerDialog(),
+    );
+  }
+
+  void _showMoreDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.subscriptions_outlined),
+                title: Text(S.of(context).play_control_mode_random_collection),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Implement collection
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.auto_awesome_motion),
+                title: Text(S.of(context).play_control_mode_random_continue),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Implement random continue
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.high_quality),
+                title: const Text('音质'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showQualityDialog();
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showQualityDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('选择音质', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildQualityOption('低 (64K)'),
+              _buildQualityOption('标准 (132K)'),
+              _buildQualityOption('高 (192K)'),
+              _buildQualityOption('杜比全景声 (大会员)'),
+              _buildQualityOption('HiRes无损 (大会员)'),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQualityOption(String title) {
+    return ListTile(
+      title: Text(title),
+      onTap: () {
+        Navigator.pop(context);
+        // TODO: Implement quality change
+      },
+    );
+  }
+
   Widget _buildCardContent(BuildContext context, Song song, {bool isCurrent = false}) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
 
@@ -126,6 +220,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
               onPrevious: isCurrent && playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
               onShuffle: isCurrent ? playerProvider.togglePlayMode : (){},
               onPlaylist: isCurrent ? _showPlaylist : (){},
+              onLyrics: isCurrent ? _toggleLyrics : (){},
+              onTimer: isCurrent ? _showTimerDialog : (){},
+              onComment: isCurrent ? () {} : (){}, // TODO
+              onInfo: isCurrent ? () {} : (){}, // TODO
+              onMore: isCurrent ? _showMoreDialog : (){},
             ),
           ),
         ],
@@ -167,6 +266,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         if (didPop) {
           return;
         }
+        if (_showLyrics) {
+          _toggleLyrics();
+          return;
+        }
         widget.onCollapse();
       },
       child: Scaffold(
@@ -174,6 +277,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         body: GestureDetector(
           onVerticalDragUpdate: (details) {
             if (details.primaryDelta! > 10) {
+              if (_showLyrics) {
+                _toggleLyrics();
+              }
               widget.onCollapse();
             }
           },
@@ -187,7 +293,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   child: NavigationToolbar(
                     leading: IconButton(
                       icon: const Icon(Icons.keyboard_arrow_down),
-                      onPressed: widget.onCollapse,
+                      onPressed: () {
+                        if (_showLyrics) {
+                          _toggleLyrics();
+                        }
+                        widget.onCollapse();
+                      },
                       tooltip: S.of(context).common_retract,
                     ),
                     middle: Column(
@@ -226,12 +337,30 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   ),
                 ),
                 Expanded(
-                  child: SwipeablePlayerCard(
-                    onNext: hasNext ? () => playerProvider.playNext() : null,
-                    onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
-                    previousChild: previousSong != null ? _buildCardContent(context, previousSong) : null,
-                    nextChild: nextSong != null ? _buildCardContent(context, nextSong) : null,
-                    child: _buildCardContent(context, widget.song, isCurrent: true),
+                  child: Stack(
+                    children: [
+                      // Main Player View
+                      AnimatedSlide(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        offset: _showLyrics ? const Offset(-1, 0) : Offset.zero,
+                        child: SwipeablePlayerCard(
+                          onNext: hasNext ? () => playerProvider.playNext() : null,
+                          onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                          previousChild: previousSong != null ? _buildCardContent(context, previousSong) : null,
+                          nextChild: nextSong != null ? _buildCardContent(context, nextSong) : null,
+                          child: _buildCardContent(context, widget.song, isCurrent: true),
+                        ),
+                      ),
+                      
+                      // Lyrics View
+                      AnimatedSlide(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        offset: _showLyrics ? Offset.zero : const Offset(1, 0),
+                        child: LyricsPage(onBack: _toggleLyrics),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -240,5 +369,88 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         ),
       ),
     );
+  }
+}
+
+class _TimerDialog extends StatefulWidget {
+  const _TimerDialog();
+
+  @override
+  State<_TimerDialog> createState() => _TimerDialogState();
+}
+
+class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  bool _stopAfterCurrent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: SizedBox(
+          height: 400,
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: '倒计时'),
+                  Tab(text: '指定时间'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildCountdownTab(),
+                    _buildSpecificTimeTab(),
+                  ],
+                ),
+              ),
+              CheckboxListTile(
+                value: _stopAfterCurrent,
+                onChanged: (value) {
+                  setState(() {
+                    _stopAfterCurrent = value ?? false;
+                  });
+                },
+                title: const Text('播放完当前曲目后停止'),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCountdownTab() {
+    return ListView(
+      children: [
+        ListTile(title: const Text('15 分钟'), onTap: () {}),
+        ListTile(title: const Text('30 分钟'), onTap: () {}),
+        ListTile(title: const Text('60 分钟'), onTap: () {}),
+        ListTile(title: const Text('90 分钟'), onTap: () {}),
+        ListTile(title: const Text('自定义'), onTap: () {}),
+      ],
+    );
+  }
+
+  Widget _buildSpecificTimeTab() {
+    return const Center(child: Text('指定时间选择器 (待实现)'));
   }
 }

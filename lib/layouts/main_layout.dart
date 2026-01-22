@@ -36,17 +36,14 @@ class _MainLayoutState extends State<MainLayout> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInit) {
-      final settingsProvider = Provider.of<SettingsProvider>(context);
-      if (settingsProvider.isLoaded) {
-        int startIndex = settingsProvider.startPageIndex;
-        if (startIndex < 0 || startIndex >= _pages.length) {
-          startIndex = 0;
-        }
-        _selectedIndex = startIndex;
-        _isInit = true;
-        // Force rebuild to show correct page
-        setState(() {});
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      // Ensure the index is valid
+      int startIndex = settingsProvider.startPageIndex;
+      if (startIndex < 0 || startIndex >= _pages.length) {
+        startIndex = 0;
       }
+      _selectedIndex = startIndex;
+      _isInit = true;
     }
   }
 
@@ -66,9 +63,6 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
-    // If settings are not loaded yet, we might want to show a loading screen or just default to home
-    // But since SettingsProvider loads async, we rely on the listener in didChangeDependencies
-
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth > 600) {
         return DesktopLayout(

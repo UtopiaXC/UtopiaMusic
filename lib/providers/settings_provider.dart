@@ -9,12 +9,10 @@ class SettingsProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
   int _startPageIndex = 0;
-  bool _isLoaded = false;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
   int get startPageIndex => _startPageIndex;
-  bool get isLoaded => _isLoaded;
 
   SettingsProvider() {
     _loadSettings();
@@ -36,7 +34,6 @@ class SettingsProvider extends ChangeNotifier {
     // Load Start Page
     _startPageIndex = prefs.getInt(_startPageKey) ?? 0;
 
-    _isLoaded = true;
     notifyListeners();
   }
 

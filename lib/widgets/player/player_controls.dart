@@ -8,6 +8,11 @@ class PlayerControls extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback onShuffle;
   final VoidCallback onPlaylist;
+  final VoidCallback? onLyrics;
+  final VoidCallback? onTimer;
+  final VoidCallback? onComment;
+  final VoidCallback? onInfo;
+  final VoidCallback? onMore;
   final bool isPlaying;
   final bool isLoading;
   final Duration duration;
@@ -16,6 +21,8 @@ class PlayerControls extends StatelessWidget {
   final ValueChanged<double>? onSeekStart;
   final ValueChanged<double>? onSeekUpdate;
   final PlayMode loopMode;
+  final bool hideExtraControls;
+  final bool showLyricsButtonOnly;
 
   const PlayerControls({
     super.key,
@@ -24,6 +31,11 @@ class PlayerControls extends StatelessWidget {
     required this.onPrevious,
     required this.onShuffle,
     required this.onPlaylist,
+    this.onLyrics,
+    this.onTimer,
+    this.onComment,
+    this.onInfo,
+    this.onMore,
     this.isPlaying = false,
     this.isLoading = false,
     this.duration = Duration.zero,
@@ -32,6 +44,8 @@ class PlayerControls extends StatelessWidget {
     this.onSeekStart,
     this.onSeekUpdate,
     this.loopMode = PlayMode.sequence,
+    this.hideExtraControls = false,
+    this.showLyricsButtonOnly = false,
   });
 
   String _formatDuration(Duration duration) {
@@ -65,17 +79,6 @@ class PlayerControls extends StatelessWidget {
     return Theme.of(context).colorScheme.primary;
   }
 
-  void _showToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final maxDuration = duration.inSeconds.toDouble();
@@ -88,36 +91,44 @@ class PlayerControls extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              onPressed: () => _showToast(context, '定时停止 - 功能正在开发中'),
-              icon: const Icon(Icons.timer_outlined),
-              tooltip: S.of(context).play_control_mode_timer_stop
-            ),
-            IconButton(
-              onPressed: () => _showToast(context, '自由连播 - 功能正在开发中'),
-              icon: const Icon(Icons.auto_awesome_motion),
-              tooltip: S.of(context).play_control_mode_random_continue,
-            ),
-            IconButton(
-              onPressed: () => _showToast(context, '合集 - 功能正在开发中'),
-              icon: const Icon(Icons.subscriptions_outlined),
-              tooltip: S.of(context).play_control_mode_random_collection,
-            ),
-            IconButton(
-              onPressed: () => _showToast(context, '评论 - 功能正在开发中'),
-              icon: const Icon(Icons.comment_outlined),
-              tooltip:  S.of(context).play_control_mode_random_comment,
-            ),
-            IconButton(
-              onPressed: () => _showToast(context, '详情 - 功能正在开发中'),
-              icon: const Icon(Icons.info_outline),
-              tooltip:  S.of(context).play_control_mode_random_info,
-            ),
-          ],
-        ),
+        if (!hideExtraControls)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                onPressed: onLyrics,
+                icon: const Icon(Icons.lyrics_outlined),
+                tooltip: '歌词',
+              ),
+              if (!showLyricsButtonOnly) ...[
+                IconButton(
+                  onPressed: onTimer,
+                  icon: const Icon(Icons.timer_outlined),
+                  tooltip: S.of(context).play_control_mode_timer_stop,
+                ),
+                IconButton(
+                  onPressed: onComment,
+                  icon: const Icon(Icons.comment_outlined),
+                  tooltip: S.of(context).play_control_mode_random_comment,
+                ),
+                IconButton(
+                  onPressed: onInfo,
+                  icon: const Icon(Icons.info_outline),
+                  tooltip: S.of(context).play_control_mode_random_info,
+                ),
+                IconButton(
+                  onPressed: onMore,
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: '更多',
+                ),
+              ] else ...[
+                const IconButton(onPressed: null, icon: Icon(Icons.timer_outlined, color: Colors.transparent)),
+                const IconButton(onPressed: null, icon: Icon(Icons.comment_outlined, color: Colors.transparent)),
+                const IconButton(onPressed: null, icon: Icon(Icons.info_outline, color: Colors.transparent)),
+                const IconButton(onPressed: null, icon: Icon(Icons.more_vert, color: Colors.transparent)),
+              ],
+            ],
+          ),
         const SizedBox(height: 16),
         Slider(
           value: sliderValue,
