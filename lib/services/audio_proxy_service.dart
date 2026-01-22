@@ -217,7 +217,15 @@ class AudioProxyService {
       if (enableCaching && targetResponse.statusCode == HttpStatus.ok) {
         _activeDownloads.add(bvid);
         tempFile = File('$_cacheDirectory/song_$bvid.part');
-        fileSink = tempFile.openWrite();
+        try {
+          fileSink = tempFile.openWrite();
+        } catch (e) {
+          print("Error opening cache file: $e");
+          enableCaching = false;
+          fileSink = null;
+          tempFile = null;
+          _activeDownloads.remove(bvid);
+        }
       }
 
       StreamSubscription<List<int>>? subscription;
@@ -226,7 +234,15 @@ class AudioProxyService {
       subscription = targetResponse.listen(
             (data) {
           if (fileSink != null) {
-            fileSink.add(data);
+            try {
+              fileSink!.add(data);
+            } catch (e) {
+              print("Write error: $e");
+              _abortDownload(fileSink, tempFile, bvid);
+              fileSink = null;
+              tempFile = null;
+              _activeDownloads.remove(bvid);
+            }
           }
           try {
             request.response.add(data);
@@ -242,11 +258,16 @@ class AudioProxyService {
         },
         onDone: () async {
           if (fileSink != null) {
-            await fileSink.close();
-            final finalFile = File('$_cacheDirectory/song_$bvid.m4s');
-            if (await tempFile!.exists()) {
-              await tempFile.rename(finalFile.path);
-              onCacheFinished?.call(bvid);
+            try {
+              await fileSink!.close();
+              final finalFile = File('$_cacheDirectory/song_$bvid.m4s');
+              if (tempFile != null && await tempFile!.exists()) {
+                await tempFile!.rename(finalFile.path);
+                onCacheFinished?.call(bvid);
+              }
+            } catch (e) {
+              print("Error finalizing cache: $e");
+              _abortDownload(fileSink, tempFile, bvid);
             }
             _activeDownloads.remove(bvid);
           }
@@ -288,9 +309,11 @@ class AudioProxyService {
         await fileSink.close();
       } catch (_) {}
 
-      if (tempFile != null && await tempFile.exists()) {
+      if (tempFile != null) {
         try {
-          await tempFile.delete();
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
         } catch (_) {}
       }
     }

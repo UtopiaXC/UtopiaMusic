@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/services/audio_proxy_service.dart';
@@ -18,7 +19,8 @@ class _CacheGroup {
 
 class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
-  static const int _maxCacheSize = 200 * 1024 * 1024;
+  static const String _cacheSizeKey = 'max_cache_size_mb';
+  int _maxCacheSize = 200 * 1024 * 1024;
 
   factory AudioPlayerService() => _instance;
 
@@ -45,6 +47,7 @@ class AudioPlayerService {
   }
 
   Future<void> _init() async {
+    await _loadCacheSettings();
     final cachePath = await _getCacheDir();
     _proxy.setCacheDir(cachePath);
     _proxy.onCacheFinished = (bvid) {
@@ -52,6 +55,24 @@ class AudioPlayerService {
     };
     await _proxy.start();
     _performStrictCleanup();
+  }
+
+  Future<void> _loadCacheSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sizeMb = prefs.getInt(_cacheSizeKey) ?? 200;
+    _maxCacheSize = sizeMb * 1024 * 1024;
+  }
+
+  Future<void> setMaxCacheSize(int sizeMb) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_cacheSizeKey, sizeMb);
+    _maxCacheSize = sizeMb * 1024 * 1024;
+    _performStrictCleanup();
+  }
+  
+  Future<int> getMaxCacheSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_cacheSizeKey) ?? 200;
   }
 
   AudioPlayer get player => _player;
@@ -224,22 +245,40 @@ class AudioPlayerService {
         }
       }
 
+      final currentBvid = currentSong?.bvid;
+
+      if (_maxCacheSize <= 0) {
+        for (var entry in bvidGroups.entries) {
+          if (entry.key == currentBvid) continue;
+          for (var file in entry.value) {
+             await _tryDeleteFile(file);
+          }
+        }
+        return;
+      }
+
       if (totalSize <= _maxCacheSize) return;
       print("Cache over limitations: ${totalSize ~/ 1024 ~/ 1024}MB, clear");
       List<_CacheGroup> groups = [];
       for (var entry in bvidGroups.entries) {
         final bvid = entry.key;
         final files = entry.value;
-        if (_proxy.isBvidDownloading(bvid)) {
+
+        if (_proxy.isBvidDownloading(bvid) || bvid == currentBvid) {
           continue;
         }
+        
         int groupSize = 0;
         DateTime newestTime = DateTime.fromMillisecondsSinceEpoch(0);
         for (var f in files) {
-          final stat = await f.stat();
-          groupSize += stat.size;
-          if (stat.modified.isAfter(newestTime)) {
-            newestTime = stat.modified;
+          try {
+            final stat = await f.stat();
+            groupSize += stat.size;
+            if (stat.modified.isAfter(newestTime)) {
+              newestTime = stat.modified;
+            }
+          } catch (e) {
+            print("Error getting file stat: $e");
           }
         }
         groups.add(_CacheGroup(bvid, files, groupSize, newestTime));
@@ -282,9 +321,18 @@ class AudioPlayerService {
       final dirPath = await _getCacheDir();
       final dir = Directory(dirPath);
       if (await dir.exists()) {
-        await _player.stop();
+        final currentBvid = currentSong?.bvid;
         try {
-          await dir.delete(recursive: true);
+          final List<FileSystemEntity> entities = dir.listSync();
+          for (var entity in entities) {
+             if (entity is File) {
+               final filename = entity.path.split(Platform.pathSeparator).last;
+               if (currentBvid != null && filename.contains(currentBvid)) {
+                 continue;
+               }
+               await _tryDeleteFile(entity);
+             }
+          }
         } catch (_) {}
       }
     } catch (e) {
