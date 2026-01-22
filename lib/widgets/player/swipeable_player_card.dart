@@ -64,10 +64,8 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
     final threshold = _width * 0.3;
 
     if ((_dragExtent > threshold || velocity > 1000) && widget.onPrevious != null) {
-      // Swiped Right (Previous)
       _animateOut(1.0);
     } else if ((_dragExtent < -threshold || velocity < -1000) && widget.onNext != null) {
-      // Swiped Left (Next)
       _animateOut(-1.0);
     } else {
       _animateBack();
@@ -93,7 +91,6 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
   }
 
   void _animateOut(double direction) {
-    // direction: 1 for right (Previous), -1 for left (Next)
     final end = direction * _width * 1.5;
     final start = _dragExtent;
     
@@ -116,9 +113,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
       } else {
         widget.onNext?.call();
       }
-      
-      // Reset after a short delay to allow parent to rebuild
-      // We reset to 0 because the new content will replace the old one
+
       if (mounted) {
         setState(() {
           _dragExtent = 0.0;

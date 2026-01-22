@@ -28,8 +28,7 @@ class MiniPlayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    
-    // Calculate prev/next songs for background cards
+
     Song? previousSong;
     Song? nextSong;
     final playlist = playerProvider.playlist;

@@ -5,10 +5,11 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/full_player_page.dart';
 import 'package:utopia_music/widgets/player/mini_player.dart';
-import 'package:utopia_music/widgets/search/search_collection_fragment.dart';
+import 'package:utopia_music/pages/search/fragment/search_collection_fragment.dart';
 import 'package:utopia_music/widgets/search/search_history.dart';
-import 'package:utopia_music/widgets/search/search_user_fragment.dart';
-import 'package:utopia_music/widgets/search/search_video_fragment.dart';
+import 'package:utopia_music/pages/search/fragment/search_live_fragment.dart';
+import 'package:utopia_music/pages/search/fragment/search_user_fragment.dart';
+import 'package:utopia_music/pages/search/fragment/search_video_fragment.dart';
 
 class SearchPage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -33,7 +34,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this, initialIndex: 1);
     _searchController.addListener(_onSearchChanged);
     _loadHistory().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -151,7 +152,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           ),
           // History Dropdown
           Positioned(
-            width: MediaQuery.of(context).size.width - 112, // Screen width - (leading width + actions width)
+            width: MediaQuery.of(context).size.width - 112,
             child: CompositedTransformFollower(
               link: _layerLink,
               showWhenUnlinked: false,
@@ -193,7 +194,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   }
 
   void _handleSongSelected(Song song) {
-    // Ensure focus is removed when a song is selected
     _searchFocusNode.unfocus();
     widget.onSongSelected(song);
   }
@@ -220,8 +220,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           final isPlayerExpanded = playerProvider.isPlayerExpanded;
           final showFullPlayer = playerProvider.showFullPlayer;
           final isPlaying = playerProvider.isPlaying;
-
-          // If full player is expanded, ensure keyboard is dismissed
           if (isPlayerExpanded && _searchFocusNode.hasFocus) {
              WidgetsBinding.instance.addPostFrameCallback((_) {
                _searchFocusNode.unfocus();
@@ -231,7 +229,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           return Stack(
             children: [
               Scaffold(
-                resizeToAvoidBottomInset: false, // Prevent resizing when keyboard appears
+                resizeToAvoidBottomInset: false,
                 appBar: AppBar(
                   title: CompositedTransformTarget(
                     link: _layerLink,
@@ -263,6 +261,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   bottom: TabBar(
                     controller: _tabController,
                     tabs: const [
+                      Tab(text: '直播'),
                       Tab(text: '视频'),
                       Tab(text: '合集'),
                       Tab(text: '用户'),
@@ -284,6 +283,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                         child: TabBarView(
                           controller: _tabController,
                           children: [
+                            SearchLiveFragment(
+                              keyword: _currentKeyword,
+                            ),
                             SearchVideoFragment(
                               onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
@@ -299,8 +301,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                           ],
                         ),
                       ),
-                      // Add padding at the bottom equal to mini player height if it's visible
-                      // Use MediaQuery.of(context).viewInsets.bottom to adjust for keyboard
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         height: (currentSong != null && !isPlayerExpanded) 
@@ -330,7 +330,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: MediaQuery.of(context).viewInsets.bottom, // Float above keyboard
+                bottom: MediaQuery.of(context).viewInsets.bottom,
                 child: AnimatedSlide(
                   offset: (currentSong != null && !isPlayerExpanded)
                       ? Offset.zero
@@ -350,12 +350,12 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                                 song: currentSong,
                                 isPlaying: isPlaying,
                                 onTap: () {
-                                  _searchFocusNode.unfocus(); // Ensure keyboard is closed
+                                  _searchFocusNode.unfocus();
                                   playerProvider.togglePlayerExpansion();
                                 },
                                 onPlayPause: playerProvider.togglePlayPause,
-                                onNext: () {}, // Handled internally by MiniPlayer using Provider
-                                onPrevious: () {}, // Handled internally by MiniPlayer using Provider
+                                onNext: () {},
+                                onPrevious: () {},
                                 onClose: playerProvider.closePlayer,
                               ),
                             ),

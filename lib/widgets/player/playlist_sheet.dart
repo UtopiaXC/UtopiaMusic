@@ -70,8 +70,8 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close Dialog
-              Navigator.of(context).pop(); // Close PlaylistSheet
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
               Provider.of<PlayerProvider>(context, listen: false).closePlayer();
             },
             child: const Text('清空'),

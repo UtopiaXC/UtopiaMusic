@@ -85,6 +85,7 @@ class SongListItem extends StatelessWidget {
 
     if (playerProvider.playlist.isEmpty) {
       playerProvider.setPlaylistAndPlay(contextList, song);
+      playerProvider.expandPlayer(); // Expand player when starting from empty
     } else {
       _showPlayOptionsDialog(context);
     }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/pages/fragments/dynamic_fragment.dart';
-import 'package:utopia_music/pages/fragments/music_rank_fragment.dart';
-import 'package:utopia_music/pages/fragments/rank_fragment.dart';
-import 'package:utopia_music/pages/fragments/recommend_fragment.dart';
+import 'package:utopia_music/pages/main/fragments/feed_fragment.dart';
+import 'package:utopia_music/pages/main/fragments/kichiku_rank_fragment.dart';
+import 'package:utopia_music/pages/main/fragments/live_fragment.dart';
+import 'package:utopia_music/pages/main/fragments/music_rank_fragment.dart';
+import 'package:utopia_music/pages/main/fragments/rank_fragment.dart';
+import 'package:utopia_music/pages/main/fragments/recommend_fragment.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/widgets/search/search_page.dart';
+import 'package:utopia_music/pages/search/search_page.dart';
 
 class HomePage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -17,9 +19,10 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => HomePageState();
 }
 
-class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+class HomePageState extends State<HomePage>
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _currentTabIndex = 0;
+  int _currentTabIndex = 1; // Default to Recommend (index 1)
 
   final List<ScrollController> _scrollControllers = [];
   final List<GlobalKey<RefreshIndicatorState>> _refreshKeys = [];
@@ -32,7 +35,11 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 6,
+      vsync: this,
+      initialIndex: 1,
+    ); // 6 tabs, start at 1 (Recommend)
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         if (_currentTabIndex != _tabController.index) {
@@ -43,7 +50,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
       }
     });
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
       _scrollControllers.add(ScrollController());
       _refreshKeys.add(GlobalKey<RefreshIndicatorState>());
     }
@@ -77,7 +84,8 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
       _lastTapTime = null;
     } else {
       final now = DateTime.now();
-      if (_lastTapTime != null && now.difference(_lastTapTime!) < const Duration(seconds: 1)) {
+      if (_lastTapTime != null &&
+          now.difference(_lastTapTime!) < const Duration(seconds: 1)) {
         _refreshKeys[index].currentState?.show();
         _lastTapTime = null;
       } else {
@@ -155,34 +163,46 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
           TabBar(
             controller: _tabController,
             isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             onTap: handleTabTap,
             tabs: const [
+              Tab(text: '直播'),
               Tab(text: '推荐'),
               Tab(text: '动态'),
               Tab(text: '全站排行'),
               Tab(text: '音乐区排行'),
+              Tab(text: '鬼畜区排行'),
             ],
           ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                RecommendFragment(
-                  onSongSelected: _handleSongSelected,
+                LiveFragment(
                   scrollController: _scrollControllers[0],
                   refreshIndicatorKey: _refreshKeys[0],
                 ),
-                DynamicFragment(
+                RecommendFragment(
+                  onSongSelected: _handleSongSelected,
                   scrollController: _scrollControllers[1],
                   refreshIndicatorKey: _refreshKeys[1],
                 ),
-                RankFragment(
+                FeedFragment(
                   scrollController: _scrollControllers[2],
                   refreshIndicatorKey: _refreshKeys[2],
                 ),
-                MusicRankFragment(
+                RankFragment(
                   scrollController: _scrollControllers[3],
                   refreshIndicatorKey: _refreshKeys[3],
+                ),
+                MusicRankFragment(
+                  scrollController: _scrollControllers[4],
+                  refreshIndicatorKey: _refreshKeys[4],
+                ),
+                KichikuRankFragment(
+                  scrollController: _scrollControllers[5],
+                  refreshIndicatorKey: _refreshKeys[5],
                 ),
               ],
             ),

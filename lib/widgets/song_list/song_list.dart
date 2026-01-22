@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/widgets/song_list//song_list_item.dart';
+import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 
 class SongList extends StatelessWidget {
   final List<Song> songs;
