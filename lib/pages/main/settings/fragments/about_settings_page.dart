@@ -50,7 +50,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           children: [
             Expanded(
               child: FutureBuilder(
-                future: rootBundle.loadString('EULA.md'),
+                future: rootBundle.loadString('assets/documentations/EULA.md'),
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     return Markdown(data: snapshot.data!);

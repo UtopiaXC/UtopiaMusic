@@ -117,6 +117,7 @@ class MiniPlayer extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,

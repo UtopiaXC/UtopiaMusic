@@ -6,6 +6,7 @@ import 'package:utopia_music/pages/main/home/home_page.dart';
 import 'package:utopia_music/pages/main/library_page.dart';
 import 'package:utopia_music/pages/main/settings/settings_page.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -18,6 +19,7 @@ class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
   final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
+  bool _isInit = false;
 
   @override
   void initState() {
@@ -28,6 +30,24 @@ class _MainLayoutState extends State<MainLayout> {
       const MusicPage(),
       const SettingsPage(),
     ];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      final settingsProvider = Provider.of<SettingsProvider>(context);
+      if (settingsProvider.isLoaded) {
+        int startIndex = settingsProvider.startPageIndex;
+        if (startIndex < 0 || startIndex >= _pages.length) {
+          startIndex = 0;
+        }
+        _selectedIndex = startIndex;
+        _isInit = true;
+        // Force rebuild to show correct page
+        setState(() {});
+      }
+    }
   }
 
   void _onItemTapped(int index) {
@@ -46,6 +66,9 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
+    // If settings are not loaded yet, we might want to show a loading screen or just default to home
+    // But since SettingsProvider loads async, we rely on the listener in didChangeDependencies
+
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth > 600) {
         return DesktopLayout(

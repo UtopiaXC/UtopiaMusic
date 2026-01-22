@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/layouts/main_layout.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/utils/font_utils.dart';
 
 class UtopiaMusicApp extends StatelessWidget {
@@ -11,6 +13,7 @@ class UtopiaMusicApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return MaterialApp(
       title: 'Utopia Music',
@@ -25,7 +28,7 @@ class UtopiaMusicApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: settingsProvider.seedColor),
         useMaterial3: true,
         fontFamily: _getMainFontFamily(),
         fontFamilyFallback: FontUtils.systemFontFamilyFallback,
@@ -38,7 +41,7 @@ class UtopiaMusicApp extends StatelessWidget {
         ),
       ),
       darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+        colorScheme: ColorScheme.fromSeed(seedColor: settingsProvider.seedColor, brightness: Brightness.dark),
         useMaterial3: true,
         fontFamily: _getMainFontFamily(),
         fontFamilyFallback: FontUtils.systemFontFamilyFallback,
@@ -50,7 +53,7 @@ class UtopiaMusicApp extends StatelessWidget {
           fontFamilyFallback: FontUtils.systemFontFamilyFallback,
         ),
       ),
-      themeMode: ThemeMode.system,
+      themeMode: settingsProvider.themeMode,
       home: const MainLayout(),
     );
   }
