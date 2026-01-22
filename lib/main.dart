@@ -11,6 +11,9 @@ void main() async {
     androidNotificationChannelId: 'com.utopiaxc.utopia.bilimusic',
     androidNotificationChannelName: 'Audio playback',
     androidNotificationOngoing: true,
+    androidShowNotificationBadge: true,
+    androidStopForegroundOnPause: true,
+    androidNotificationIcon: "drawable/ic_launcher",
   );
   JustAudioMediaKit.ensureInitialized();
   runApp(

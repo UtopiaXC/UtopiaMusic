@@ -9,6 +9,7 @@ import 'package:utopia_music/pages/main/fragments/rank_fragment.dart';
 import 'package:utopia_music/pages/main/fragments/recommend_fragment.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/pages/search/search_page.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class HomePage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -91,8 +92,8 @@ class HomePageState extends State<HomePage>
       } else {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('再次点击刷新列表'),
+          SnackBar(
+            content: Text(S.of(context).pages_home_refresh_toast),
             duration: Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
           ),
@@ -150,7 +151,7 @@ class HomePageState extends State<HomePage>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '搜索音乐、视频...',
+                      S.of(context).pages_search_hint_search_input,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -166,13 +167,13 @@ class HomePageState extends State<HomePage>
             tabAlignment: TabAlignment.start,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             onTap: handleTabTap,
-            tabs: const [
-              Tab(text: '直播'),
-              Tab(text: '推荐'),
-              Tab(text: '动态'),
-              Tab(text: '全站排行'),
-              Tab(text: '音乐区排行'),
-              Tab(text: '鬼畜区排行'),
+            tabs: [
+              Tab(text: S.of(context).pages_home_tag_live),
+              Tab(text: S.of(context).pages_home_tag_recommend),
+              Tab(text: S.of(context).pages_home_tag_feed),
+              Tab(text: S.of(context).pages_home_tag_ranking),
+              Tab(text: S.of(context).pages_home_tag_ranking_category_music),
+              Tab(text: S.of(context).pages_home_tag_ranking_category_kichiku),
             ],
           ),
           Expanded(

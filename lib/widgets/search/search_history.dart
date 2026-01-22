@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchHistory extends StatelessWidget {
   final List<String> history;
@@ -28,7 +29,7 @@ class SearchHistory extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '搜索历史',
+                S.of(context).weight_search_label_serach_history,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
@@ -39,19 +40,19 @@ class SearchHistory extends StatelessWidget {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('提示'),
-                      content: const Text('确定要清空搜索历史吗？'),
+                      title: Text(S.of(context).common_confirm_title),
+                      content: Text(S.of(context).weight_search_label_confirm_clean_history_message),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('取消'),
+                          child: Text(S.of(context).common_cancel),
                         ),
                         TextButton(
                           onPressed: () {
                             Navigator.pop(context);
                             onClear();
                           },
-                          child: const Text('清空'),
+                          child: Text(S.of(context).common_clean),
                         ),
                       ],
                     ),
@@ -61,7 +62,7 @@ class SearchHistory extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Text(
-                    '清空',
+                    S.of(context).common_clean,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.secondary,
                     ),

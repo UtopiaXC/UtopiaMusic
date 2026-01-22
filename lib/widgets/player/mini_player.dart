@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class MiniPlayer extends StatelessWidget {
   final Song song;
@@ -47,7 +48,6 @@ class MiniPlayer extends StatelessWidget {
        }
     }
 
-    // MiniPlayer content widget to be reused in SwipeablePlayerCard
     Widget buildContent(Song displaySong) {
       return Container(
         height: 64,
@@ -68,7 +68,7 @@ class MiniPlayer extends StatelessWidget {
             IconButton(
               onPressed: onClose,
               icon: const Icon(Icons.close, size: 20),
-              tooltip: '关闭',
+              tooltip: S.of(context).common_close,
             ),
             Container(
               width: 48,

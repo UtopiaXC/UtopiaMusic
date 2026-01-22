@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/video/video_list.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/song_list/song_list.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class RecommendFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -56,7 +57,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
     setState(() {
       _isLoading = true;
     });
-    final songs = await _videoApi.getRecommentVideos();
+    final songs = await _videoApi.getRecommentVideos(context);
     if (mounted) {
       setState(() {
         _songs = songs;
@@ -69,7 +70,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
     setState(() {
       _isLoadingMore = true;
     });
-    final newSongs = await _videoApi.getRecommentVideos();
+    final newSongs = await _videoApi.getRecommentVideos(context);
     if (mounted) {
       setState(() {
         _songs.addAll(newSongs);
@@ -97,9 +98,9 @@ class _RecommendFragmentState extends State<RecommendFragment>
         emptyWidget: ListView(
           controller: widget.scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
+          children: [
             SizedBox(height: 200),
-            Center(child: Text('暂无数据')),
+            Center(child: Text(S.of(context).common_no_data)),
           ],
         ),
       ),

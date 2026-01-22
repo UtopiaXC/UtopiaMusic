@@ -38,7 +38,7 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
       _songs.clear();
     });
 
-    final newSongs = await _videoApi.getRankingVideos(rid: 119); // 119 for kichiku
+    final newSongs = await _videoApi.getRankingVideos(context, rid: 119); // 119 for kichiku
 
     setState(() {
       _songs.addAll(newSongs);

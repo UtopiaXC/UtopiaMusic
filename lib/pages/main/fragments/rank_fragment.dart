@@ -38,7 +38,7 @@ class _RankFragmentState extends State<RankFragment> with AutomaticKeepAliveClie
       _songs.clear();
     });
 
-    final newSongs = await _videoApi.getRankingVideos(rid: 0); // 0 for all
+    final newSongs = await _videoApi.getRankingVideos(context, rid: 0);
 
     setState(() {
       _songs.addAll(newSongs);

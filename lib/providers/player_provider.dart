@@ -10,35 +10,54 @@ import 'package:utopia_music/services/database_service.dart';
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
-  
+  bool _isSwitchingMode = false;
+
   Song? _currentSong;
   bool _isPlaying = false;
   bool _isPlayerExpanded = false;
   bool _showFullPlayer = false;
-  
-  // Playlist management
+
   List<Song> _playlist = [];
-  PlayMode _playMode = PlayMode.sequence; // Default to sequence
+  PlayMode _playMode = PlayMode.sequence;
   static const String _playModeKey = 'play_mode';
 
   Song? get currentSong => _currentSong;
+
   bool get isPlaying => _isPlaying;
+
   bool get isPlayerExpanded => _isPlayerExpanded;
+
   bool get showFullPlayer => _showFullPlayer;
+
   AudioPlayer get player => _audioPlayerService.player;
+
   List<Song> get playlist => _playlist;
+
   PlayMode get playMode => _playMode;
 
   PlayerProvider() {
     _init();
+
     _audioPlayerService.player.playerStateStream.listen((state) {
       _isPlaying = state.playing;
       notifyListeners();
     });
-    
+
     _audioPlayerService.player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
         playNext(auto: true);
+      }
+    });
+
+    _audioPlayerService.currentIndexStream.listen((index) {
+      if (_isSwitchingMode) return;
+      if (index >= 0 && index < _playlist.length) {
+        final newSong = _playlist[index];
+        if (_currentSong?.bvid != newSong.bvid ||
+            _currentSong?.cid != newSong.cid) {
+          _currentSong = newSong;
+          notifyListeners();
+        }
       }
     });
   }
@@ -46,6 +65,17 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> _init() async {
     await _loadPlayMode();
     await _loadPlaylist();
+
+    if (_playlist.isNotEmpty) {
+      _currentSong = _playlist.first;
+      _showFullPlayer = true;
+      try {
+        await _audioPlayerService.playWithQueue(_playlist, 0, autoPlay: false);
+        await _setPlayerLoopMode();
+      } catch (e) {
+        print("Init player error: $e");
+      }
+    }
   }
 
   Future<void> _loadPlayMode() async {
@@ -53,6 +83,7 @@ class PlayerProvider extends ChangeNotifier {
     final modeIndex = prefs.getInt(_playModeKey) ?? 0;
     if (modeIndex >= 0 && modeIndex < PlayMode.values.length) {
       _playMode = PlayMode.values[modeIndex];
+      await _setPlayerLoopMode();
       notifyListeners();
     }
   }
@@ -63,11 +94,64 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _loadPlaylist() async {
-    _playlist = await _databaseService.getPlaylist(shuffle: _playMode == PlayMode.shuffle);
+    _playlist = await _databaseService.getPlaylist(
+      shuffle: _playMode == PlayMode.shuffle,
+    );
     notifyListeners();
   }
 
-  // Add a single song to playlist and play it
+  Future<void> _setPlayerLoopMode() async {
+    await _audioPlayerService.player.setShuffleModeEnabled(false);
+
+    switch (_playMode) {
+      case PlayMode.single:
+        await _audioPlayerService.player.setLoopMode(LoopMode.one);
+        break;
+      case PlayMode.sequence:
+        await _audioPlayerService.player.setLoopMode(LoopMode.off);
+        break;
+      case PlayMode.loop:
+      case PlayMode.shuffle:
+        await _audioPlayerService.player.setLoopMode(LoopMode.all);
+        break;
+    }
+  }
+
+  Future<void> togglePlayMode() async {
+    _isSwitchingMode = true;
+    try {
+      int nextIndex = (_playMode.index + 1) % PlayMode.values.length;
+      _playMode = PlayMode.values[nextIndex];
+      await _savePlayMode();
+
+      _playlist = await _databaseService.getPlaylist(
+        shuffle: _playMode == PlayMode.shuffle,
+      );
+
+      if (_currentSong != null) {
+        int newIndex = _playlist.indexWhere(
+              (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+        );
+
+        if (newIndex != -1) {
+          await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
+        } else {
+          if (_playlist.isNotEmpty) {
+            await _play(_playlist[0]);
+          }
+        }
+      }
+
+      await _setPlayerLoopMode();
+
+      notifyListeners();
+    } finally {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _isSwitchingMode = false;
+      });
+    }
+  }
+
   Future<void> playSong(Song song) async {
     if (!_playlist.any((s) => s.bvid == song.bvid && s.cid == song.cid)) {
       await _databaseService.addSongToEnd(song);
@@ -76,10 +160,8 @@ class PlayerProvider extends ChangeNotifier {
     await _play(song);
   }
 
-  // Replace playlist with new list and play specific song
   Future<void> setPlaylistAndPlay(List<Song> songs, Song initialSong) async {
     List<Song> newPlaylist = [];
-    // Filter duplicates based on bvid
     final seen = <String>{};
     for (var song in songs) {
       if (song.bvid.isNotEmpty && !seen.contains(song.bvid)) {
@@ -87,10 +169,10 @@ class PlayerProvider extends ChangeNotifier {
         newPlaylist.add(song);
       }
     }
-    
-    // Ensure initialSong is in the playlist if it has a valid bvid
-    if (initialSong.bvid.isNotEmpty && !newPlaylist.any((s) => s.bvid == initialSong.bvid)) {
-       newPlaylist.insert(0, initialSong);
+
+    if (initialSong.bvid.isNotEmpty &&
+        !newPlaylist.any((s) => s.bvid == initialSong.bvid)) {
+      newPlaylist.insert(0, initialSong);
     }
 
     await _databaseService.savePlaylist(newPlaylist);
@@ -98,36 +180,30 @@ class PlayerProvider extends ChangeNotifier {
     await _play(initialSong);
   }
 
-  // Insert song after current song
   Future<void> insertNext(Song song) async {
     if (_playlist.isEmpty) {
       await playSong(song);
       return;
     }
-    
     await _databaseService.insertSong(
-        song, 
-        afterSong: _currentSong, 
-        isShuffleMode: _playMode == PlayMode.shuffle
+      song,
+      afterSong: _currentSong,
+      isShuffleMode: _playMode == PlayMode.shuffle,
     );
     await _loadPlaylist();
     notifyListeners();
   }
 
-  // Insert song after current song and play immediately
   Future<void> insertNextAndPlay(Song song) async {
     await insertNext(song);
     await playNext();
   }
 
-  // Add song to end of playlist
   Future<void> addToEnd(Song song) async {
     if (_playlist.isEmpty) {
       await playSong(song);
       return;
     }
-
-    // Check if song already exists
     if (!_playlist.any((s) => s.bvid == song.bvid && s.cid == song.cid)) {
       await _databaseService.addSongToEnd(song);
       await _loadPlaylist();
@@ -135,7 +211,6 @@ class PlayerProvider extends ChangeNotifier {
     }
   }
 
-  // Replace playlist with single song
   Future<void> replacePlaylistWithSong(Song song) async {
     await _databaseService.savePlaylist([song]);
     await _loadPlaylist();
@@ -146,11 +221,19 @@ class PlayerProvider extends ChangeNotifier {
     _currentSong = song;
     _isPlaying = true;
     _showFullPlayer = true;
-    
+
+    int index = _playlist.indexWhere(
+          (s) => s.bvid == song.bvid && s.cid == song.cid,
+    );
+    if (index == -1) {
+      index = 0;
+    }
+
     notifyListeners();
 
     try {
-      await _audioPlayerService.playSong(song);
+      await _audioPlayerService.playWithQueue(_playlist, index);
+      await _setPlayerLoopMode();
     } catch (e) {
       print("Play error: $e");
     }
@@ -159,82 +242,38 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> playNext({bool auto = false}) async {
     if (_playlist.isEmpty || _currentSong == null) return;
 
-    int currentIndex = _playlist.indexWhere(
-      (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
-    );
-    
-    if (currentIndex == -1) return;
-
-    int nextIndex = 0;
-
-    switch (_playMode) {
-      case PlayMode.single:
-        if (auto) {
-          // Replay current song
-          _audioPlayerService.player.seek(Duration.zero);
-          _audioPlayerService.resume();
-          return;
-        } else {
-           // Manual next in single mode goes to next song
-           nextIndex = (currentIndex + 1) % _playlist.length;
-        }
-        break;
-      case PlayMode.shuffle:
-        // In shuffle mode, the playlist is already shuffled in the database
-        // But here _playlist is in memory.
-        // If we are in shuffle mode, _playlist should be in shuffle order.
-        nextIndex = (currentIndex + 1) % _playlist.length;
-        break;
-      case PlayMode.loop:
-        nextIndex = (currentIndex + 1) % _playlist.length;
-        break;
-      case PlayMode.sequence:
-        if (currentIndex < _playlist.length - 1) {
-          nextIndex = currentIndex + 1;
-        } else {
-          // End of playlist
-          _audioPlayerService.stop();
-          _isPlaying = false;
-          notifyListeners();
-          return;
-        }
-        break;
+    if (_playMode == PlayMode.single && auto) {
+      await _audioPlayerService.player.seek(Duration.zero);
+      await _audioPlayerService.resume();
+      return;
     }
 
-    await _play(_playlist[nextIndex]);
+    if (hasNext) {
+      await _audioPlayerService.playNext();
+    } else {
+      if (_playMode == PlayMode.loop || _playMode == PlayMode.shuffle) {
+        await _audioPlayerService.playWithQueue(_playlist, 0);
+      } else {
+        await _audioPlayerService.stop();
+        _isPlaying = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> playPrevious() async {
     if (_playlist.isEmpty || _currentSong == null) return;
 
-    int currentIndex = _playlist.indexWhere(
-      (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
-    );
-
-    if (currentIndex == -1) return;
-
-    int prevIndex = 0;
-
-    // For sequence, loop, and single (manual prev), go to previous
-    // In shuffle mode, _playlist is already shuffled, so just go to previous index
-    if (currentIndex > 0) {
-      prevIndex = currentIndex - 1;
+    if (hasPrevious) {
+      await _audioPlayerService.playPrevious();
     } else {
-      prevIndex = _playlist.length - 1;
+      if (_playMode == PlayMode.loop || _playMode == PlayMode.shuffle) {
+        await _audioPlayerService.playWithQueue(
+          _playlist,
+          _playlist.length - 1,
+        );
+      }
     }
-
-    await _play(_playlist[prevIndex]);
-  }
-
-  Future<void> togglePlayMode() async {
-    int nextIndex = (_playMode.index + 1) % PlayMode.values.length;
-    _playMode = PlayMode.values[nextIndex];
-    await _savePlayMode();
-    
-    // Reload playlist based on new mode
-    _playlist = await _databaseService.getPlaylist(shuffle: _playMode == PlayMode.shuffle);
-    
-    notifyListeners();
   }
 
   void expandPlayer() {
@@ -250,9 +289,9 @@ class PlayerProvider extends ChangeNotifier {
     if (_isPlaying) {
       await _audioPlayerService.pause();
     } else {
-      // If finished, restart
-      if (_audioPlayerService.player.processingState == ProcessingState.completed) {
-         await _audioPlayerService.player.seek(Duration.zero);
+      if (_audioPlayerService.player.processingState ==
+          ProcessingState.completed) {
+        await _audioPlayerService.player.seek(Duration.zero);
       }
       await _audioPlayerService.resume();
     }
@@ -271,7 +310,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> closePlayer() async {
     await _audioPlayerService.stop();
     _currentSong = null;
-    _playlist = []; // Clear playlist
+    _playlist = [];
     await _databaseService.clearPlaylist();
     _isPlaying = false;
     _isPlayerExpanded = false;
@@ -282,23 +321,23 @@ class PlayerProvider extends ChangeNotifier {
   bool get hasNext {
     if (_playlist.isEmpty || _currentSong == null) return false;
     if (_playMode == PlayMode.sequence) {
-      int currentIndex = _playlist.indexWhere(
-        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+      int index = _playlist.indexWhere(
+            (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
       );
-      return currentIndex < _playlist.length - 1;
+      return index < _playlist.length - 1;
     }
-    return true; // Loop, Single, Shuffle always have next
+    return true;
   }
 
   bool get hasPrevious {
     if (_playlist.isEmpty || _currentSong == null) return false;
     if (_playMode == PlayMode.sequence) {
-      int currentIndex = _playlist.indexWhere(
-        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+      int index = _playlist.indexWhere(
+            (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
       );
-      return currentIndex > 0;
+      return index > 0;
     }
-    return true; // Loop, Single, Shuffle always have previous
+    return true;
   }
 
   @override

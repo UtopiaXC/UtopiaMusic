@@ -38,7 +38,7 @@ class _MusicRankFragmentState extends State<MusicRankFragment> with AutomaticKee
       _songs.clear();
     });
 
-    final newSongs = await _videoApi.getRankingVideos(rid: 3); // 3 for music
+    final newSongs = await _videoApi.getRankingVideos(context, rid: 3);
 
     setState(() {
       _songs.addAll(newSongs);

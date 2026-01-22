@@ -1,6 +1,8 @@
-import 'dart:math';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:utopia_music/models/song.dart';
 
 class DatabaseService {
@@ -20,6 +22,11 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
     String path = join(await getDatabasesPath(), 'utopia_music.db');
     return await openDatabase(
       path,
@@ -50,11 +57,8 @@ class DatabaseService {
     await db.delete('playlist');
   }
 
-  // Save a new playlist. Generates shuffle order automatically.
   Future<void> savePlaylist(List<Song> songs) async {
     final db = await database;
-    
-    // Generate shuffle indices
     List<int> shuffleIndices = List.generate(songs.length, (index) => index);
     shuffleIndices.shuffle();
 
@@ -105,19 +109,11 @@ class DatabaseService {
     await db.delete('playlist', where: 'bvid = ? AND cid = ?', whereArgs: [bvid, cid]);
   }
 
-  // Insert song. If afterSong is provided, inserts after it in the current mode's order.
-  // In the other mode's order, it appends to the end.
   Future<void> insertSong(Song song, {Song? afterSong, required bool isShuffleMode}) async {
     final db = await database;
-    
-    // 1. Remove if exists (to handle "move")
     await removeSong(song.bvid, song.cid);
-    
-    // 2. Determine positions
     int sequenceOrder;
     int shuffleOrder;
-    
-    // Get max orders
     final List<Map<String, dynamic>> maxResult = await db.rawQuery(
       'SELECT MAX(sequence_order) as max_seq, MAX(shuffle_order) as max_shuf FROM playlist'
     );
@@ -125,11 +121,9 @@ class DatabaseService {
     int maxShuf = (maxResult.first['max_shuf'] as int?) ?? -1;
 
     if (afterSong == null) {
-        // Append to end
         sequenceOrder = maxSeq + 1;
         shuffleOrder = maxShuf + 1;
     } else {
-        // Get afterSong orders
         final List<Map<String, dynamic>> currentResult = await db.query(
             'playlist',
             columns: ['sequence_order', 'shuffle_order'],
@@ -138,7 +132,6 @@ class DatabaseService {
         );
         
         if (currentResult.isEmpty) {
-            // Fallback to append
             sequenceOrder = maxSeq + 1;
             shuffleOrder = maxShuf + 1;
         } else {
@@ -146,24 +139,18 @@ class DatabaseService {
             int currentShuf = currentResult.first['shuffle_order'] as int;
             
             if (isShuffleMode) {
-                // Insert after in shuffle order
                 shuffleOrder = currentShuf + 1;
-                // Shift others
                 await db.rawUpdate(
                     'UPDATE playlist SET shuffle_order = shuffle_order + 1 WHERE shuffle_order >= ?',
                     [shuffleOrder]
                 );
-                // Append to sequence
                 sequenceOrder = maxSeq + 1;
             } else {
-                // Insert after in sequence order
                 sequenceOrder = currentSeq + 1;
-                // Shift others
                 await db.rawUpdate(
                     'UPDATE playlist SET sequence_order = sequence_order + 1 WHERE sequence_order >= ?',
                     [sequenceOrder]
                 );
-                // Append to shuffle
                 shuffleOrder = maxShuf + 1;
             }
         }

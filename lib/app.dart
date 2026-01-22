@@ -11,6 +11,7 @@ class UtopiaMusicApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
       title: 'Utopia Music',
       supportedLocales: const [

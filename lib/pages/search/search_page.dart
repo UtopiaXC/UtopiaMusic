@@ -10,6 +10,7 @@ import 'package:utopia_music/widgets/search/search_history.dart';
 import 'package:utopia_music/pages/search/fragment/search_live_fragment.dart';
 import 'package:utopia_music/pages/search/fragment/search_user_fragment.dart';
 import 'package:utopia_music/pages/search/fragment/search_video_fragment.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchPage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -38,7 +39,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _searchController.addListener(_onSearchChanged);
     _loadHistory().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Auto focus when entering the page
         _searchFocusNode.requestFocus();
         if (_searchController.text.isEmpty && _currentKeyword.isEmpty) {
            _showHistoryOverlay(); 
@@ -50,7 +50,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       if (_searchFocusNode.hasFocus && _searchController.text.isEmpty) {
         _showHistoryOverlay();
       } else if (!_searchFocusNode.hasFocus) {
-        // Delay removal to allow tap on history item to register
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted && !_searchFocusNode.hasFocus) {
              _removeHistoryOverlay();
@@ -139,7 +138,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _historyOverlay = OverlayEntry(
       builder: (context) => Stack(
         children: [
-          // Transparent barrier to detect taps outside
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -150,7 +148,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
               child: Container(color: Colors.transparent),
             ),
           ),
-          // History Dropdown
           Positioned(
             width: MediaQuery.of(context).size.width - 112,
             child: CompositedTransformFollower(
@@ -237,7 +234,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       controller: _searchController,
                       focusNode: _searchFocusNode,
                       decoration: InputDecoration(
-                        hintText: '搜索视频...',
+                        hintText: S.of(context).pages_search_hint_search_input,
                         border: InputBorder.none,
                         hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                       ),
@@ -260,11 +257,11 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   ],
                   bottom: TabBar(
                     controller: _tabController,
-                    tabs: const [
-                      Tab(text: '直播'),
-                      Tab(text: '视频'),
-                      Tab(text: '合集'),
-                      Tab(text: '用户'),
+                    tabs: [
+                      Tab(text: S.of(context).pages_search_tag_live),
+                      Tab(text: S.of(context).pages_search_tag_video),
+                      Tab(text: S.of(context).pages_search_tag_collection),
+                      Tab(text: S.of(context).pages_search_tag_user),
                     ],
                     indicatorSize: TabBarIndicatorSize.label,
                     indicatorWeight: 3,

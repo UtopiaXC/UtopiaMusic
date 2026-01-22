@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class PlaylistSheet extends StatefulWidget {
   final List<Song> playlist;
@@ -32,19 +33,15 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
 
   void _scrollToCurrentSong() {
     if (widget.playlist.isEmpty) return;
-    
+
     final index = widget.playlist.indexWhere(
-      (s) => s.bvid == widget.currentSong.bvid && s.cid == widget.currentSong.cid,
+      (s) =>
+          s.bvid == widget.currentSong.bvid && s.cid == widget.currentSong.cid,
     );
 
     if (index != -1 && _scrollController.hasClients) {
-      // Calculate offset to scroll the item to the top
-      // Assuming item height is roughly 72 (ListTile default with subtitle)
       final double itemHeight = 72.0;
-      
       double offset = index * itemHeight;
-      
-      // Clamp to max scroll extent
       if (offset > _scrollController.position.maxScrollExtent) {
         offset = _scrollController.position.maxScrollExtent;
       }
@@ -61,12 +58,14 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('提示'),
-        content: const Text('是否清空当前播放列表？'),
+        title: Text(S.of(context).common_confirm_title),
+        content: Text(
+          S.of(context).weight_play_list_label_confirm_clean_message,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -74,7 +73,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
               Navigator.of(context).pop();
               Provider.of<PlayerProvider>(context, listen: false).closePlayer();
             },
-            child: const Text('清空'),
+            child: Text(S.of(context).common_clean),
           ),
         ],
       ),
@@ -105,14 +104,16 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
             child: Row(
               children: [
                 Text(
-                  '播放列表 (${widget.playlist.length})',
+                  '${S.of(context).weight_play_list_label_name} (${widget.playlist.length})',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: _showClearConfirmation,
-                  tooltip: '清空列表',
+                  tooltip: S
+                      .of(context)
+                      .weight_search_label_confirm_clean_history_title,
                 ),
               ],
             ),
@@ -124,7 +125,8 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
               itemCount: widget.playlist.length,
               itemBuilder: (context, index) {
                 final song = widget.playlist[index];
-                final isPlaying = song.bvid == widget.currentSong.bvid &&
+                final isPlaying =
+                    song.bvid == widget.currentSong.bvid &&
                     song.cid == widget.currentSong.cid;
 
                 return ListTile(

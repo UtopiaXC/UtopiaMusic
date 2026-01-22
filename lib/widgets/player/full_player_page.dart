@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
-import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -70,8 +70,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final position = Duration(seconds: value.toInt());
     playerProvider.player.seek(position);
-    
-    // If paused or completed, resume playback after seek
+
     if (!playerProvider.isPlaying || 
         playerProvider.player.processingState == ProcessingState.completed) {
       playerProvider.player.play();
@@ -99,8 +98,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   Widget _buildCardContent(BuildContext context, Song song, {bool isCurrent = false}) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    
+
     return Container(
+      key: ValueKey('${song.bvid}_${song.cid}'),
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         children: [
@@ -115,7 +115,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
               position: isCurrent ? (_isDragging
                   ? Duration(seconds: _dragValue.toInt())
                   : _position) : Duration.zero,
-              loopMode: playerProvider.playMode.index,
+              loopMode: playerProvider.playMode,
               onSeek: isCurrent ? _onSeekEnd : (v){},
               onSeekStart: isCurrent ? _onSeekStart : null,
               onSeekUpdate: isCurrent ? _onSeekUpdate : null,
@@ -135,8 +135,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     final playerProvider = Provider.of<PlayerProvider>(context);
-
-    // Determine if next/prev buttons should be enabled based on PlayMode and playlist position
     final hasNext = playerProvider.hasNext;
     final hasPrevious = playerProvider.hasPrevious;
 
@@ -158,7 +156,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
          nextSong = playlist[nextIndex];
        }
     }
-    // Fallback if playlist logic fails or empty
     if (hasPrevious && previousSong == null) previousSong = widget.song;
     if (hasNext && nextSong == null) nextSong = widget.song;
 
@@ -189,7 +186,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     leading: IconButton(
                       icon: const Icon(Icons.keyboard_arrow_down),
                       onPressed: widget.onCollapse,
-                      tooltip: '收起',
+                      tooltip: S.of(context).common_retract,
                     ),
                     middle: Column(
                       mainAxisAlignment: MainAxisAlignment.center,

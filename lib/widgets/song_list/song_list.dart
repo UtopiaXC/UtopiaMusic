@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SongList extends StatelessWidget {
   final List<Song> songs;
@@ -29,7 +30,7 @@ class SongList extends StatelessWidget {
     }
 
     if (songs.isEmpty) {
-      return emptyWidget ?? const Center(child: Text('暂无数据'));
+      return emptyWidget ?? Center(child: Text(S.of(context).common_no_data));
     }
 
     return ListView.separated(

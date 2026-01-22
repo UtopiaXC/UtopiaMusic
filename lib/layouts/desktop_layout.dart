@@ -36,17 +36,17 @@ class DesktopLayout extends StatelessWidget {
               NavigationRailDestination(
                 icon: const Icon(Icons.home_outlined),
                 selectedIcon: const Icon(Icons.home),
-                label: Text(S.of(context).display_label_homepage),
+                label: Text(S.of(context).pages_tag_home),
               ),
               NavigationRailDestination(
                 icon: const Icon(Icons.music_note_outlined),
                 selectedIcon: const Icon(Icons.music_note),
-                label: Text(S.of(context).display_label_music),
+                label: Text(S.of(context).pages_tag_library),
               ),
               NavigationRailDestination(
                 icon: const Icon(Icons.settings_outlined),
                 selectedIcon: const Icon(Icons.settings),
-                label: Text(S.of(context).display_label_settings),
+                label: Text(S.of(context).pages_tag_settings),
               ),
             ],
           ),

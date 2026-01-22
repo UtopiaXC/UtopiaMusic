@@ -62,7 +62,7 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       }
     });
 
-    final result = await _videoApi.getFeed(_offset);
+    final result = await _videoApi.getFeed(context, _offset);
 
     if (result['code'] == -101) {
       setState(() {

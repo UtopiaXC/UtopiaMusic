@@ -1,9 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/models/song.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchApi {
-  Future<List<Song>> searchVideos(String keyword, {int page = 1}) async {
+  Future<List<Song>> searchVideos(BuildContext context, String keyword, {int page = 1}) async {
     final params = {
       'search_type': 'video',
       'keyword': keyword,
@@ -20,7 +22,7 @@ class SearchApi {
       if (data != null && data is Map && data['code'] == 0) {
         final result = data['data']?['result'];
         if (result is List) {
-          return result.map((item) => _mapToSong(item)).toList();
+          return result.map((item) => _mapToSong(context, item)).toList();
         } else {
           return [];
         }
@@ -36,8 +38,8 @@ class SearchApi {
     }
   }
 
-  Song _mapToSong(dynamic item) {
-    final artist = item['author'] ?? '未知UP主';
+  Song _mapToSong(BuildContext context, dynamic item) {
+    final artist = item['author'] ?? S.of(context).common_no_title;
     String cover = item['pic'] ?? '';
     if (cover.startsWith('//')) {
       cover = 'https:$cover';
@@ -49,10 +51,10 @@ class SearchApi {
     String bvid = item['bvid'] ?? '';
 
     return Song(
-      title: item['title']?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '无标题',
+      title: item['title']?.replaceAll(RegExp(r'<[^>]*>'), '') ?? S.of(context).common_no_title,
       artist: artist,
       coverUrl: cover,
-      lyrics: '暂无歌词',
+      lyrics: S.of(context).common_no_lyrics,
       colorValue: 0xFF2196F3,
       bvid: bvid,
       cid: cid,

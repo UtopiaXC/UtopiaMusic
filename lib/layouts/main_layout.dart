@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/layouts/desktop_layout.dart';
 import 'package:utopia_music/layouts/mobile_layout.dart';
 import 'package:utopia_music/pages/main/home_page.dart';
-import 'package:utopia_music/pages/main/music_page.dart';
+import 'package:utopia_music/pages/main/library_page.dart';
 import 'package:utopia_music/pages/main/settings_page.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 

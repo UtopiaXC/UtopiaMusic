@@ -101,17 +101,17 @@ class MobileLayout extends StatelessWidget {
             NavigationDestination(
               icon: const Icon(Icons.home_outlined),
               selectedIcon: const Icon(Icons.home),
-              label: S.of(context).display_label_homepage,
+              label: S.of(context).pages_tag_home,
             ),
             NavigationDestination(
               icon: const Icon(Icons.music_note_outlined),
               selectedIcon: const Icon(Icons.music_note),
-              label: S.of(context).display_label_music,
+              label: S.of(context).pages_tag_library,
             ),
             NavigationDestination(
               icon: const Icon(Icons.settings_outlined),
               selectedIcon: const Icon(Icons.settings),
-              label: S.of(context).display_label_settings,
+              label: S.of(context).pages_tag_settings,
             ),
           ],
         ),

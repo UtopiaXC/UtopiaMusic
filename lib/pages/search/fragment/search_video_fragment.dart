@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/video/search_api.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/song_list/song_list.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchVideoFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -71,7 +72,7 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       _songs = [];
     });
 
-    final songs = await _searchApi.searchVideos(keyword, page: _currentPage);
+    final songs = await _searchApi.searchVideos(context, keyword, page: _currentPage);
 
     if (mounted) {
       setState(() {
@@ -87,7 +88,7 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       _currentPage++;
     });
 
-    final newSongs = await _searchApi.searchVideos(widget.keyword, page: _currentPage);
+    final newSongs = await _searchApi.searchVideos(context, widget.keyword, page: _currentPage);
 
     if (mounted) {
       setState(() {
@@ -105,11 +106,11 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
     }
 
     if (_songs.isEmpty && widget.keyword.isNotEmpty) {
-      return const Center(child: Text('未找到相关内容'));
+      return Center(child: Text(S.of(context).common_no_data));
     }
 
     if (_songs.isEmpty) {
-      return const Center(child: Text('输入关键词开始搜索'));
+      return Center(child: Text(S.of(context).pages_search_tag_video_hint));
     }
 
     return SongList(

@@ -46,7 +46,9 @@ dependencies:
   just_audio_background: ^0.0.1-beta.17
   shared_preferences: ^2.5.4
   sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.2
   path: ^1.9.1
+  flutter_launcher_icons: "^0.14.4"
 
 dev_dependencies:
   flutter_test:
@@ -104,3 +106,16 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 flutter_intl:
   enabled: true
+
+flutter_launcher_icons:
+  android:
+    generate: false
+  ios: true
+  image_path: "assets/images/ic_ios.png"
+  windows:
+    generate: true
+    image_path: "assets/images/ic_windows.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/images/ic_macos.png"

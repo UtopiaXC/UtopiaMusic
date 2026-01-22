@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SongListItem extends StatelessWidget {
   final Song song;
@@ -26,7 +27,7 @@ class SongListItem extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.playlist_play),
-              title: const Text('用当前列表替换播放列表'),
+              title: Text(S.of(context).dialog_option_replace_play_list_by_song_list),
               onTap: () {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false)
@@ -35,7 +36,7 @@ class SongListItem extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.playlist_add),
-              title: const Text('插入到当前播放音乐后'),
+              title: Text(S.of(context).dialog_option_insert_after),
               onTap: () {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false).insertNext(song);
@@ -43,7 +44,7 @@ class SongListItem extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.play_arrow),
-              title: const Text('插入到当前音乐后并立刻播放'),
+              title: Text(S.of(context).dialog_option_insert_after_and_play),
               onTap: () {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false)
@@ -52,7 +53,7 @@ class SongListItem extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.playlist_add_check),
-              title: const Text('添加到播放列表末尾'),
+              title: Text(S.of(context).dialog_option_append_to_end),
               onTap: () {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false).addToEnd(song);
@@ -60,7 +61,7 @@ class SongListItem extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.swap_calls),
-              title: const Text('用该单曲替换播放列表'),
+              title: Text(S.of(context).dialog_option_replace_by_single_song),
               onTap: () {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false)
@@ -70,7 +71,7 @@ class SongListItem extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.close),
-              title: const Text('取消'),
+              title: Text(S.of(context).common_cancel),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -165,9 +166,9 @@ class SongListItem extends StatelessWidget {
               },
               itemBuilder: (context) {
                 final List<PopupMenuEntry<String>> items = [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'add_to_playlist',
-                    child: Text('添加到播放列表'),
+                    child: Text(S.of(context).item_options_add_to_play_list),
                   ),
                 ];
                 if (menuItems != null) {
