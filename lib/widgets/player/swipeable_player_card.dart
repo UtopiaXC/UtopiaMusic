@@ -119,27 +119,18 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
       } else {
         widget.onNext?.call();
       }
-      
-      // Do NOT reset _dragExtent here immediately.
-      // Wait for the widget to update with the new child.
-      // The didUpdateWidget method will handle the reset.
     });
   }
 
   @override
   void didUpdateWidget(SwipeablePlayerCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the child changed (meaning the song changed), we should ensure we are reset.
-    if (widget.child.key != oldWidget.child.key) {
-       if (_isAnimatingOut) {
-         // If we were animating out and the child changed, it means the parent processed the callback.
-         // We can now safely reset.
+    if (_isAnimatingOut) {
          _controller.stop();
          setState(() {
            _dragExtent = 0.0;
            _isAnimatingOut = false;
          });
-       }
     }
   }
 

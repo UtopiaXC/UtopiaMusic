@@ -319,7 +319,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         height: (currentSong != null && !isPlayerExpanded) 
-                            ? 80 + MediaQuery.of(context).viewInsets.bottom 
+                            ? 80 + MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom
                             : MediaQuery.of(context).viewInsets.bottom,
                       ),
                     ],
@@ -355,24 +355,29 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOutCubic,
-                    height: (currentSong != null && !isPlayerExpanded) ? 80 : 0,
+                    height: (currentSong != null && !isPlayerExpanded) 
+                        ? 80 + MediaQuery.of(context).padding.bottom 
+                        : 0,
                     child: currentSong != null
                         ? SingleChildScrollView(
                             physics: const NeverScrollableScrollPhysics(),
-                            child: SafeArea(
-                              top: false,
-                              child: MiniPlayer(
-                                song: currentSong,
-                                isPlaying: isPlaying,
-                                onTap: () {
-                                  _searchFocusNode.unfocus();
-                                  playerProvider.togglePlayerExpansion();
-                                },
-                                onPlayPause: playerProvider.togglePlayPause,
-                                onNext: () {},
-                                onPrevious: () {},
-                                onClose: playerProvider.closePlayer,
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                MiniPlayer(
+                                  song: currentSong,
+                                  isPlaying: isPlaying,
+                                  onTap: () {
+                                    _searchFocusNode.unfocus();
+                                    playerProvider.togglePlayerExpansion();
+                                  },
+                                  onPlayPause: playerProvider.togglePlayPause,
+                                  onNext: () {},
+                                  onPrevious: () {},
+                                  onClose: playerProvider.closePlayer,
+                                ),
+                                SizedBox(height: MediaQuery.of(context).padding.bottom),
+                              ],
                             ),
                           )
                         : const SizedBox.shrink(),
