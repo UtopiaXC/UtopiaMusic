@@ -138,6 +138,7 @@ class Request {
     bool useWbi = false,
     ResponseType responseType = ResponseType.data,
     Options? options,
+    String referer = HttpConstants.referer,
   }) async {
     return _request(
       method: 'GET',
@@ -147,6 +148,7 @@ class Request {
       useWbi: useWbi,
       responseType: responseType,
       options: options,
+      referer: referer,
     );
   }
 
@@ -158,6 +160,7 @@ class Request {
     bool useWbi = false,
     ResponseType responseType = ResponseType.data,
     Options? options,
+    String referer = HttpConstants.referer,
   }) async {
     return _request(
       method: 'POST',
@@ -168,6 +171,7 @@ class Request {
       useWbi: useWbi,
       responseType: responseType,
       options: options,
+      referer: referer,
     );
   }
 
@@ -180,6 +184,7 @@ class Request {
     required bool useWbi,
     required ResponseType responseType,
     Options? options,
+    required String referer,
   }) async {
     await _initWait;
 
@@ -190,20 +195,26 @@ class Request {
       }
 
       final url = _buildUrl(baseUrl, path);
+      
+      final requestOptions = options ?? Options();
+      requestOptions.headers = {
+        ...?requestOptions.headers,
+        'Referer': referer,
+      };
 
       Response response;
       if (method == 'GET') {
         response = await _dio.get(
           url,
           queryParameters: finalParams,
-          options: options,
+          options: requestOptions,
         );
       } else {
         response = await _dio.post(
           url,
           data: data,
           queryParameters: finalParams,
-          options: options,
+          options: requestOptions,
         );
       }
 

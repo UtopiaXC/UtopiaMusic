@@ -7,6 +7,8 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 
+import '../utils/constants.dart';
+
 class LibraryApi {
   final HtmlUnescape _unescape = HtmlUnescape();
 
@@ -259,15 +261,16 @@ class LibraryApi {
 
       while (hasMore) {
         final data = await Request().get(
-          Api.urlFavoriteResourceList,
+          Api.urlCollectionResourceList,
           baseUrl: Api.urlBase,
           params: {
-            'media_id': mediaId,
+            'season_id': mediaId,
             'pn': page,
-            'ps': 20,
-            'platform': 'web',
+            'ps': 40,
+            'web_location': '0.0',
           },
         );
+
 
         if (data != null && data['code'] == 0) {
           final List<dynamic> medias = data['data']['medias'] ?? [];

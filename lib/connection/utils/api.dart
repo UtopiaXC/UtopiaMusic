@@ -22,7 +22,7 @@ class Api {
       '/x/v3/fav/folder/collected/list';
   static const String urlFavFolderInfo = '/x/v3/fav/folder/info';
   static const String urlFavoriteResourceList = '/x/v3/fav/resource/list';
-  static const String urlCollectionResourceList = '/x/v3/fav/resource/list';
+  static const String urlCollectionResourceList = '/x/space/fav/season/list';
   static const String urlLoginQRCodeGenerate =
       '/x/passport-login/web/qrcode/generate';
   static const String urlLoginQRCodePoll = '/x/passport-login/web/qrcode/poll';
