@@ -3,7 +3,6 @@ import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/utils/html_utils.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
@@ -94,7 +93,7 @@ class MiniPlayer extends StatelessWidget {
                   SizedBox(
                     height: 24,
                     child: Marquee(
-                      text: HtmlUtils.unescape(displaySong.title),
+                      text: displaySong.title,
                       style: Theme.of(context).textTheme.titleMedium,
                       scrollAxis: Axis.horizontal,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,7 +108,7 @@ class MiniPlayer extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    HtmlUtils.unescape(displaySong.artist),
+                    displaySong.artist,
                     style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

@@ -19,20 +19,26 @@ class PlayerProvider extends ChangeNotifier {
   List<Song> _playlist = [];
   PlayMode _playMode = PlayMode.sequence;
   static const String _playModeKey = 'play_mode';
+  static const String _lastPlayedIndexKey = 'last_played_index';
+  static const String _lastPlayedPositionKey = 'last_played_position';
+  static const String _saveProgressKey = 'save_progress';
+  static const String _autoPlayKey = 'auto_play';
+  static const String _decoderKey = 'decoder_type'; // 0: soft, 1: hard
+
+  bool _saveProgress = true;
+  bool _autoPlay = false;
+  int _decoderType = 1; // Default to hard (1)
 
   Song? get currentSong => _currentSong;
-
   bool get isPlaying => _isPlaying;
-
   bool get isPlayerExpanded => _isPlayerExpanded;
-
   bool get showFullPlayer => _showFullPlayer;
-
   AudioPlayer get player => _audioPlayerService.player;
-
   List<Song> get playlist => _playlist;
-
   PlayMode get playMode => _playMode;
+  bool get saveProgress => _saveProgress;
+  bool get autoPlay => _autoPlay;
+  int get decoderType => _decoderType;
 
   PlayerProvider() {
     _init();
@@ -50,46 +56,125 @@ class PlayerProvider extends ChangeNotifier {
 
     _audioPlayerService.currentIndexStream.listen((index) {
       if (_isSwitchingMode) return;
-      if (index >= 0 && index < _playlist.length) {
+      if (index != null && index >= 0 && index < _playlist.length) {
         final newSong = _playlist[index];
         if (_currentSong?.bvid != newSong.bvid ||
             _currentSong?.cid != newSong.cid) {
           _currentSong = newSong;
+          _saveLastPlayedIndex(index);
           notifyListeners();
         }
+      }
+    });
+
+    // Save position periodically
+    _audioPlayerService.player.positionStream.listen((position) {
+      if (_isPlaying && position.inSeconds % 1 == 0) { // Save every second
+        _saveLastPlayedPosition(position.inMilliseconds);
+      }
+    });
+    
+    _audioPlayerService.player.playerStateStream.listen((state) {
+      if (!state.playing) {
+         _saveLastPlayedPosition(_audioPlayerService.player.position.inMilliseconds);
       }
     });
   }
 
   Future<void> _init() async {
-    await _loadPlayMode();
+    await _loadSettings();
     await _loadPlaylist();
 
+    final prefs = await SharedPreferences.getInstance();
+    final lastIndex = prefs.getInt(_lastPlayedIndexKey) ?? 0;
+    final lastPosition = prefs.getInt(_lastPlayedPositionKey) ?? 0;
+
     if (_playlist.isNotEmpty) {
-      _currentSong = _playlist.first;
+      int initialIndex = 0;
+      if (lastIndex >= 0 && lastIndex < _playlist.length) {
+        initialIndex = lastIndex;
+      }
+      
+      _currentSong = _playlist[initialIndex];
       _showFullPlayer = true;
+      
       try {
-        await _audioPlayerService.playWithQueue(_playlist, 0, autoPlay: false);
+        await _audioPlayerService.playWithQueue(_playlist, initialIndex, autoPlay: _autoPlay);
+        
+        if (_saveProgress && lastPosition > 0) {
+          // Wait for duration to be available or just seek
+          // Sometimes seeking immediately after load might fail if not ready
+          // But just_audio handles this usually by buffering the seek
+          // We can try to seek after a small delay if immediate seek fails, 
+          // or rely on just_audio's internal buffering.
+          // Another approach is to seek after the player is ready.
+          
+          // Let's try to seek immediately.
+          await _audioPlayerService.player.seek(Duration(milliseconds: lastPosition));
+        }
+        
         await _setPlayerLoopMode();
       } catch (e) {
         print("Init player error: $e");
+        if (_decoderType == 1) {
+             print("Hard decoder failed, switching to soft decoder preference (simulated)");
+             await setDecoderType(0);
+        }
       }
     }
   }
 
-  Future<void> _loadPlayMode() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    // Play Mode
     final modeIndex = prefs.getInt(_playModeKey) ?? 0;
     if (modeIndex >= 0 && modeIndex < PlayMode.values.length) {
       _playMode = PlayMode.values[modeIndex];
-      await _setPlayerLoopMode();
-      notifyListeners();
     }
+
+    // Other settings
+    _saveProgress = prefs.getBool(_saveProgressKey) ?? true;
+    _autoPlay = prefs.getBool(_autoPlayKey) ?? false;
+    _decoderType = prefs.getInt(_decoderKey) ?? 1; // Default to hard
+
+    notifyListeners();
+  }
+
+  Future<void> setSaveProgress(bool value) async {
+    _saveProgress = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_saveProgressKey, value);
+  }
+
+  Future<void> setAutoPlay(bool value) async {
+    _autoPlay = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoPlayKey, value);
+  }
+
+  Future<void> setDecoderType(int value) async {
+    _decoderType = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_decoderKey, value);
   }
 
   Future<void> _savePlayMode() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_playModeKey, _playMode.index);
+  }
+  
+  Future<void> _saveLastPlayedIndex(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastPlayedIndexKey, index);
+  }
+
+  Future<void> _saveLastPlayedPosition(int positionMs) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastPlayedPositionKey, positionMs);
   }
 
   Future<void> _loadPlaylist() async {
@@ -134,6 +219,7 @@ class PlayerProvider extends ChangeNotifier {
 
         if (newIndex != -1) {
           await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
+          await _saveLastPlayedIndex(newIndex);
         } else {
           if (_playlist.isNotEmpty) {
             await _play(_playlist[0]);
@@ -232,6 +318,7 @@ class PlayerProvider extends ChangeNotifier {
 
     try {
       await _audioPlayerService.playWithQueue(_playlist, index);
+      await _saveLastPlayedIndex(index);
       await _setPlayerLoopMode();
     } catch (e) {
       print("Play error: $e");
@@ -314,7 +401,25 @@ class PlayerProvider extends ChangeNotifier {
     _isPlaying = false;
     _isPlayerExpanded = false;
     _showFullPlayer = false;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastPlayedIndexKey);
+    await prefs.remove(_lastPlayedPositionKey);
+    
     notifyListeners();
+  }
+  
+  Future<void> resetToDefaults() async {
+    _saveProgress = false;
+    _autoPlay = false;
+    _decoderType = 1;
+    
+    notifyListeners();
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_saveProgressKey);
+    await prefs.remove(_autoPlayKey);
+    await prefs.remove(_decoderKey);
   }
 
   bool get hasNext {

@@ -89,6 +89,42 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
     );
   }
 
+  void _showFaqDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder(
+                future: rootBundle.loadString('assets/documentations/QA.md'),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Markdown(data: snapshot.data!);
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('加载失败: ${snapshot.error}'));
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('关闭'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,12 +187,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           _buildItem(
             context,
             title: '常见问题',
-            onTap: () {
-              // TODO: Show FAQ
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('常见问题 - 暂未实现')),
-              );
-            },
+            onTap: () => _showFaqDialog(context),
           ),
           _buildItem(
             context,

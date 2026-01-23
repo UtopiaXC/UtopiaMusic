@@ -4,8 +4,7 @@ import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/utils/html_utils.dart';
-import 'package:utopia_music/widgets/player/lyrics_page.dart';
+import 'package:utopia_music/widgets/player/lyrics_card.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
@@ -308,7 +307,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           height: 24,
                           width: MediaQuery.of(context).size.width * 0.6,
                           child: Marquee(
-                            text: HtmlUtils.unescape(widget.song.title),
+                            text: widget.song.title,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -326,7 +325,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           ),
                         ),
                         Text(
-                          HtmlUtils.unescape(widget.song.artist),
+                          widget.song.artist,
                           style: Theme.of(context).textTheme.bodySmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

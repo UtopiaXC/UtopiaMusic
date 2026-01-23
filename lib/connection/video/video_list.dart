@@ -4,9 +4,12 @@ import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:html_unescape/html_unescape.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 
 class VideoApi {
   static const String _kFreshIdxKey = 'video_api_fresh_idx';
+  final HtmlUnescape _unescape = HtmlUnescape();
 
   Future<List<Song>> getRecommentVideos(BuildContext context, {int recursionDepth = 0}) async {
     if (recursionDepth > 10) {
@@ -16,6 +19,11 @@ class VideoApi {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
+      if (delay > 0) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+
       int currentIdx = prefs.getInt(_kFreshIdxKey) ?? 1;
       currentIdx++;
       await prefs.setInt(_kFreshIdxKey, currentIdx);
@@ -61,6 +69,13 @@ class VideoApi {
 
   Future<List<Song>> getRankingVideos(BuildContext context, {int rid = 0}) async {
     try {
+      // Add delay based on settings
+      final prefs = await SharedPreferences.getInstance();
+      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
+      if (delay > 0) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+
       final data = await Request().get(
         Api.urlRanking,
         params: {'rid': rid, 'type': 'all'},
@@ -83,6 +98,13 @@ class VideoApi {
 
   Future<List<Song>> getRegionRankingVideos(BuildContext context, {required int rid}) async {
     try {
+      // Add delay based on settings
+      final prefs = await SharedPreferences.getInstance();
+      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
+      if (delay > 0) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+
       final data = await Request().get(
         Api.urlRankingRegion,
         params: {'rid': rid, 'day': 3, 'original': 0},
@@ -104,6 +126,13 @@ class VideoApi {
 
   Future<Map<String, dynamic>> getFeed(BuildContext context, String offset) async {
     try {
+      // Add delay based on settings
+      final prefs = await SharedPreferences.getInstance();
+      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
+      if (delay > 0) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+
       final data = await Request().get(
         Api.urlDynamicFeed,
         params: {
@@ -126,8 +155,8 @@ class VideoApi {
               final author = modules['module_author'];
 
               songs.add(Song(
-                title: archive['title'],
-                artist: author['name'],
+                title: _unescape.convert(archive['title'] ?? S.of(context).common_no_title),
+                artist: _unescape.convert(author['name'] ?? S.of(context).common_unknown),
                 coverUrl: archive['cover'],
                 lyrics: '',
                 colorValue: 0xFF2196F3,
@@ -166,8 +195,8 @@ class VideoApi {
       cover = cover.replaceFirst('http://', 'https://');
     }
     return Song(
-      title: item['title'] ?? S.of(context).common_no_title,
-      artist: artist,
+      title: _unescape.convert(item['title'] ?? S.of(context).common_no_title),
+      artist: _unescape.convert(artist),
       coverUrl: cover,
       lyrics: S.of(context).common_no_lyrics,
       colorValue: 0xFF2196F3,

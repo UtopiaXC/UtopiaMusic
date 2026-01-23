@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/widgets/player/full_player_page.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/widgets/player/full_player_card.dart';
 import 'package:utopia_music/widgets/player/mini_player.dart';
 import 'package:utopia_music/pages/search/fragment/search_collection_fragment.dart';
 import 'package:utopia_music/widgets/search/search_history.dart';
@@ -26,11 +27,11 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   final FocusNode _searchFocusNode = FocusNode();
   late TabController _tabController;
   String _currentKeyword = '';
+  int _searchTimestamp = 0; // To force refresh
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _historyOverlay;
   List<String> _history = [];
   static const String _historyKey = 'search_history';
-  static const int _maxHistory = 20;
 
   @override
   void initState() {
@@ -40,7 +41,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _loadHistory().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _searchFocusNode.requestFocus();
-        if (_searchController.text.isEmpty && _currentKeyword.isEmpty) {
+        // Show history if text is empty, regardless of _currentKeyword
+        // Because user might have cleared text to search something new
+        if (_searchController.text.isEmpty) {
            _showHistoryOverlay(); 
         }
       });
@@ -80,13 +83,20 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 
   Future<void> _addHistory(String keyword) async {
     if (keyword.isEmpty) return;
+    
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    if (!settingsProvider.saveSearchHistory) return;
+
     final prefs = await SharedPreferences.getInstance();
     List<String> history = prefs.getStringList(_historyKey) ?? [];
     history.remove(keyword);
     history.insert(0, keyword);
-    if (history.length > _maxHistory) {
-      history = history.sublist(0, _maxHistory);
+    
+    final limit = settingsProvider.searchHistoryLimit;
+    if (history.length > limit) {
+      history = history.sublist(0, limit);
     }
+    
     await prefs.setStringList(_historyKey, history);
     if (mounted) {
       setState(() {
@@ -122,7 +132,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   }
 
   void _onSearchChanged() {
-    if (_searchController.text.isEmpty && _currentKeyword.isEmpty) {
+    // Show history if text is empty, even if _currentKeyword is set
+    // This allows user to see history when they clear the search bar
+    if (_searchController.text.isEmpty) {
       if (_searchFocusNode.hasFocus) {
          _showHistoryOverlay();
       }
@@ -133,6 +145,10 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 
   void _showHistoryOverlay() {
     if (_historyOverlay != null) return;
+    
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    if (!settingsProvider.saveSearchHistory) return;
+
     if (_history.isEmpty) return;
 
     _historyOverlay = OverlayEntry(
@@ -185,6 +201,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _addHistory(keyword);
     setState(() {
       _currentKeyword = keyword;
+      _searchTimestamp = DateTime.now().millisecondsSinceEpoch;
     });
     _removeHistoryOverlay();
     _searchFocusNode.unfocus();
@@ -286,6 +303,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                             SearchVideoFragment(
                               onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
+                              searchTimestamp: _searchTimestamp,
                             ),
                             SearchCollectionFragment(
                               onSongSelected: _handleSongSelected,

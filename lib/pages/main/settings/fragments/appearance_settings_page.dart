@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 
@@ -13,62 +14,44 @@ class AppearanceSettingsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('外观')),
       body: ListView(
         children: [
-          _buildThemeModeSection(context, settingsProvider),
-          const Divider(),
-          _buildColorSection(context, settingsProvider),
-          const Divider(),
-          _buildStartPageSection(context, settingsProvider),
+          _buildThemeModeItem(context, settingsProvider),
+          _buildColorItem(context, settingsProvider),
+          _buildStartPageItem(context, settingsProvider),
         ],
       ),
     );
   }
 
-  Widget _buildThemeModeSection(BuildContext context, SettingsProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            '深色模式',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+  Widget _buildThemeModeItem(BuildContext context, SettingsProvider provider) {
+    return ListTile(
+      title: const Text('深色模式'),
+      trailing: DropdownButton<ThemeMode>(
+        value: provider.themeMode,
+        underline: const SizedBox(),
+        items: const [
+          DropdownMenuItem(
+            value: ThemeMode.system,
+            child: Text('跟随系统'),
           ),
-        ),
-        RadioListTile<ThemeMode>(
-          title: const Text('跟随系统'),
-          value: ThemeMode.system,
-          groupValue: provider.themeMode,
-          onChanged: (value) {
-            if (value != null) provider.setThemeMode(value);
-          },
-        ),
-        RadioListTile<ThemeMode>(
-          title: const Text('始终深色'),
-          value: ThemeMode.dark,
-          groupValue: provider.themeMode,
-          onChanged: (value) {
-            if (value != null) provider.setThemeMode(value);
-          },
-        ),
-        RadioListTile<ThemeMode>(
-          title: const Text('始终浅色'),
-          value: ThemeMode.light,
-          groupValue: provider.themeMode,
-          onChanged: (value) {
-            if (value != null) provider.setThemeMode(value);
-          },
-        ),
-      ],
+          DropdownMenuItem(
+            value: ThemeMode.light,
+            child: Text('始终浅色'),
+          ),
+          DropdownMenuItem(
+            value: ThemeMode.dark,
+            child: Text('始终深色'),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) provider.setThemeMode(value);
+        },
+      ),
     );
   }
 
-  Widget _buildColorSection(BuildContext context, SettingsProvider provider) {
+  Widget _buildColorItem(BuildContext context, SettingsProvider provider) {
     return ListTile(
       title: const Text('主题颜色'),
-      subtitle: const Text('选择应用的主色调'),
       trailing: GestureDetector(
         onTap: () => _showColorPicker(context, provider),
         child: Container(
@@ -88,59 +71,27 @@ class AppearanceSettingsPage extends StatelessWidget {
   }
 
   void _showColorPicker(BuildContext context, SettingsProvider provider) {
-    final List<Color> colors = [
-      Colors.deepPurple,
-      Colors.purple,
-      Colors.indigo,
-      Colors.blue,
-      Colors.lightBlue,
-      Colors.cyan,
-      Colors.teal,
-      Colors.green,
-      Colors.lightGreen,
-      Colors.lime,
-      Colors.yellow,
-      Colors.amber,
-      Colors.orange,
-      Colors.deepOrange,
-      Colors.red,
-      Colors.pink,
-      Colors.brown,
-      Colors.grey,
-      Colors.blueGrey,
-    ];
-
+    Color pickerColor = provider.seedColor;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('选择颜色'),
         content: SingleChildScrollView(
-          child: Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: colors.map((color) {
-              return GestureDetector(
-                onTap: () {
-                  provider.setSeedColor(color);
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: provider.seedColor.value == color.value
-                      ? const Icon(Icons.check, color: Colors.white)
-                      : null,
-                ),
-              );
-            }).toList(),
+          child: ColorPicker(
+            pickerColor: pickerColor,
+            onColorChanged: (color) {
+              pickerColor = color;
+            },
+            pickerAreaHeightPercent: 0.8,
+            enableAlpha: false,
+            displayThumbColor: true,
+            paletteType: PaletteType.hsvWithHue,
+            labelTypes: const [],
+            pickerAreaBorderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(2.0),
+              topRight: Radius.circular(2.0),
+            ),
+            hexInputBar: true,
           ),
         ),
         actions: [
@@ -148,42 +99,38 @@ class AppearanceSettingsPage extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () {
+              provider.setSeedColor(pickerColor);
+              Navigator.pop(context);
+            },
+            child: const Text('确定'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStartPageSection(BuildContext context, SettingsProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            '启动页',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+  Widget _buildStartPageItem(BuildContext context, SettingsProvider provider) {
+    return ListTile(
+      title: const Text('启动页'),
+      trailing: DropdownButton<int>(
+        value: provider.startPageIndex,
+        underline: const SizedBox(),
+        items: const [
+          DropdownMenuItem(
+            value: 0,
+            child: Text('首页'),
           ),
-        ),
-        RadioListTile<int>(
-          title: const Text('首页'),
-          value: 0,
-          groupValue: provider.startPageIndex,
-          onChanged: (value) {
-            if (value != null) provider.setStartPageIndex(value);
-          },
-        ),
-        RadioListTile<int>(
-          title: const Text('曲库'),
-          value: 1,
-          groupValue: provider.startPageIndex,
-          onChanged: (value) {
-            if (value != null) provider.setStartPageIndex(value);
-          },
-        ),
-      ],
+          DropdownMenuItem(
+            value: 1,
+            child: Text('曲库'),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) provider.setStartPageIndex(value);
+        },
+      ),
     );
   }
 }

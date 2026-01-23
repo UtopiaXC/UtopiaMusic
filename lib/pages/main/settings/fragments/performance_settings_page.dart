@@ -74,22 +74,22 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
       body: ListView(
         children: [
           ListTile(
-            title: const Text('缓存大小'),
-            subtitle: const Text('允许应用将音频流缓存以降低重复播放的流量损耗'),
+            title: const Text('音乐缓存上限'),
+            subtitle: const Text('缓存可减少重复播放曲目的流量消耗'),
             trailing: DropdownButton<int>(
-              value: [0, 10, 50, 100, 200, 500, 1000, 5000].contains(_currentCacheSize)
+              value: [0, 10, 50, 100, 200, 500, 1000, 4096].contains(_currentCacheSize)
                   ? _currentCacheSize
-                  : -1, // -1 for custom
+                  : -1,
               underline: const SizedBox(),
               items: const [
-                DropdownMenuItem(value: 0, child: Text('禁用')),
+                DropdownMenuItem(value: 0, child: Text('禁用缓存')),
                 DropdownMenuItem(value: 10, child: Text('10 MB')),
                 DropdownMenuItem(value: 50, child: Text('50 MB')),
                 DropdownMenuItem(value: 100, child: Text('100 MB')),
                 DropdownMenuItem(value: 200, child: Text('200 MB')),
                 DropdownMenuItem(value: 500, child: Text('500 MB')),
-                DropdownMenuItem(value: 1000, child: Text('1000 MB')),
-                DropdownMenuItem(value: 5000, child: Text('5000 MB')),
+                DropdownMenuItem(value: 1000, child: Text('1 GB')),
+                DropdownMenuItem(value: 4096, child: Text('4 BG')),
                 DropdownMenuItem(value: -1, child: Text('自定义')),
               ],
               onChanged: (value) {

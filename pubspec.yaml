@@ -56,6 +56,9 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   flutter_colorpicker: ^1.1.0
   flutter_secure_storage: ^10.0.0
+  local_auth: ^3.0.0
+  privacy_screen: ^0.0.8
+  flutter_phoenix: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +87,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/documentations/EULA.md
+    - assets/documentations/QA.md
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

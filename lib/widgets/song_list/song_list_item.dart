@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/utils/html_utils.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class SongListItem extends StatelessWidget {
@@ -134,7 +133,7 @@ class SongListItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    HtmlUtils.unescape(song.title),
+                    song.title,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -144,7 +143,7 @@ class SongListItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    HtmlUtils.unescape(song.artist),
+                    song.artist,
                     style: TextStyle(
                       color: Theme.of(context).textTheme.bodySmall?.color,
                       fontSize: 13,

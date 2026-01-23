@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/connection/utils/wbi.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 
 class Request {
   static final Request _instance = Request._internal();
@@ -14,7 +17,8 @@ class Request {
   late final Future<void> _initWait;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const String _cookieKey = 'bili_cookies';
-  static const int _maxRetries = 3;
+
+  int _maxRetries = 2;
 
   factory Request() => _instance;
 
@@ -42,6 +46,13 @@ class Request {
     } else {
       _initWait = Future.value();
     }
+
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    _maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
   }
 
   Future<void> _initializeCookie() async {
@@ -109,6 +120,7 @@ class Request {
         bool useWbi = false,
       }) async {
     await _initWait;
+    await _loadSettings();
     return _requestWithRetry(() async {
       Map<String, dynamic>? finalParams = params;
       if (useWbi) {
@@ -129,6 +141,7 @@ class Request {
         Options? options,
       }) async {
     await _initWait;
+    await _loadSettings();
     return _requestWithRetry(() async {
       return await _dio.post(
         path,
@@ -142,26 +155,52 @@ class Request {
   Future<dynamic> _requestWithRetry(Future<Response> Function() requestFunc, {int retryCount = 0}) async {
     try {
       Response response = await requestFunc();
-      
-      // Check for risk control error
-      // Only retry if code is not 0 (success) AND message contains "风控" (Risk Control)
+      if (response.data is String && response.data.toString().trim().startsWith('<!DOCTYPE html>')) {
+         if (retryCount < _maxRetries) {
+            if (kDebugMode) {
+              print("HTML response detected (likely WAF/Error page), retrying... Retry: ${retryCount + 1}");
+            }
+            if (retryCount < 2) {
+               await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+            } else {
+               await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+               await _cleanExpiredCookie();
+               await _generateInitialCookie();
+            }
+            
+            return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+         }
+      }
+
       if (response.data is Map) {
         final int code = response.data['code'] ?? 0;
         final String message = response.data['message']?.toString() ?? '';
-        
-        if (code != 0 && message.contains('风控')) {
+
+        if (code == -352 || code == -412) {
+           if (retryCount < _maxRetries) {
+              if (kDebugMode) {
+                print("Risk control detected (code $code, msg: $message), refreshing cookie... Retry: ${retryCount + 1}");
+              }
+              await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+              await _cleanExpiredCookie();
+              await _generateInitialCookie();
+              return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+           }
+        }
+        else if ((code != 0 && (message.contains('风控') || message.contains('出错')))) {
           if (retryCount < _maxRetries) {
             if (kDebugMode) {
-              print("Risk control detected (code $code, msg: $message), refreshing cookie... Retry: ${retryCount + 1}");
+              print("Risk control detected (code $code, msg: $message), retrying... Retry: ${retryCount + 1}");
             }
-            await _cleanExpiredCookie();
-            await _generateInitialCookie();
-            // Retry request recursively
+            if (retryCount < 2) {
+               await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+            } else {
+               await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+               await _cleanExpiredCookie();
+               await _generateInitialCookie();
+            }
+            
             return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
-          } else {
-             if (kDebugMode) {
-               print("Max retries reached for risk control error.");
-             }
           }
         }
         
@@ -172,8 +211,25 @@ class Request {
 
       return response.data;
     } on DioException catch (e) {
+      if (e.type != DioExceptionType.cancel && retryCount < _maxRetries) {
+         if (kDebugMode) {
+            print("Network error (${e.type}), retrying... Retry: ${retryCount + 1}");
+         }
+         await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
+         return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+      }
+
       _printErrorLog(e);
       throw _handleError(e);
+    } catch (e) {
+      if (retryCount < _maxRetries) {
+         if (kDebugMode) {
+            print("Unknown error ($e), retrying... Retry: ${retryCount + 1}");
+         }
+         await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
+         return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+      }
+      rethrow;
     }
   }
 

@@ -24,7 +24,7 @@ class SearchHistory extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -61,42 +61,48 @@ class SearchHistory extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text(
-                    S.of(context).common_clean,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
+                  child: Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        Flexible(
-          child: ListView.builder(
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            physics: const ClampingScrollPhysics(),
-            itemCount: history.length,
-            itemBuilder: (context, index) {
-              final keyword = history[index];
-              return ListTile(
-                dense: true,
-                visualDensity: VisualDensity.compact,
-                leading: const Icon(Icons.history, size: 18),
-                title: Text(keyword),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close, size: 16),
-                  onPressed: () => onDelete(keyword),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 20,
-                ),
-                onTap: () => onSearch(keyword),
-              );
-            },
+        Container(
+          constraints: const BoxConstraints(maxHeight: 200),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: history.map<Widget>((keyword) {
+                  return InputChip(
+                    label: Text(keyword),
+                    avatar: const Icon(Icons.history, size: 16),
+                    onPressed: () => onSearch(keyword),
+                    onDeleted: () => onDelete(keyword),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ),
+        const SizedBox(height: 8),
       ],
     );
   }

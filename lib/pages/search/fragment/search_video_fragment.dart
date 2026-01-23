@@ -7,11 +7,13 @@ import 'package:utopia_music/generated/l10n.dart';
 class SearchVideoFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
   final String keyword;
+  final int searchTimestamp; // Added to force refresh
 
   const SearchVideoFragment({
     super.key,
     required this.onSongSelected,
     required this.keyword,
+    this.searchTimestamp = 0,
   });
 
   @override
@@ -43,8 +45,11 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
   @override
   void didUpdateWidget(covariant SearchVideoFragment oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.keyword != oldWidget.keyword && widget.keyword.isNotEmpty) {
-      _doSearch(widget.keyword);
+    // Check if keyword changed OR timestamp changed (forced refresh)
+    if (widget.keyword.isNotEmpty) {
+      if (widget.keyword != oldWidget.keyword || widget.searchTimestamp != oldWidget.searchTimestamp) {
+        _doSearch(widget.keyword);
+      }
     }
   }
 

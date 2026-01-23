@@ -6,17 +6,49 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/layouts/main_layout.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/utils/font_utils.dart';
+import 'package:utopia_music/pages/main/lock_screen.dart';
 
-class UtopiaMusicApp extends StatelessWidget {
+class UtopiaMusicApp extends StatefulWidget {
   const UtopiaMusicApp({super.key});
+
+  @override
+  State<UtopiaMusicApp> createState() => _UtopiaMusicAppState();
+}
+
+class _UtopiaMusicAppState extends State<UtopiaMusicApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+    if (state == AppLifecycleState.paused) {
+      securityProvider.setAppPaused();
+    } else if (state == AppLifecycleState.resumed) {
+      securityProvider.setAppResumed();
+    } else if (state == AppLifecycleState.detached) {
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
+    final securityProvider = Provider.of<SecurityProvider>(context);
 
     return MaterialApp(
       title: 'Utopia Music',
+      locale: settingsProvider.locale, // Apply locale from settings
       supportedLocales: const [
         Locale('en'),
         Locale('zh'),
@@ -54,7 +86,7 @@ class UtopiaMusicApp extends StatelessWidget {
         ),
       ),
       themeMode: settingsProvider.themeMode,
-      home: const MainLayout(),
+      home: securityProvider.isLocked ? const LockScreen() : const MainLayout(),
     );
   }
   String? _getMainFontFamily() {

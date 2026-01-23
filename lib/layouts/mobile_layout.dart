@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/widgets/player/full_player_page.dart';
+import 'package:utopia_music/widgets/player/full_player_card.dart';
 import 'package:utopia_music/widgets/player/mini_player.dart';
 
 class MobileLayout extends StatelessWidget {
