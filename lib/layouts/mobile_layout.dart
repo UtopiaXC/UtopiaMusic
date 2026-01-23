@@ -99,9 +99,9 @@ class MobileLayout extends StatelessWidget {
           onDestinationSelected: onItemTapped,
           destinations: [
             NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home),
-              label: S.of(context).pages_tag_home,
+              icon: const Icon(Icons.explore_outlined),
+              selectedIcon: const Icon(Icons.explore),
+              label: S.of(context).pages_tag_discover,
             ),
             NavigationDestination(
               icon: const Icon(Icons.music_note_outlined),

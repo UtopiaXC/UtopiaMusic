@@ -129,9 +129,14 @@ class S {
     );
   }
 
-  /// `Home`
-  String get pages_tag_home {
-    return Intl.message('Home', name: 'pages_tag_home', desc: '', args: []);
+  /// `Discover`
+  String get pages_tag_discover {
+    return Intl.message(
+      'Discover',
+      name: 'pages_tag_discover',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `Library`
@@ -215,70 +220,70 @@ class S {
   }
 
   /// `Tap again to refresh`
-  String get pages_home_refresh_toast {
+  String get pages_discover_refresh_toast {
     return Intl.message(
       'Tap again to refresh',
-      name: 'pages_home_refresh_toast',
+      name: 'pages_discover_refresh_toast',
       desc: '',
       args: [],
     );
   }
 
   /// `Live`
-  String get pages_home_tag_live {
+  String get pages_discover_tag_live {
     return Intl.message(
       'Live',
-      name: 'pages_home_tag_live',
+      name: 'pages_discover_tag_live',
       desc: '',
       args: [],
     );
   }
 
   /// `Recommend`
-  String get pages_home_tag_recommend {
+  String get pages_discover_tag_recommend {
     return Intl.message(
       'Recommend',
-      name: 'pages_home_tag_recommend',
+      name: 'pages_discover_tag_recommend',
       desc: '',
       args: [],
     );
   }
 
   /// `Feed`
-  String get pages_home_tag_feed {
+  String get pages_discover_tag_feed {
     return Intl.message(
       'Feed',
-      name: 'pages_home_tag_feed',
+      name: 'pages_discover_tag_feed',
       desc: '',
       args: [],
     );
   }
 
   /// `Ranking`
-  String get pages_home_tag_ranking {
+  String get pages_discover_tag_ranking {
     return Intl.message(
       'Ranking',
-      name: 'pages_home_tag_ranking',
+      name: 'pages_discover_tag_ranking',
       desc: '',
       args: [],
     );
   }
 
   /// `Music Ranking`
-  String get pages_home_tag_ranking_category_music {
+  String get pages_discover_tag_ranking_category_music {
     return Intl.message(
       'Music Ranking',
-      name: 'pages_home_tag_ranking_category_music',
+      name: 'pages_discover_tag_ranking_category_music',
       desc: '',
       args: [],
     );
   }
 
   /// `Kichiku Ranking`
-  String get pages_home_tag_ranking_category_kichiku {
+  String get pages_discover_tag_ranking_category_kichiku {
     return Intl.message(
       'Kichiku Ranking',
-      name: 'pages_home_tag_ranking_category_kichiku',
+      name: 'pages_discover_tag_ranking_category_kichiku',
       desc: '',
       args: [],
     );

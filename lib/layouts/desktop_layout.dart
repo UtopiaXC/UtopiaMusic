@@ -34,9 +34,9 @@ class DesktopLayout extends StatelessWidget {
             labelType: NavigationRailLabelType.all,
             destinations: [
               NavigationRailDestination(
-                icon: const Icon(Icons.home_outlined),
-                selectedIcon: const Icon(Icons.home),
-                label: Text(S.of(context).pages_tag_home),
+                icon: const Icon(Icons.explore_outlined),
+                selectedIcon: const Icon(Icons.explore),
+                label: Text(S.of(context).pages_tag_discover),
               ),
               NavigationRailDestination(
                 icon: const Icon(Icons.music_note_outlined),

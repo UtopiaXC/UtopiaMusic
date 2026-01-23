@@ -15,4 +15,9 @@ class Api {
   static const String urlSearch = '/x/web-interface/search/type';
   static const String urlVideoDetail = '/x/web-interface/wbi/view';
   static const String urlDynamicFeed = '/x/polymer/web-dynamic/v1/feed/all';
+
+  // Playlist APIs
+  static const String urlFavoriteFolderList = '/x/v3/fav/folder/list';
+  static const String urlFavoriteResourceList = '/x/v3/fav/resource/list';
+  static const String urlCollectionResourceList = '/x/v3/fav/resource/list'; // Same as favorite
 }

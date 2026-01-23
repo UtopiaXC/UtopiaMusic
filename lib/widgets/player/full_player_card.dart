@@ -306,22 +306,45 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                         SizedBox(
                           height: 24,
                           width: MediaQuery.of(context).size.width * 0.6,
-                          child: Marquee(
-                            text: widget.song.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            scrollAxis: Axis.horizontal,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            blankSpace: 20.0,
-                            velocity: 30.0,
-                            pauseAfterRound: const Duration(seconds: 1),
-                            startPadding: 0.0,
-                            accelerationDuration: const Duration(seconds: 1),
-                            accelerationCurve: Curves.linear,
-                            decelerationDuration: const Duration(milliseconds: 500),
-                            decelerationCurve: Curves.easeOut,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final textStyle = const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              );
+                              final textSpan = TextSpan(text: widget.song.title, style: textStyle);
+                              final textPainter = TextPainter(
+                                text: textSpan,
+                                textDirection: TextDirection.ltr,
+                                maxLines: 1,
+                              );
+                              textPainter.layout();
+                              
+                              if (textPainter.width > constraints.maxWidth) {
+                                return Marquee(
+                                  text: widget.song.title,
+                                  style: textStyle,
+                                  scrollAxis: Axis.horizontal,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  blankSpace: 20.0,
+                                  velocity: 30.0,
+                                  pauseAfterRound: const Duration(seconds: 1),
+                                  startPadding: 0.0,
+                                  accelerationDuration: const Duration(seconds: 1),
+                                  accelerationCurve: Curves.linear,
+                                  decelerationDuration: const Duration(milliseconds: 500),
+                                  decelerationCurve: Curves.easeOut,
+                                );
+                              } else {
+                                return Text(
+                                  widget.song.title,
+                                  style: textStyle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                );
+                              }
+                            },
                           ),
                         ),
                         Text(

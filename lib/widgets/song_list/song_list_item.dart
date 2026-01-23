@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 
 class SongListItem extends StatelessWidget {
   final Song song;
   final List<Song> contextList;
   final List<PopupMenuEntry<String>>? menuItems;
   final void Function(String)? onMenuSelected;
+  final VoidCallback? onPlayAction;
 
   const SongListItem({
     super.key,
@@ -16,6 +18,7 @@ class SongListItem extends StatelessWidget {
     required this.contextList,
     this.menuItems,
     this.onMenuSelected,
+    this.onPlayAction,
   });
 
   void _showPlayOptionsDialog(BuildContext context) {
@@ -32,6 +35,7 @@ class SongListItem extends StatelessWidget {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false)
                     .setPlaylistAndPlay(contextList, song);
+                onPlayAction?.call();
               },
             ),
             ListTile(
@@ -49,6 +53,7 @@ class SongListItem extends StatelessWidget {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false)
                     .insertNextAndPlay(song);
+                onPlayAction?.call();
               },
             ),
             ListTile(
@@ -66,6 +71,7 @@ class SongListItem extends StatelessWidget {
                 Navigator.pop(context);
                 Provider.of<PlayerProvider>(context, listen: false)
                     .replacePlaylistWithSong(song);
+                onPlayAction?.call();
               },
             ),
             const Divider(),
@@ -80,6 +86,14 @@ class SongListItem extends StatelessWidget {
     );
   }
 
+  void _showAddToLocalPlaylistSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => AddToPlaylistSheet(song: song),
+    );
+  }
+
   void _handleTap(BuildContext context) {
     FocusScope.of(context).unfocus();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
@@ -87,6 +101,7 @@ class SongListItem extends StatelessWidget {
     if (playerProvider.playlist.isEmpty) {
       playerProvider.setPlaylistAndPlay(contextList, song);
       playerProvider.expandPlayer(); // Expand player when starting from empty
+      onPlayAction?.call();
     } else {
       _showPlayOptionsDialog(context);
     }
@@ -160,6 +175,8 @@ class SongListItem extends StatelessWidget {
               onSelected: (value) {
                 if (value == 'add_to_playlist') {
                   _showPlayOptionsDialog(context);
+                } else if (value == 'add_to_local_playlist') {
+                  _showAddToLocalPlaylistSheet(context);
                 } else if (onMenuSelected != null) {
                   onMenuSelected!(value);
                 }
@@ -168,7 +185,23 @@ class SongListItem extends StatelessWidget {
                 final List<PopupMenuEntry<String>> items = [
                   PopupMenuItem(
                     value: 'add_to_playlist',
-                    child: Text(S.of(context).item_options_add_to_play_list),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add, size: 20),
+                        const SizedBox(width: 12),
+                        Text(S.of(context).item_options_add_to_play_list),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'add_to_local_playlist',
+                    child: Row(
+                      children: [
+                        Icon(Icons.playlist_add, size: 20),
+                        SizedBox(width: 12),
+                        Text('添加到本地歌单'),
+                      ],
+                    ),
                   ),
                 ];
                 if (menuItems != null) {

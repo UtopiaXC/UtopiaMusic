@@ -51,17 +51,19 @@ class MessageLookup extends MessageLookupByLibrary {
     "item_options_add_to_play_list": MessageLookupByLibrary.simpleMessage(
       "Add to play list",
     ),
-    "pages_home_refresh_toast": MessageLookupByLibrary.simpleMessage(
+    "pages_discover_refresh_toast": MessageLookupByLibrary.simpleMessage(
       "Tap again to refresh",
     ),
-    "pages_home_tag_feed": MessageLookupByLibrary.simpleMessage("Feed"),
-    "pages_home_tag_live": MessageLookupByLibrary.simpleMessage("Live"),
-    "pages_home_tag_ranking": MessageLookupByLibrary.simpleMessage("Ranking"),
-    "pages_home_tag_ranking_category_kichiku":
+    "pages_discover_tag_feed": MessageLookupByLibrary.simpleMessage("Feed"),
+    "pages_discover_tag_live": MessageLookupByLibrary.simpleMessage("Live"),
+    "pages_discover_tag_ranking": MessageLookupByLibrary.simpleMessage(
+      "Ranking",
+    ),
+    "pages_discover_tag_ranking_category_kichiku":
         MessageLookupByLibrary.simpleMessage("Kichiku Ranking"),
-    "pages_home_tag_ranking_category_music":
+    "pages_discover_tag_ranking_category_music":
         MessageLookupByLibrary.simpleMessage("Music Ranking"),
-    "pages_home_tag_recommend": MessageLookupByLibrary.simpleMessage(
+    "pages_discover_tag_recommend": MessageLookupByLibrary.simpleMessage(
       "Recommend",
     ),
     "pages_search_hint_search_input": MessageLookupByLibrary.simpleMessage(
@@ -76,7 +78,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_search_tag_video_hint": MessageLookupByLibrary.simpleMessage(
       "Input keyword to search",
     ),
-    "pages_tag_home": MessageLookupByLibrary.simpleMessage("Home"),
+    "pages_tag_discover": MessageLookupByLibrary.simpleMessage("Discover"),
     "pages_tag_library": MessageLookupByLibrary.simpleMessage("Library"),
     "pages_tag_settings": MessageLookupByLibrary.simpleMessage("Settings"),
     "play_control_mode_loop": MessageLookupByLibrary.simpleMessage("List loop"),

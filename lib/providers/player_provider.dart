@@ -10,6 +10,7 @@ class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
   bool _isSwitchingMode = false;
+  bool _isSwitchingPlaylist = false; // Added flag to prevent rapid switching
 
   Song? _currentSong;
   bool _isPlaying = false;
@@ -55,7 +56,7 @@ class PlayerProvider extends ChangeNotifier {
     });
 
     _audioPlayerService.currentIndexStream.listen((index) {
-      if (_isSwitchingMode) return;
+      if (_isSwitchingMode || _isSwitchingPlaylist) return;
       if (index != null && index >= 0 && index < _playlist.length) {
         final newSong = _playlist[index];
         if (_currentSong?.bvid != newSong.bvid ||
@@ -102,14 +103,6 @@ class PlayerProvider extends ChangeNotifier {
         await _audioPlayerService.playWithQueue(_playlist, initialIndex, autoPlay: _autoPlay);
         
         if (_saveProgress && lastPosition > 0) {
-          // Wait for duration to be available or just seek
-          // Sometimes seeking immediately after load might fail if not ready
-          // But just_audio handles this usually by buffering the seek
-          // We can try to seek after a small delay if immediate seek fails, 
-          // or rely on just_audio's internal buffering.
-          // Another approach is to seek after the player is ready.
-          
-          // Let's try to seek immediately.
           await _audioPlayerService.player.seek(Duration(milliseconds: lastPosition));
         }
         
@@ -246,23 +239,33 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setPlaylistAndPlay(List<Song> songs, Song initialSong) async {
-    List<Song> newPlaylist = [];
-    final seen = <String>{};
-    for (var song in songs) {
-      if (song.bvid.isNotEmpty && !seen.contains(song.bvid)) {
-        seen.add(song.bvid);
-        newPlaylist.add(song);
+    if (_isSwitchingPlaylist) return; // Prevent rapid switching
+    _isSwitchingPlaylist = true;
+
+    try {
+      // Stop current playback first to release resources
+      await _audioPlayerService.stop();
+      
+      List<Song> newPlaylist = [];
+      final seen = <String>{};
+      for (var song in songs) {
+        if (song.bvid.isNotEmpty && !seen.contains(song.bvid)) {
+          seen.add(song.bvid);
+          newPlaylist.add(song);
+        }
       }
-    }
 
-    if (initialSong.bvid.isNotEmpty &&
-        !newPlaylist.any((s) => s.bvid == initialSong.bvid)) {
-      newPlaylist.insert(0, initialSong);
-    }
+      if (initialSong.bvid.isNotEmpty &&
+          !newPlaylist.any((s) => s.bvid == initialSong.bvid)) {
+        newPlaylist.insert(0, initialSong);
+      }
 
-    await _databaseService.savePlaylist(newPlaylist);
-    await _loadPlaylist();
-    await _play(initialSong);
+      await _databaseService.savePlaylist(newPlaylist);
+      await _loadPlaylist();
+      await _play(initialSong);
+    } finally {
+      _isSwitchingPlaylist = false;
+    }
   }
 
   Future<void> insertNext(Song song) async {
@@ -297,9 +300,16 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> replacePlaylistWithSong(Song song) async {
-    await _databaseService.savePlaylist([song]);
-    await _loadPlaylist();
-    await _play(song);
+    if (_isSwitchingPlaylist) return;
+    _isSwitchingPlaylist = true;
+    try {
+      await _audioPlayerService.stop();
+      await _databaseService.savePlaylist([song]);
+      await _loadPlaylist();
+      await _play(song);
+    } finally {
+      _isSwitchingPlaylist = false;
+    }
   }
 
   Future<void> _play(Song song) async {

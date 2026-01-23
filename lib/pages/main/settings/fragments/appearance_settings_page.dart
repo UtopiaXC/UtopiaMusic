@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/providers/library_provider.dart';
+import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
 
 class AppearanceSettingsPage extends StatelessWidget {
   const AppearanceSettingsPage({super.key});
@@ -17,6 +19,7 @@ class AppearanceSettingsPage extends StatelessWidget {
           _buildThemeModeItem(context, settingsProvider),
           _buildColorItem(context, settingsProvider),
           _buildStartPageItem(context, settingsProvider),
+          _buildLibraryOrderItem(context),
         ],
       ),
     );
@@ -131,6 +134,71 @@ class AppearanceSettingsPage extends StatelessWidget {
           if (value != null) provider.setStartPageIndex(value);
         },
       ),
+    );
+  }
+
+  Widget _buildLibraryOrderItem(BuildContext context) {
+    return ListTile(
+      title: const Text('曲库页面排序'),
+      subtitle: const Text('长按拖动调整顺序'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _showLibraryOrderDialog(context),
+    );
+  }
+
+  void _showLibraryOrderDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const _LibraryOrderDialog(),
+    );
+  }
+}
+
+class _LibraryOrderDialog extends StatelessWidget {
+  const _LibraryOrderDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('曲库页面排序'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 300,
+        child: Consumer<LibraryProvider>(
+          builder: (context, libraryProvider, child) {
+            return ReorderableListView.builder(
+              itemCount: libraryProvider.categoryOrder.length,
+              onReorder: libraryProvider.updateOrder,
+              itemBuilder: (context, index) {
+                final type = libraryProvider.categoryOrder[index];
+                String title = '';
+                switch (type) {
+                  case PlaylistCategoryType.favorites:
+                    title = '收藏夹';
+                    break;
+                  case PlaylistCategoryType.collections:
+                    title = '合集';
+                    break;
+                  case PlaylistCategoryType.local:
+                    title = '本地歌单';
+                    break;
+                }
+                return ListTile(
+                  key: ValueKey(type),
+                  title: Text(title),
+                  trailing: const Icon(Icons.drag_handle),
+                );
+              },
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
+        ),
+      ],
     );
   }
 }

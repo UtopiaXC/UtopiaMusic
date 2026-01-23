@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/layouts/desktop_layout.dart';
 import 'package:utopia_music/layouts/mobile_layout.dart';
-import 'package:utopia_music/pages/main/home/home_page.dart';
-import 'package:utopia_music/pages/main/library_page.dart';
+import 'package:utopia_music/pages/main/discover/discover_page.dart';
+import 'package:utopia_music/pages/main/library/library_page.dart';
 import 'package:utopia_music/pages/main/settings/settings_page.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
@@ -18,7 +18,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
-  final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
+  final GlobalKey<DiscoverPageState> _discoverPageKey = GlobalKey<DiscoverPageState>();
   bool _isInit = false;
 
   @override
@@ -26,7 +26,7 @@ class _MainLayoutState extends State<MainLayout> {
     super.initState();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     _pages = [
-      HomePage(key: _homePageKey, onSongSelected: playerProvider.playSong),
+      DiscoverPage(key: _discoverPageKey, onSongSelected: playerProvider.playSong),
       const MusicPage(),
       const SettingsPage(),
     ];
@@ -49,7 +49,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index && index == 0) {
-      _homePageKey.currentState?.handleBottomTabReselect();
+      _discoverPageKey.currentState?.handleBottomTabReselect();
     }
 
     setState(() {

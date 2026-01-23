@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/pages/main/home/fragments/feed_fragment.dart';
-import 'package:utopia_music/pages/main/home/fragments/kichiku_rank_fragment.dart';
-import 'package:utopia_music/pages/main/home/fragments/live_fragment.dart';
-import 'package:utopia_music/pages/main/home/fragments/music_rank_fragment.dart';
-import 'package:utopia_music/pages/main/home/fragments/rank_fragment.dart';
-import 'package:utopia_music/pages/main/home/fragments/recommend_fragment.dart';
+import 'package:utopia_music/pages/main/discover/fragments/feed_fragment.dart';
+import 'package:utopia_music/pages/main/discover/fragments/kichiku_rank_fragment.dart';
+import 'package:utopia_music/pages/main/discover/fragments/live_fragment.dart';
+import 'package:utopia_music/pages/main/discover/fragments/music_rank_fragment.dart';
+import 'package:utopia_music/pages/main/discover/fragments/rank_fragment.dart';
+import 'package:utopia_music/pages/main/discover/fragments/recommend_fragment.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/pages/search/search_page.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
-class HomePage extends StatefulWidget {
+class DiscoverPage extends StatefulWidget {
   final Function(Song) onSongSelected;
 
-  const HomePage({super.key, required this.onSongSelected});
+  const DiscoverPage({super.key, required this.onSongSelected});
 
   @override
-  State<HomePage> createState() => HomePageState();
+  State<DiscoverPage> createState() => DiscoverPageState();
 }
 
-class HomePageState extends State<HomePage>
+class DiscoverPageState extends State<DiscoverPage>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _currentTabIndex = 1; // Default to Recommend (index 1)
+  int _currentTabIndex = 1;
 
   final List<ScrollController> _scrollControllers = [];
   final List<GlobalKey<RefreshIndicatorState>> _refreshKeys = [];
@@ -93,7 +93,7 @@ class HomePageState extends State<HomePage>
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(S.of(context).pages_home_refresh_toast),
+            content: Text(S.of(context).pages_discover_refresh_toast),
             duration: Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
           ),
@@ -168,12 +168,12 @@ class HomePageState extends State<HomePage>
             padding: const EdgeInsets.symmetric(horizontal: 10),
             onTap: handleTabTap,
             tabs: [
-              Tab(text: S.of(context).pages_home_tag_live),
-              Tab(text: S.of(context).pages_home_tag_recommend),
-              Tab(text: S.of(context).pages_home_tag_feed),
-              Tab(text: S.of(context).pages_home_tag_ranking),
-              Tab(text: S.of(context).pages_home_tag_ranking_category_music),
-              Tab(text: S.of(context).pages_home_tag_ranking_category_kichiku),
+              Tab(text: S.of(context).pages_discover_tag_live),
+              Tab(text: S.of(context).pages_discover_tag_recommend),
+              Tab(text: S.of(context).pages_discover_tag_feed),
+              Tab(text: S.of(context).pages_discover_tag_ranking),
+              Tab(text: S.of(context).pages_discover_tag_ranking_category_music),
+              Tab(text: S.of(context).pages_discover_tag_ranking_category_kichiku),
             ],
           ),
           Expanded(

@@ -49,17 +49,17 @@ class MessageLookup extends MessageLookupByLibrary {
     "item_options_add_to_play_list": MessageLookupByLibrary.simpleMessage(
       "添加播放列表",
     ),
-    "pages_home_refresh_toast": MessageLookupByLibrary.simpleMessage(
+    "pages_discover_refresh_toast": MessageLookupByLibrary.simpleMessage(
       "再次点击刷新列表",
     ),
-    "pages_home_tag_feed": MessageLookupByLibrary.simpleMessage("动态"),
-    "pages_home_tag_live": MessageLookupByLibrary.simpleMessage("直播"),
-    "pages_home_tag_ranking": MessageLookupByLibrary.simpleMessage("全站排行"),
-    "pages_home_tag_ranking_category_kichiku":
+    "pages_discover_tag_feed": MessageLookupByLibrary.simpleMessage("动态"),
+    "pages_discover_tag_live": MessageLookupByLibrary.simpleMessage("直播"),
+    "pages_discover_tag_ranking": MessageLookupByLibrary.simpleMessage("全站排行"),
+    "pages_discover_tag_ranking_category_kichiku":
         MessageLookupByLibrary.simpleMessage("鬼畜区排行"),
-    "pages_home_tag_ranking_category_music":
+    "pages_discover_tag_ranking_category_music":
         MessageLookupByLibrary.simpleMessage("音乐区排行"),
-    "pages_home_tag_recommend": MessageLookupByLibrary.simpleMessage("推荐"),
+    "pages_discover_tag_recommend": MessageLookupByLibrary.simpleMessage("推荐"),
     "pages_search_hint_search_input": MessageLookupByLibrary.simpleMessage(
       "搜索...",
     ),
@@ -70,7 +70,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_search_tag_video_hint": MessageLookupByLibrary.simpleMessage(
       "输入关键词开始搜索",
     ),
-    "pages_tag_home": MessageLookupByLibrary.simpleMessage("主页"),
+    "pages_tag_discover": MessageLookupByLibrary.simpleMessage("发现"),
     "pages_tag_library": MessageLookupByLibrary.simpleMessage("曲库"),
     "pages_tag_settings": MessageLookupByLibrary.simpleMessage("设置"),
     "play_control_mode_loop": MessageLookupByLibrary.simpleMessage("列表循环"),

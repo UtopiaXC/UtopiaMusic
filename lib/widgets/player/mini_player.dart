@@ -92,19 +92,41 @@ class MiniPlayer extends StatelessWidget {
                 children: [
                   SizedBox(
                     height: 24,
-                    child: Marquee(
-                      text: displaySong.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      scrollAxis: Axis.horizontal,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      blankSpace: 20.0,
-                      velocity: 30.0,
-                      pauseAfterRound: const Duration(seconds: 1),
-                      startPadding: 0.0,
-                      accelerationDuration: const Duration(seconds: 1),
-                      accelerationCurve: Curves.linear,
-                      decelerationDuration: const Duration(milliseconds: 500),
-                      decelerationCurve: Curves.easeOut,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final textStyle = Theme.of(context).textTheme.titleMedium;
+                        final textSpan = TextSpan(text: displaySong.title, style: textStyle);
+                        final textPainter = TextPainter(
+                          text: textSpan,
+                          textDirection: TextDirection.ltr,
+                          maxLines: 1,
+                        );
+                        textPainter.layout();
+                        
+                        if (textPainter.width > constraints.maxWidth) {
+                          return Marquee(
+                            text: displaySong.title,
+                            style: textStyle,
+                            scrollAxis: Axis.horizontal,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            blankSpace: 20.0,
+                            velocity: 30.0,
+                            pauseAfterRound: const Duration(seconds: 1),
+                            startPadding: 0.0,
+                            accelerationDuration: const Duration(seconds: 1),
+                            accelerationCurve: Curves.linear,
+                            decelerationDuration: const Duration(milliseconds: 500),
+                            decelerationCurve: Curves.easeOut,
+                          );
+                        } else {
+                          return Text(
+                            displaySong.title,
+                            style: textStyle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        }
+                      },
                     ),
                   ),
                   Text(
