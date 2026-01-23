@@ -10,6 +10,7 @@ import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'dart:async';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -33,6 +34,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _showLyrics = false;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -54,6 +56,18 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         });
       }
     });
+    
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {}); // Refresh UI for timer countdown
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _onSeekStart(double value) {
@@ -106,11 +120,35 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   void _showTimerDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => const _TimerDialog(),
-    );
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    if (playerProvider.isTimerActive) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('关闭定时器'),
+          content: Text('当前停止时间为：${playerProvider.stopTime?.toString().split('.')[0]}\n是否关闭定时器？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                playerProvider.cancelTimer();
+                Navigator.pop(context);
+              },
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => const _TimerDialog(),
+      );
+    }
   }
 
   void _showMoreDialog() {
@@ -128,7 +166,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                 title: Text(S.of(context).play_control_mode_random_collection),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Implement collection
                 },
               ),
               ListTile(
@@ -136,7 +173,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                 title: Text(S.of(context).play_control_mode_random_continue),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Implement random continue
                 },
               ),
               ListTile(
@@ -186,7 +222,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       title: Text(title),
       onTap: () {
         Navigator.pop(context);
-        // TODO: Implement quality change
       },
     );
   }
@@ -221,8 +256,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
               onPlaylist: isCurrent ? _showPlaylist : (){},
               onLyrics: isCurrent ? _toggleLyrics : (){},
               onTimer: isCurrent ? _showTimerDialog : (){},
-              onComment: isCurrent ? () {} : (){}, // TODO
-              onInfo: isCurrent ? () {} : (){}, // TODO
+              onComment: isCurrent ? () {} : (){}, 
+              onInfo: isCurrent ? () {} : (){}, 
               onMore: isCurrent ? _showMoreDialog : (){},
             ),
           ),
@@ -361,7 +396,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                 Expanded(
                   child: Stack(
                     children: [
-                      // Main Player View
                       AnimatedSlide(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -375,7 +409,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                         ),
                       ),
                       
-                      // Lyrics View
                       AnimatedSlide(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -417,6 +450,44 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
     super.dispose();
   }
 
+  void _setTimer(int minutes) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    playerProvider.setStopTimer(Duration(minutes: minutes), stopAfterCurrent: _stopAfterCurrent);
+    Navigator.pop(context);
+  }
+
+  void _showCustomTimerDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('自定义倒计时'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: '分钟', suffixText: 'min'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final minutes = int.tryParse(controller.text);
+              if (minutes != null && minutes > 0) {
+                _setTimer(minutes);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -427,11 +498,20 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
           child: Column(
             children: [
               const SizedBox(height: 16),
+              CheckboxListTile(
+                value: _stopAfterCurrent,
+                onChanged: (value) {
+                  setState(() {
+                    _stopAfterCurrent = value ?? false;
+                  });
+                },
+                title: const Text('播放完当前曲目后停止'),
+              ),
               TabBar(
                 controller: _tabController,
                 tabs: const [
-                  Tab(text: '倒计时'),
-                  Tab(text: '指定时间'),
+                  Tab(text: '倒计时关闭'),
+                  Tab(text: '指定时间关闭'),
                 ],
               ),
               Expanded(
@@ -443,16 +523,6 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
                   ],
                 ),
               ),
-              CheckboxListTile(
-                value: _stopAfterCurrent,
-                onChanged: (value) {
-                  setState(() {
-                    _stopAfterCurrent = value ?? false;
-                  });
-                },
-                title: const Text('播放完当前曲目后停止'),
-              ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -463,16 +533,46 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
   Widget _buildCountdownTab() {
     return ListView(
       children: [
-        ListTile(title: const Text('15 分钟'), onTap: () {}),
-        ListTile(title: const Text('30 分钟'), onTap: () {}),
-        ListTile(title: const Text('60 分钟'), onTap: () {}),
-        ListTile(title: const Text('90 分钟'), onTap: () {}),
-        ListTile(title: const Text('自定义'), onTap: () {}),
+        ListTile(title: const Text('15 分钟'), onTap: () => _setTimer(15)),
+        ListTile(title: const Text('30 分钟'), onTap: () => _setTimer(30)),
+        ListTile(title: const Text('60 分钟'), onTap: () => _setTimer(60)),
+        ListTile(title: const Text('90 分钟'), onTap: () => _setTimer(90)),
+        ListTile(title: const Text('自定义'), onTap: _showCustomTimerDialog),
       ],
     );
   }
 
   Widget _buildSpecificTimeTab() {
-    return const Center(child: Text('指定时间选择器 (待实现)'));
+    return Center(
+      child: FilledButton(
+        onPressed: () async {
+          final now = TimeOfDay.now();
+          final time = await showTimePicker(
+            context: context,
+            initialTime: now,
+          );
+          if (time != null) {
+            final nowDateTime = DateTime.now();
+            var selectedDateTime = DateTime(
+              nowDateTime.year,
+              nowDateTime.month,
+              nowDateTime.day,
+              time.hour,
+              time.minute,
+            );
+            if (selectedDateTime.isBefore(nowDateTime)) {
+              selectedDateTime = selectedDateTime.add(const Duration(days: 1));
+            }
+            
+            if (mounted) {
+              final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+              playerProvider.setStopTime(selectedDateTime, stopAfterCurrent: _stopAfterCurrent);
+              Navigator.pop(context);
+            }
+          }
+        },
+        child: const Text('选择时间'),
+      ),
+    );
   }
 }

@@ -5,12 +5,13 @@ import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'dart:async';
 
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
   bool _isSwitchingMode = false;
-  bool _isSwitchingPlaylist = false; // Added flag to prevent rapid switching
+  bool _isSwitchingPlaylist = false;
 
   Song? _currentSong;
   bool _isPlaying = false;
@@ -24,11 +25,17 @@ class PlayerProvider extends ChangeNotifier {
   static const String _lastPlayedPositionKey = 'last_played_position';
   static const String _saveProgressKey = 'save_progress';
   static const String _autoPlayKey = 'auto_play';
-  static const String _decoderKey = 'decoder_type'; // 0: soft, 1: hard
+  static const String _decoderKey = 'decoder_type';
 
   bool _saveProgress = true;
   bool _autoPlay = false;
-  int _decoderType = 1; // Default to hard (1)
+  int _decoderType = 1;
+
+  // Timer related
+  Timer? _stopTimer;
+  DateTime? _stopTime;
+  bool _stopAfterCurrent = false;
+  bool _isTimerActive = false;
 
   Song? get currentSong => _currentSong;
   bool get isPlaying => _isPlaying;
@@ -40,6 +47,10 @@ class PlayerProvider extends ChangeNotifier {
   bool get saveProgress => _saveProgress;
   bool get autoPlay => _autoPlay;
   int get decoderType => _decoderType;
+  
+  bool get isTimerActive => _isTimerActive;
+  DateTime? get stopTime => _stopTime;
+  bool get stopAfterCurrent => _stopAfterCurrent;
 
   PlayerProvider() {
     _init();
@@ -51,7 +62,14 @@ class PlayerProvider extends ChangeNotifier {
 
     _audioPlayerService.player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
-        playNext(auto: true);
+        if (_stopAfterCurrent && _isTimerActive && _stopTime != null && DateTime.now().isAfter(_stopTime!)) {
+           cancelTimer();
+           _audioPlayerService.stop();
+           _isPlaying = false;
+           notifyListeners();
+        } else {
+           playNext(auto: true);
+        }
       }
     });
 
@@ -68,9 +86,8 @@ class PlayerProvider extends ChangeNotifier {
       }
     });
 
-    // Save position periodically
     _audioPlayerService.player.positionStream.listen((position) {
-      if (_isPlaying && position.inSeconds % 1 == 0) { // Save every second
+      if (_isPlaying && position.inSeconds % 1 == 0) {
         _saveLastPlayedPosition(position.inMilliseconds);
       }
     });
@@ -119,18 +136,13 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Play Mode
     final modeIndex = prefs.getInt(_playModeKey) ?? 0;
     if (modeIndex >= 0 && modeIndex < PlayMode.values.length) {
       _playMode = PlayMode.values[modeIndex];
     }
-
-    // Other settings
     _saveProgress = prefs.getBool(_saveProgressKey) ?? true;
     _autoPlay = prefs.getBool(_autoPlayKey) ?? false;
-    _decoderType = prefs.getInt(_decoderKey) ?? 1; // Default to hard
-
+    _decoderType = prefs.getInt(_decoderKey) ?? 1;
     notifyListeners();
   }
 
@@ -239,11 +251,10 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setPlaylistAndPlay(List<Song> songs, Song initialSong) async {
-    if (_isSwitchingPlaylist) return; // Prevent rapid switching
+    if (_isSwitchingPlaylist) return;
     _isSwitchingPlaylist = true;
 
     try {
-      // Stop current playback first to release resources
       await _audioPlayerService.stop();
       
       List<Song> newPlaylist = [];
@@ -454,8 +465,89 @@ class PlayerProvider extends ChangeNotifier {
     return true;
   }
 
+  void setStopTimer(Duration duration, {bool stopAfterCurrent = false}) {
+    _stopTimer?.cancel();
+    _stopTime = DateTime.now().add(duration);
+    _stopAfterCurrent = stopAfterCurrent;
+    _isTimerActive = true;
+    
+    _stopTimer = Timer(duration, () {
+      if (!_stopAfterCurrent) {
+        _audioPlayerService.stop();
+        _isPlaying = false;
+        cancelTimer();
+      }
+    });
+    
+    notifyListeners();
+  }
+
+  void setStopTime(DateTime time, {bool stopAfterCurrent = false}) {
+    final now = DateTime.now();
+    if (time.isBefore(now)) return;
+    final duration = time.difference(now);
+    setStopTimer(duration, stopAfterCurrent: stopAfterCurrent);
+  }
+
+  void cancelTimer() {
+    _stopTimer?.cancel();
+    _stopTimer = null;
+    _stopTime = null;
+    _isTimerActive = false;
+    _stopAfterCurrent = false;
+    notifyListeners();
+  }
+  
+  Future<void> reorderPlaylist(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final song = _playlist.removeAt(oldIndex);
+    _playlist.insert(newIndex, song);
+
+    await _databaseService.savePlaylist(_playlist);
+    
+    if (_currentSong != null) {
+      final currentIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+      if (currentIndex != -1) {
+         await _saveLastPlayedIndex(currentIndex);
+         await _audioPlayerService.updateQueueKeepPlaying(_playlist, currentIndex);
+      }
+    }
+    
+    notifyListeners();
+  }
+  
+  Future<void> removeSong(int index) async {
+    if (index >= 0 && index < _playlist.length) {
+      final songToRemove = _playlist[index];
+      _playlist.removeAt(index);
+      await _databaseService.savePlaylist(_playlist);
+      
+      if (_currentSong?.bvid == songToRemove.bvid && _currentSong?.cid == songToRemove.cid) {
+        if (_playlist.isNotEmpty) {
+           int nextIndex = index;
+           if (nextIndex >= _playlist.length) nextIndex = 0;
+           await _play(_playlist[nextIndex]);
+        } else {
+           await closePlayer();
+        }
+      } else {
+        if (_currentSong != null) {
+           final currentIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+           if (currentIndex != -1) {
+              await _audioPlayerService.updateQueueKeepPlaying(_playlist, currentIndex);
+              await _saveLastPlayedIndex(currentIndex);
+           }
+        }
+      }
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
+    _stopTimer?.cancel();
     _audioPlayerService.dispose();
     super.dispose();
   }

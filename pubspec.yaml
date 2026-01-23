@@ -56,7 +56,6 @@ dependencies:
   url_launcher: ^6.3.2
   flutter_markdown: ^0.7.7+1
   flutter_colorpicker: ^1.1.0
-  flutter_secure_storage: ^10.0.0
   local_auth: ^3.0.0
   privacy_screen: ^0.0.8
   flutter_phoenix: ^1.1.1

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/models/play_mode.dart';
+import 'package:utopia_music/providers/player_provider.dart';
 
 class PlayerControls extends StatelessWidget {
   final VoidCallback onPlayPause;
@@ -87,6 +89,9 @@ class PlayerControls extends StatelessWidget {
     
     final isCompleted = !isPlaying && duration > Duration.zero && position >= duration;
     final showPlayIcon = !isPlaying || isCompleted;
+    
+    final playerProvider = Provider.of<PlayerProvider>(context);
+    final isTimerActive = playerProvider.isTimerActive;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -103,7 +108,10 @@ class PlayerControls extends StatelessWidget {
               if (!showLyricsButtonOnly) ...[
                 IconButton(
                   onPressed: onTimer,
-                  icon: const Icon(Icons.timer_outlined),
+                  icon: Icon(
+                    Icons.timer_outlined,
+                    color: isTimerActive ? Theme.of(context).colorScheme.primary : null,
+                  ),
                   tooltip: S.of(context).play_control_mode_timer_stop,
                 ),
                 IconButton(
@@ -144,6 +152,33 @@ class PlayerControls extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(_formatDuration(position), style: Theme.of(context).textTheme.bodySmall),
+              if (isTimerActive && playerProvider.stopTime != null)
+                Consumer<PlayerProvider>(
+                  builder: (context, provider, child) {
+                    final remaining = provider.stopTime!.difference(DateTime.now());
+                    if (remaining.isNegative) return const SizedBox.shrink();
+                    
+                    String text;
+                    if (provider.stopAfterCurrent && remaining.inSeconds <= 0) {
+                       text = '本曲完播后停止';
+                    } else {
+                       final hours = remaining.inHours;
+                       final minutes = remaining.inMinutes % 60;
+                       final seconds = remaining.inSeconds % 60;
+                       text = '距离定时关闭还有${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+                       if (provider.stopAfterCurrent) {
+                         text += ' (完播后)';
+                       }
+                    }
+                    return Text(
+                      text,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                ),
               Text(_formatDuration(duration), style: Theme.of(context).textTheme.bodySmall),
             ],
           ),

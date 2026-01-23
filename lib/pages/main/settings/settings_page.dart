@@ -15,16 +15,26 @@ import 'package:utopia_music/widgets/login/login_dialog.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
+  Future<void> _handleRefresh(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isLoggedIn) {
+      await authProvider.login();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView(
-        children: [
-          const SizedBox(height: 16),
-          _buildUserSection(context),
-          const SizedBox(height: 16),
-          _buildSettingsList(context),
-        ],
+      body: RefreshIndicator(
+        onRefresh: () => _handleRefresh(context),
+        child: ListView(
+          children: [
+            const SizedBox(height: 16),
+            _buildUserSection(context),
+            const SizedBox(height: 16),
+            _buildSettingsList(context),
+          ],
+        ),
       ),
     );
   }
@@ -43,7 +53,6 @@ class SettingsPage extends StatelessWidget {
             builder: (context) => const LoginDialog(),
           );
         } else {
-          // Navigate to user profile or show logout option
           showDialog(
             context: context,
             builder: (context) => AlertDialog(

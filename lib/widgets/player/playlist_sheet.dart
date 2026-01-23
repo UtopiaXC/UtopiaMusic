@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
+import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/providers/library_provider.dart';
 
 class PlaylistSheet extends StatefulWidget {
   final List<Song> playlist;
@@ -80,6 +83,28 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
     );
   }
 
+  void _handleSavePlaylist() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => PlaylistFormSheet(
+        onSubmit: (title, description) async {
+          final id = await DatabaseService().createLocalPlaylist(title, description);
+          final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+          for (var song in playerProvider.playlist) {
+            await DatabaseService().addSongToLocalPlaylist(id, song);
+          }
+          if (mounted) {
+            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('已保存为本地歌单')),
+            );
+          }
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -96,79 +121,112 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Text(
-                  '${S.of(context).weight_play_list_label_name} (${widget.playlist.length})',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: _showClearConfirmation,
-                  tooltip: S
-                      .of(context)
-                      .weight_search_label_confirm_clean_history_title,
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: widget.playlist.length,
-              itemBuilder: (context, index) {
-                final song = widget.playlist[index];
-                final isPlaying =
-                    song.bvid == widget.currentSong.bvid &&
-                    song.cid == widget.currentSong.cid;
-
-                return ListTile(
-                  leading: isPlaying
-                      ? Icon(
-                          Icons.equalizer,
-                          color: Theme.of(context).colorScheme.primary,
-                        )
-                      : Text(
-                          '${index + 1}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                  title: Text(
-                    song.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isPlaying
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                      fontWeight: isPlaying ? FontWeight.bold : null,
+      child: Consumer<PlayerProvider>(
+        builder: (context, playerProvider, child) {
+          final playlist = playerProvider.playlist;
+          final currentSong = playerProvider.currentSong ?? widget.currentSong;
+          
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Text(
+                      '${S.of(context).weight_play_list_label_name} (${playlist.length})',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  ),
-                  subtitle: Text(
-                    song.artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isPlaying
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.save_alt),
+                      onPressed: _handleSavePlaylist,
+                      tooltip: '保存为歌单',
                     ),
-                  ),
-                  onTap: () {
-                    widget.onSongSelected(song);
-                    Navigator.pop(context);
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: _showClearConfirmation,
+                      tooltip: S
+                          .of(context)
+                          .weight_search_label_confirm_clean_history_title,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ReorderableListView.builder(
+                  scrollController: _scrollController,
+                  buildDefaultDragHandles: false,
+                  itemCount: playlist.length,
+                  onReorder: (oldIndex, newIndex) {
+                    playerProvider.reorderPlaylist(oldIndex, newIndex);
                   },
-                );
-              },
-            ),
-          ),
-        ],
+                  itemBuilder: (context, index) {
+                    final song = playlist[index];
+                    final isPlaying =
+                        song.bvid == currentSong.bvid &&
+                        song.cid == currentSong.cid;
+
+                    return ListTile(
+                      key: ValueKey('${song.bvid}_${song.cid}'),
+                      leading: isPlaying
+                          ? Icon(
+                              Icons.equalizer,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : Text(
+                              '${index + 1}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                      title: Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isPlaying
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                          fontWeight: isPlaying ? FontWeight.bold : null,
+                        ),
+                      ),
+                      subtitle: Text(
+                        song.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isPlaying
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Icon(Icons.drag_handle),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () {
+                              playerProvider.removeSong(index);
+                            },
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        widget.onSongSelected(song);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

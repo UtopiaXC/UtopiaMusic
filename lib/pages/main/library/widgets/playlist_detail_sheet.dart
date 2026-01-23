@@ -9,7 +9,7 @@ import 'package:utopia_music/generated/l10n.dart';
 
 class PlaylistDetailSheet extends StatefulWidget {
   final LocalPlaylist playlist;
-  final Function() onUpdate; // Callback to refresh parent list
+  final Function() onUpdate;
 
   const PlaylistDetailSheet({
     super.key,
@@ -36,7 +36,6 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
   Future<void> _loadSongs() async {
     setState(() => _isLoading = true);
     final songs = await DatabaseService().getLocalPlaylistSongs(_playlist.id);
-    // Refresh playlist info (e.g. song count, cover)
     final playlists = await DatabaseService().getLocalPlaylists();
     final updatedPlaylist = playlists.firstWhere((p) => p.id == _playlist.id, orElse: () => _playlist);
     
@@ -59,7 +58,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
         onSubmit: (title, description) async {
           await DatabaseService().updateLocalPlaylist(_playlist.id, title, description);
           widget.onUpdate();
-          _loadSongs(); // Reload to update UI
+          _loadSongs();
         },
       ),
     );
@@ -81,8 +80,8 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
               await DatabaseService().deleteLocalPlaylist(_playlist.id);
               widget.onUpdate();
               if (mounted) {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close sheet
+                Navigator.pop(context);
+                Navigator.pop(context);
               }
             },
             child: const Text('删除'),
@@ -120,7 +119,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
 
     await playerProvider.setPlaylistAndPlay(_songs, _songs.first);
     if (mounted) {
-      Navigator.pop(context); // Close sheet
+      Navigator.pop(context);
     }
   }
 
@@ -130,7 +129,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     }
     final song = _songs.removeAt(oldIndex);
     _songs.insert(newIndex, song);
-    setState(() {}); // Optimistic update
+    setState(() {});
 
     await DatabaseService().updateLocalPlaylistSongOrder(_playlist.id, oldIndex, newIndex);
   }
@@ -187,7 +186,6 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
           ),
           child: Column(
             children: [
-              // Header
               Stack(
                 children: [
                   Padding(
@@ -195,7 +193,6 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Cover
                         Container(
                           width: 100,
                           height: 100,
@@ -214,7 +211,6 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                               : null,
                         ),
                         const SizedBox(width: 16),
-                        // Info
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +233,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 40), // Space for close button
+                        const SizedBox(width: 40),
                       ],
                     ),
                   ),
@@ -283,66 +279,85 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _songs.isEmpty
-                        ? const Center(child: Text('暂无歌曲'))
-                        : ReorderableListView.builder(
-                            itemCount: _songs.length,
-                            onReorder: _handleReorder,
-                            itemBuilder: (context, index) {
-                              final song = _songs[index];
-                              return SongListItem(
-                                key: ValueKey('${song.bvid}_${song.cid}'),
-                                song: song,
-                                contextList: _songs,
-                                onPlayAction: () {
-                                  // Close the sheet when a play action occurs
-                                  Navigator.pop(context);
-                                },
-                                menuItems: [
-                                  const PopupMenuItem(
-                                    value: 'rename',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.edit, size: 20),
-                                        SizedBox(width: 12),
-                                        Text('重命名'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'reset_title',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.restore, size: 20),
-                                        SizedBox(width: 12),
-                                        Text('重置为原标题'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'remove_from_playlist',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete, size: 20),
-                                        SizedBox(width: 12),
-                                        Text('从歌单中删除'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                onMenuSelected: (value) async {
-                                  if (value == 'rename') {
-                                    _showRenameDialog(song);
-                                  } else if (value == 'reset_title') {
-                                    await DatabaseService().resetLocalPlaylistSongTitle(_playlist.id, song.bvid, song.cid);
-                                    _loadSongs();
-                                  } else if (value == 'remove_from_playlist') {
-                                    await DatabaseService().removeSongFromLocalPlaylist(_playlist.id, song.bvid, song.cid);
-                                    _loadSongs();
-                                    widget.onUpdate();
-                                  }
-                                },
-                              );
+                        ? GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onVerticalDragUpdate: (details) {
+                              if (details.primaryDelta! > 10) {
+                                Navigator.pop(context);
+                              }
                             },
+                            child: const Center(child: Text('暂无歌曲')),
+                          )
+                        : NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              if (notification is ScrollUpdateNotification) {
+                                if (notification.metrics.pixels <= 0 && notification.scrollDelta! < 0) {
+
+                                }
+                              }
+                              return false;
+                            },
+                            child: ReorderableListView.builder(
+                              scrollController: scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: _songs.length,
+                              onReorder: _handleReorder,
+                              itemBuilder: (context, index) {
+                                final song = _songs[index];
+                                return SongListItem(
+                                  key: ValueKey('${song.bvid}_${song.cid}'),
+                                  song: song,
+                                  contextList: _songs,
+                                  onPlayAction: () {
+                                    Navigator.pop(context);
+                                  },
+                                  menuItems: [
+                                    const PopupMenuItem(
+                                      value: 'rename',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit, size: 20),
+                                          SizedBox(width: 12),
+                                          Text('重命名'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'reset_title',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.restore, size: 20),
+                                          SizedBox(width: 12),
+                                          Text('重置为原标题'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'remove_from_playlist',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete, size: 20),
+                                          SizedBox(width: 12),
+                                          Text('从歌单中删除'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  onMenuSelected: (value) async {
+                                    if (value == 'rename') {
+                                      _showRenameDialog(song);
+                                    } else if (value == 'reset_title') {
+                                      await DatabaseService().resetLocalPlaylistSongTitle(_playlist.id, song.bvid, song.cid);
+                                      _loadSongs();
+                                    } else if (value == 'remove_from_playlist') {
+                                      await DatabaseService().removeSongFromLocalPlaylist(_playlist.id, song.bvid, song.cid);
+                                      _loadSongs();
+                                      widget.onUpdate();
+                                    }
+                                  },
+                                );
+                              },
+                            ),
                           ),
               ),
             ],

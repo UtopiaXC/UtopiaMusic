@@ -4,8 +4,7 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget
 
 class LibraryProvider extends ChangeNotifier {
   static const String _categoryOrderKey = 'library_category_order';
-  
-  // Default order: Favorites, Collections, Local
+
   List<PlaylistCategoryType> _categoryOrder = [
     PlaylistCategoryType.favorites,
     PlaylistCategoryType.collections,
@@ -14,9 +13,11 @@ class LibraryProvider extends ChangeNotifier {
 
   List<PlaylistCategoryType> get categoryOrder => _categoryOrder;
 
-  // A simple counter or timestamp to trigger refresh
   int _refreshSignal = 0;
   int get refreshSignal => _refreshSignal;
+
+  bool _isLocalRefreshOnly = false;
+  bool get isLocalRefreshOnly => _isLocalRefreshOnly;
 
   LibraryProvider() {
     _loadOrder();
@@ -29,19 +30,14 @@ class LibraryProvider extends ChangeNotifier {
     if (savedOrder != null) {
       final List<PlaylistCategoryType> newOrder = [];
       for (var str in savedOrder) {
-        // Find the enum value that matches the string index or name
-        // Assuming we saved indices or names. Let's save indices for simplicity.
         try {
           final index = int.parse(str);
           if (index >= 0 && index < PlaylistCategoryType.values.length) {
             newOrder.add(PlaylistCategoryType.values[index]);
           }
-        } catch (e) {
-          // Ignore invalid data
-        }
+        } catch (e) {}
       }
-      
-      // Ensure all types are present and no duplicates
+
       final Set<PlaylistCategoryType> present = newOrder.toSet();
       for (var type in PlaylistCategoryType.values) {
         if (!present.contains(type)) {
@@ -67,7 +63,8 @@ class LibraryProvider extends ChangeNotifier {
     await prefs.setStringList(_categoryOrderKey, orderToSave);
   }
 
-  void refreshLibrary() {
+  void refreshLibrary({bool localOnly = false}) {
+    _isLocalRefreshOnly = localOnly;
     _refreshSignal++;
     notifyListeners();
   }

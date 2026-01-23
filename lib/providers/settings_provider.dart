@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:utopia_music/services/database_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -55,15 +54,13 @@ class SettingsProvider extends ChangeNotifier {
     _maxRetries = prefs.getInt(maxRetriesKey) ?? 2;
     _requestDelay = prefs.getInt(requestDelayKey) ?? 50;
 
-    // Load Locale
     final localeCode = prefs.getString(_localeKey);
     if (localeCode != null) {
       _locale = Locale(localeCode);
     } else {
-      _locale = null; // Follow system
+      _locale = null;
     }
 
-    // Load Cache Settings
     _cacheLimit = prefs.getInt(_cacheLimitKey) ?? 200;
 
     notifyListeners();
@@ -137,7 +134,6 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> resetToDefaults() async {
-    // Update in-memory state first
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
     _startPageIndex = 0;
@@ -147,10 +143,7 @@ class SettingsProvider extends ChangeNotifier {
     _requestDelay = 50;
     _locale = null;
     _cacheLimit = 200;
-
     notifyListeners();
-
-    // Then persist
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_themeModeKey);
     await prefs.remove(_seedColorKey);
@@ -164,7 +157,6 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> resetApp() async {
-    // Update in-memory state first
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
     _startPageIndex = 0;
@@ -174,13 +166,9 @@ class SettingsProvider extends ChangeNotifier {
     _requestDelay = 50;
     _locale = null;
     _cacheLimit = 200;
-    
     notifyListeners();
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    const storage = FlutterSecureStorage();
-    await storage.deleteAll();
     final dbService = DatabaseService();
     await dbService.clearPlaylist();
   }

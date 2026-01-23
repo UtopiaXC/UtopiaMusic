@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/video/discover.dart';
+import 'package:utopia_music/pages/main/library/widgets/online_playlist_detail_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_detail_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:utopia_music/connection/video/library.dart';
 
 enum PlaylistCategoryType {
   favorites,
@@ -56,6 +58,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
   String? _errorMessage;
   List<PlaylistInfo> _playlists = [];
   final VideoApi _videoApi = VideoApi();
+  final LibraryApi _libraryApi = LibraryApi();
 
   @override
   void initState() {
@@ -72,9 +75,15 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
   }
 
   Future<void> _loadData() async {
+    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    bool isLocalRefreshOnly = libraryProvider.isLocalRefreshOnly;
+
     if (widget.type == PlaylistCategoryType.local) {
       await _loadLocalPlaylists();
     } else {
+      if (isLocalRefreshOnly && _playlists.isNotEmpty) {
+        return;
+      }
       await _loadOnlinePlaylists();
     }
   }
@@ -133,10 +142,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
       
       List<dynamic> rawList = [];
       if (widget.type == PlaylistCategoryType.favorites) {
-        rawList = await _videoApi.getFavoriteFolders(mid);
+        rawList = await _libraryApi.getFavoriteFolders(mid);
       } else {
-        // Collections logic (placeholder)
-        // rawList = await _videoApi.getCollections(mid);
+        rawList = await _libraryApi.getCollections(mid);
       }
 
       if (mounted) {
@@ -146,15 +154,37 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
              _isLoading = false;
            });
         } else {
+          List<PlaylistInfo> processedList = [];
+          
+          for (var item in rawList) {
+             String id = item['id']?.toString() ?? '';
+             String title = item['title'] ?? '';
+             String cover = item['cover'] ?? '';
+             int count = item['media_count'] ?? 0;
+             
+             if (widget.type == PlaylistCategoryType.favorites && (cover.isEmpty || cover.contains('bfs/archive/'))) {
+               try {
+                 final info = await _libraryApi.getFavoriteFolderInfo(id);
+                 if (info != null) {
+                   cover = info['cover'] ?? cover;
+                 }
+               } catch (e) {
+                 print('Failed to fetch info for folder $id: $e');
+               }
+             }
+
+             processedList.add(PlaylistInfo(
+                id: id,
+                title: title,
+                coverUrl: cover,
+                count: count,
+                isLocal: false,
+                originalData: item,
+              ));
+          }
+
           setState(() {
-            _playlists = rawList.map((item) => PlaylistInfo(
-              id: item['id'].toString(),
-              title: item['title'],
-              coverUrl: item['cover'] ?? '',
-              count: item['media_count'] ?? 0,
-              isLocal: false,
-              originalData: item,
-            )).toList();
+            _playlists = processedList;
             _isLoading = false;
           });
         }
@@ -177,7 +207,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
         onSubmit: (title, description) async {
           await DatabaseService().createLocalPlaylist(title, description);
           if (mounted) {
-             Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+             Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
           }
         },
       ),
@@ -193,13 +223,18 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
         builder: (context) => PlaylistDetailSheet(
           playlist: playlist.originalData as LocalPlaylist,
           onUpdate: () {
-            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
           },
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('在线歌单详情暂未实现')),
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => OnlinePlaylistDetailSheet(
+          playlistInfo: playlist,
+        ),
       );
     }
   }
@@ -247,6 +282,11 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
               ),
             ),
             const Spacer(),
+            ReorderableDragStartListener(
+              index: 0, 
+              child: const Icon(Icons.drag_handle),
+            ),
+            const SizedBox(width: 8),
             Icon(
               _isExpanded ? Icons.expand_less : Icons.expand_more,
               color: colorScheme.onSurfaceVariant,
@@ -263,7 +303,6 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
         if (widget.onLoginTap != null) {
           widget.onLoginTap!();
         } else {
-          // Fallback if no callback provided, though it should be provided
           Provider.of<AuthProvider>(context, listen: false).login();
         }
       });
@@ -326,9 +365,31 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
                         ),
                       ],
                     ),
-                    child: playlist.coverUrl.isEmpty
-                        ? const Icon(Icons.music_note, size: 48)
-                        : null,
+                    child: Stack(
+                      children: [
+                        if (playlist.coverUrl.isEmpty)
+                          Center(child: Icon(Icons.music_note, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${playlist.count}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -415,6 +476,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _playlists.length,
+            buildDefaultDragHandles: false,
             onReorder: (oldIndex, newIndex) {
                setState(() {
                  if (oldIndex < newIndex) {
@@ -441,13 +503,38 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
                           )
                         : null,
                   ),
-                  child: playlist.coverUrl.isEmpty
-                      ? const Icon(Icons.music_note, size: 24)
-                      : null,
+                  child: Stack(
+                    children: [
+                      if (playlist.coverUrl.isEmpty)
+                        Center(child: Icon(Icons.music_note, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: Text(
+                            '${playlist.count}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 title: Text(playlist.title),
                 subtitle: Text('${playlist.count}首'),
-                trailing: const Icon(Icons.drag_handle),
+                trailing: ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_handle),
+                ),
                 onTap: () => _handlePlaylistTap(playlist),
               );
             },
@@ -479,9 +566,31 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
                           )
                         : null,
                   ),
-                  child: playlist.coverUrl.isEmpty
-                      ? const Icon(Icons.music_note, size: 24)
-                      : null,
+                  child: Stack(
+                    children: [
+                      if (playlist.coverUrl.isEmpty)
+                        Center(child: Icon(Icons.music_note, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: Text(
+                            '${playlist.count}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 title: Text(playlist.title),
                 subtitle: Text('${playlist.count}首'),

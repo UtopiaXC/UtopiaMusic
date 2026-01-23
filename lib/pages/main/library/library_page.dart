@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
+import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
-import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
 
 class MusicPage extends StatefulWidget {
@@ -15,6 +15,29 @@ class MusicPage extends StatefulWidget {
 }
 
 class _MusicPageState extends State<MusicPage> {
+  late VoidCallback _authListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _authListener = () {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isLoggedIn) {
+        Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+      }
+    };
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.addListener(_authListener);
+  }
+
+  @override
+  void dispose() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.removeListener(_authListener);
+    super.dispose();
+  }
+
   void _handleCreateLocalPlaylist() {
     showModalBottomSheet(
       context: context,
@@ -23,7 +46,7 @@ class _MusicPageState extends State<MusicPage> {
         onSubmit: (title, description) async {
           await DatabaseService().createLocalPlaylist(title, description);
           if (mounted) {
-            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
           }
         },
       ),
@@ -32,9 +55,6 @@ class _MusicPageState extends State<MusicPage> {
 
   Future<void> _handleRefresh() async {
     Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
-    // Simulate a delay or wait for actual refresh if possible
-    // Since refreshLibrary just notifies listeners, it's instant.
-    // But the widgets will reload data asynchronously.
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
@@ -85,6 +105,7 @@ class _MusicPageState extends State<MusicPage> {
             return ReorderableListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 120),
               itemCount: libraryProvider.categoryOrder.length,
+              buildDefaultDragHandles: false, // Disable default drag handles
               onReorder: libraryProvider.updateOrder,
               itemBuilder: (context, index) {
                 final type = libraryProvider.categoryOrder[index];
@@ -107,7 +128,6 @@ class _MusicPageState extends State<MusicPage> {
                   child: PlaylistCategoryWidget(
                     type: type,
                     title: title,
-                    // Pass refresh signal to force update when needed
                     refreshSignal: libraryProvider.refreshSignal,
                     onLoginTap: _showLoginDialog,
                   ),

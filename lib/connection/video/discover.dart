@@ -70,7 +70,6 @@ class VideoApi {
 
   Future<List<Song>> getRankingVideos(BuildContext context, {int rid = 0}) async {
     try {
-      // Add delay based on settings
       final prefs = await SharedPreferences.getInstance();
       final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
       if (delay > 0) {
@@ -100,7 +99,6 @@ class VideoApi {
 
   Future<List<Song>> getRegionRankingVideos(BuildContext context, {required int rid}) async {
     try {
-      // Add delay based on settings
       final prefs = await SharedPreferences.getInstance();
       final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
       if (delay > 0) {
@@ -129,7 +127,6 @@ class VideoApi {
 
   Future<Map<String, dynamic>> getFeed(BuildContext context, String offset) async {
     try {
-      // Add delay based on settings
       final prefs = await SharedPreferences.getInstance();
       final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
       if (delay > 0) {
@@ -186,64 +183,17 @@ class VideoApi {
     return {'code': -1, 'message': 'Unknown error'};
   }
 
-  Future<List<dynamic>> getFavoriteFolders(int mid) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
-      final data = await Request().get(
-        Api.urlFavoriteFolderList,
-        baseUrl: Api.urlBase,
-        params: {'up_mid': mid},
-      );
-      if (data != null && data['code'] == 0) {
-        return data['data']['list'] ?? [];
-      }
-    } catch (e) {
-      print('Error fetching favorite folders: $e');
-    }
-    return [];
-  }
-
-  Future<List<dynamic>> getCollections(int mid) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
-      // Using same API as favorites for now as placeholder or if they are similar
-      // Actually collections might be different, but user asked to implement API call.
-      // Assuming collections are also favorite resources or similar structure.
-      // If "Collections" means "Series/Seasons", it's a different API.
-      // But based on "fav/resource/list" in Api.dart for urlCollectionResourceList,
-      // it seems we might be treating them similarly or I should use that.
-      
-      // However, to get the LIST of collections, we usually use a different API.
-      // Since I don't have the exact API for "List of Collections" handy and user said "Collections and Favorites are obtained via interface",
-      // I will use a placeholder implementation that returns empty or tries a likely API.
-      // For now, let's just return empty list to avoid crash, or try to fetch favorites again if they are mixed.
-      
-      return []; 
-    } catch (e) {
-      print('Error fetching collections: $e');
-    }
-    return [];
-  }
-
   Song _mapToSong(BuildContext context, dynamic item) {
     String artist = S.of(context).common_unknown;
     if (item['owner'] != null) {
       artist = item['owner']['name'];
     } else if (item['author'] != null) {
       artist = item['author'];
+    } else if (item['upper'] != null) {
+      artist = item['upper']['name'];
     }
 
-    String cover = item['pic'] ?? '';
+    String cover = item['pic'] ?? item['cover'] ?? '';
     if (cover.startsWith('http://')) {
       cover = cover.replaceFirst('http://', 'https://');
     }
