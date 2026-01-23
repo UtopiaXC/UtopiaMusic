@@ -2,6 +2,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/connection/utils/wbi.dart';
@@ -11,6 +12,10 @@ class Request {
   late final Dio _dio;
   late final DefaultCookieJar _cookieJar;
   late final Future<void> _initWait;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  static const String _cookieKey = 'bili_cookies';
+  static const int _maxRetries = 3;
+
   factory Request() => _instance;
 
   Request._internal() {
@@ -33,20 +38,67 @@ class Request {
     if (!kIsWeb) {
       _cookieJar = DefaultCookieJar();
       _dio.interceptors.add(CookieManager(_cookieJar));
-      _initWait = _generateInitialCookie();
+      _initWait = _initializeCookie();
     } else {
       _initWait = Future.value();
+    }
+  }
+
+  Future<void> _initializeCookie() async {
+    try {
+      final storedCookies = await _storage.read(key: _cookieKey);
+      if (storedCookies != null && storedCookies.isNotEmpty) {
+        List<Cookie> cookies = storedCookies.split(';').map((c) {
+          final parts = c.trim().split('=');
+          if (parts.length == 2) {
+            return Cookie(parts[0], parts[1]);
+          }
+          return null;
+        }).whereType<Cookie>().toList();
+
+        if (cookies.isNotEmpty) {
+          await _cookieJar.saveFromResponse(Uri.parse(HttpConstants.biliUrl), cookies);
+          if (kDebugMode) {
+            print("Cookie initialized from storage");
+          }
+          return;
+        }
+      }
+
+      await _generateInitialCookie();
+    } catch (e) {
+      print("Cookie initialization error: $e");
+      await _generateInitialCookie();
     }
   }
 
   Future<void> _generateInitialCookie() async {
     try {
       await _dio.get(HttpConstants.biliUrl);
+
+      final cookies = await _cookieJar.loadForRequest(Uri.parse(HttpConstants.biliUrl));
+      if (cookies.isNotEmpty) {
+        final cookieString = cookies.map((c) => "${c.name}=${c.value}").join(';');
+        await _storage.write(key: _cookieKey, value: cookieString);
+      }
+
       if (kDebugMode) {
-        print("Cookie initialized via Homepage");
+        print("Cookie initialized via Homepage and saved");
       }
     } catch (e) {
-      print("Cookie initialization warning: $e");
+      print("Cookie generation warning: $e");
+    }
+  }
+
+  Future<void> _cleanExpiredCookie() async {
+    try {
+      await _storage.delete(key: _cookieKey);
+      await _cookieJar.deleteAll();
+      if (kDebugMode) {
+        print("Expired cookies cleaned");
+      }
+    } catch (e) {
+      print("Error cleaning cookies: $e");
     }
   }
 
@@ -57,27 +109,17 @@ class Request {
         bool useWbi = false,
       }) async {
     await _initWait;
-    Map<String, dynamic>? finalParams = params;
-    if (useWbi) {
-      finalParams = await WbiUtil.signParams(params ?? {});
-    }
-
-    try {
-      Response response = await _dio.get(
+    return _requestWithRetry(() async {
+      Map<String, dynamic>? finalParams = params;
+      if (useWbi) {
+        finalParams = await WbiUtil.signParams(params ?? {});
+      }
+      return await _dio.get(
         path,
         queryParameters: finalParams,
         options: options,
       );
-
-      if (response.data is Map && response.data['code'] != 0) {
-        print("Request Business Error: ${response.data['code']} - ${response.data['message']}");
-      }
-
-      return response.data;
-    } on DioException catch (e) {
-      _printErrorLog(e);
-      throw _handleError(e);
-    }
+    });
   }
 
   Future<dynamic> post(
@@ -87,14 +129,47 @@ class Request {
         Options? options,
       }) async {
     await _initWait;
-
-    try {
-      Response response = await _dio.post(
+    return _requestWithRetry(() async {
+      return await _dio.post(
         path,
         data: data,
         queryParameters: params,
         options: options,
       );
+    });
+  }
+
+  Future<dynamic> _requestWithRetry(Future<Response> Function() requestFunc, {int retryCount = 0}) async {
+    try {
+      Response response = await requestFunc();
+      
+      // Check for risk control error
+      // Only retry if code is not 0 (success) AND message contains "风控" (Risk Control)
+      if (response.data is Map) {
+        final int code = response.data['code'] ?? 0;
+        final String message = response.data['message']?.toString() ?? '';
+        
+        if (code != 0 && message.contains('风控')) {
+          if (retryCount < _maxRetries) {
+            if (kDebugMode) {
+              print("Risk control detected (code $code, msg: $message), refreshing cookie... Retry: ${retryCount + 1}");
+            }
+            await _cleanExpiredCookie();
+            await _generateInitialCookie();
+            // Retry request recursively
+            return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+          } else {
+             if (kDebugMode) {
+               print("Max retries reached for risk control error.");
+             }
+          }
+        }
+        
+        if (code != 0) {
+           print("Request Business Error: $code - $message");
+        }
+      }
+
       return response.data;
     } on DioException catch (e) {
       _printErrorLog(e);
