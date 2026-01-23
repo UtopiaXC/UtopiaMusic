@@ -10,6 +10,7 @@ import 'package:utopia_music/pages/main/settings/fragments/network_settings_page
 import 'package:utopia_music/pages/main/settings/fragments/security_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/general_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/about_settings_page.dart';
+import 'package:utopia_music/widgets/login/login_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -36,7 +37,11 @@ class SettingsPage extends StatelessWidget {
     return InkWell(
       onTap: () {
         if (!isLoggedIn) {
-          authProvider.login();
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const LoginDialog(),
+          );
         } else {
           // Navigate to user profile or show logout option
           showDialog(

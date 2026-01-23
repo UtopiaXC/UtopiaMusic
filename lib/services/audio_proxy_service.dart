@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
-import 'package:utopia_music/connection/video/search_api.dart';
+import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 
 class AudioProxyService {

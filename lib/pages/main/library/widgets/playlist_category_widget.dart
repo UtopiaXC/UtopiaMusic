@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:utopia_music/connection/video/video_list.dart';
+import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_detail_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
@@ -36,12 +36,14 @@ class PlaylistCategoryWidget extends StatefulWidget {
   final PlaylistCategoryType type;
   final String title;
   final int refreshSignal;
+  final VoidCallback? onLoginTap;
 
   const PlaylistCategoryWidget({
     super.key,
     required this.type,
     required this.title,
     this.refreshSignal = 0,
+    this.onLoginTap,
   });
 
   @override
@@ -127,7 +129,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
     }
 
     try {
-      int mid = 0; // Placeholder
+      int mid = authProvider.userInfo?.mid ?? 0;
       
       List<dynamic> rawList = [];
       if (widget.type == PlaylistCategoryType.favorites) {
@@ -258,7 +260,12 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
   Widget _buildCoverFlow() {
     if (_errorMessage == 'not_logged_in') {
       return _buildErrorState('未登录，请登录后查看', '登录', () {
-        Provider.of<AuthProvider>(context, listen: false).login().then((_) => _loadData());
+        if (widget.onLoginTap != null) {
+          widget.onLoginTap!();
+        } else {
+          // Fallback if no callback provided, though it should be provided
+          Provider.of<AuthProvider>(context, listen: false).login();
+        }
       });
     }
 

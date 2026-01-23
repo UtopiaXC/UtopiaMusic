@@ -26,6 +26,7 @@ class SearchApi {
 
       final data = await Request().get(
         Api.urlSearch,
+        baseUrl: Api.urlBase,
         params: params,
         useWbi: true,
       );
@@ -115,6 +116,7 @@ class SearchApi {
     try {
       final detailData = await Request().get(
         Api.urlVideoDetail,
+        baseUrl: Api.urlBase,
         params: {'bvid': bvid},
       );
       if (detailData != null && detailData is Map && detailData['code'] == 0) {

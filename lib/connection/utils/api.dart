@@ -19,5 +19,10 @@ class Api {
   // Playlist APIs
   static const String urlFavoriteFolderList = '/x/v3/fav/folder/list';
   static const String urlFavoriteResourceList = '/x/v3/fav/resource/list';
-  static const String urlCollectionResourceList = '/x/v3/fav/resource/list'; // Same as favorite
+  static const String urlCollectionResourceList = '/x/v3/fav/resource/list';
+
+  // Login APIs
+  static const String urlLoginQRCodeGenerate = '/x/passport-login/web/qrcode/generate';
+  static const String urlLoginQRCodePoll = '/x/passport-login/web/qrcode/poll';
+  static const String urlUserInfo = '/x/space/wbi/acc/info';
 }

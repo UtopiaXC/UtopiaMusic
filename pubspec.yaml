@@ -59,6 +59,7 @@ dependencies:
   local_auth: ^3.0.0
   privacy_screen: ^0.0.8
   flutter_phoenix: ^1.1.1
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

@@ -41,6 +41,7 @@ class VideoApi {
 
       final data = await Request().get(
         Api.urlRecommentList,
+        baseUrl: Api.urlBase,
         params: params,
         useWbi: true,
       );
@@ -78,6 +79,7 @@ class VideoApi {
 
       final data = await Request().get(
         Api.urlRanking,
+        baseUrl: Api.urlBase,
         params: {'rid': rid, 'type': 'all'},
       );
 
@@ -107,6 +109,7 @@ class VideoApi {
 
       final data = await Request().get(
         Api.urlRankingRegion,
+        baseUrl: Api.urlBase,
         params: {'rid': rid, 'day': 3, 'original': 0},
       );
 
@@ -135,6 +138,7 @@ class VideoApi {
 
       final data = await Request().get(
         Api.urlDynamicFeed,
+        baseUrl: Api.urlBase,
         params: {
           'timezone_offset': '-480',
           'type': 'all',
@@ -192,6 +196,7 @@ class VideoApi {
 
       final data = await Request().get(
         Api.urlFavoriteFolderList,
+        baseUrl: Api.urlBase,
         params: {'up_mid': mid},
       );
       if (data != null && data['code'] == 0) {

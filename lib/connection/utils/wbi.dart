@@ -28,7 +28,10 @@ class WbiUtil {
     if (_imgKey != null && _subKey != null) return;
 
     try {
-      final data = await Request().get(Api.urlNav, useWbi: false);
+      final data = await Request().get(
+        Api.urlNav,
+        baseUrl: Api.urlBase,
+      );
 
       if (data != null && data['data'] != null && data['data']['wbi_img'] != null) {
         final wbiImg = data['data']['wbi_img'];

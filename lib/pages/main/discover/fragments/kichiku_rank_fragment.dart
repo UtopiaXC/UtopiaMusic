@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:utopia_music/connection/video/video_list.dart';
+import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 

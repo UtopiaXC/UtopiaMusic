@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/layouts/main_layout.dart';
+import 'package:utopia_music/main.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/utils/font_utils.dart';
@@ -47,6 +48,7 @@ class _UtopiaMusicAppState extends State<UtopiaMusicApp> with WidgetsBindingObse
     final securityProvider = Provider.of<SecurityProvider>(context);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Utopia Music',
       locale: settingsProvider.locale, // Apply locale from settings
       supportedLocales: const [

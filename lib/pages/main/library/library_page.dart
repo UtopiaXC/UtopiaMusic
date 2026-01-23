@@ -4,6 +4,8 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/providers/auth_provider.dart';
+import 'package:utopia_music/widgets/login/login_dialog.dart';
 
 class MusicPage extends StatefulWidget {
   const MusicPage({super.key});
@@ -34,6 +36,14 @@ class _MusicPageState extends State<MusicPage> {
     // Since refreshLibrary just notifies listeners, it's instant.
     // But the widgets will reload data asynchronously.
     await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  void _showLoginDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const LoginDialog(),
+    );
   }
 
   @override
@@ -99,6 +109,7 @@ class _MusicPageState extends State<MusicPage> {
                     title: title,
                     // Pass refresh signal to force update when needed
                     refreshSignal: libraryProvider.refreshSignal,
+                    onLoginTap: _showLoginDialog,
                   ),
                 );
               },
