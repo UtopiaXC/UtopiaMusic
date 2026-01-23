@@ -54,56 +54,109 @@ class ErrorCode {
 
   static String getMessage(int code) {
     switch (code) {
-      case appBanned: return '应用程序不存在或已被封禁';
-      case accessKeyError: return 'Access Key 错误';
-      case signError: return 'API 校验密匙错误';
-      case noPermission: return '调用方对该 Method 没有权限';
-      case notLoggedIn: return '账号未登录';
-      case accountBanned: return '账号被封停';
-      case creditsInsufficient: return '积分不足';
-      case coinsInsufficient: return '硬币不足';
-      case captchaError: return '验证码错误';
-      case notOfficialMember: return '账号非正式会员或在适应期';
-      case appNotExists: return '应用不存在或者被封禁';
+      case appBanned:
+        return '应用程序不存在或已被封禁';
+      case accessKeyError:
+        return 'Access Key 错误';
+      case signError:
+        return 'API 校验密匙错误';
+      case noPermission:
+        return '调用方对该 Method 没有权限';
+      case notLoggedIn:
+        return '账号未登录';
+      case accountBanned:
+        return '账号被封停';
+      case creditsInsufficient:
+        return '积分不足';
+      case coinsInsufficient:
+        return '硬币不足';
+      case captchaError:
+        return '验证码错误';
+      case notOfficialMember:
+        return '账号非正式会员或在适应期';
+      case appNotExists:
+        return '应用不存在或者被封禁';
       case noPhoneBound1:
-      case noPhoneBound2: return '未绑定手机';
-      case csrfError: return 'csrf 校验失败';
-      case systemUpgrading: return '系统升级中';
-      case notRealNameVerified: return '账号尚未实名认证';
-      case bindPhoneFirst: return '请先绑定手机';
-      case verifyRealNameFirst: return '请先完成实名认证';
-      case notModified: return '木有改动';
-      case redirect: return '撞车跳转';
-      case riskControlFail: return '风控校验失败';
-      case requestError: return '请求错误';
-      case unauthorized: return '未认证';
-      case accessDenied: return '访问权限不足';
-      case notFound: return '啥都木有';
-      case methodNotAllowed: return '不支持该方法';
-      case conflict: return '冲突';
-      case ipRiskControl: return '请求被拦截';
-      case serverError: return '服务器错误';
-      case serviceUnavailable: return '服务暂不可用';
-      case timeout: return '服务调用超时';
-      case limitExceeded: return '超出限制';
-      case fileNotExists: return '上传文件不存在';
-      case fileTooLarge: return '上传文件太大';
-      case tooManyLoginFailures: return '登录失败次数太多';
-      case userNotExists: return '用户不存在';
-      case passwordTooWeak: return '密码太弱';
-      case usernameOrPasswordError: return '用户名或密码错误';
-      case operationLimit: return '操作对象数量限制';
-      case locked: return '被锁定';
-      case levelTooLow: return '用户等级太低';
-      case duplicateUser: return '重复的用户';
-      case tokenExpired: return 'Token 过期';
-      case passwordTimestampExpired: return '密码时间戳过期';
-      case regionRestricted: return '地理区域限制';
-      case copyrightRestricted: return '版权限制';
-      case deductMoralFailed: return '扣节操失败';
-      case tooFrequent: return '请求过于频繁，请稍后再试';
-      case serverErrorCute: return '对不起，服务器开小差了';
-      default: return '未知错误 ($code)';
+      case noPhoneBound2:
+        return '未绑定手机';
+      case csrfError:
+        return 'csrf 校验失败';
+      case systemUpgrading:
+        return '系统升级中';
+      case notRealNameVerified:
+        return '账号尚未实名认证';
+      case bindPhoneFirst:
+        return '请先绑定手机';
+      case verifyRealNameFirst:
+        return '请先完成实名认证';
+      case notModified:
+        return '木有改动';
+      case redirect:
+        return '撞车跳转';
+      case riskControlFail:
+        return '风控校验失败';
+      case requestError:
+        return '请求错误';
+      case unauthorized:
+        return '未认证';
+      case accessDenied:
+        return '访问权限不足';
+      case notFound:
+        return '啥都木有';
+      case methodNotAllowed:
+        return '不支持该方法';
+      case conflict:
+        return '冲突';
+      case ipRiskControl:
+        return '请求被拦截';
+      case serverError:
+        return '服务器错误';
+      case serviceUnavailable:
+        return '服务暂不可用';
+      case timeout:
+        return '服务调用超时';
+      case limitExceeded:
+        return '超出限制';
+      case fileNotExists:
+        return '上传文件不存在';
+      case fileTooLarge:
+        return '上传文件太大';
+      case tooManyLoginFailures:
+        return '登录失败次数太多';
+      case userNotExists:
+        return '用户不存在';
+      case passwordTooWeak:
+        return '密码太弱';
+      case usernameOrPasswordError:
+        return '用户名或密码错误';
+      case operationLimit:
+        return '操作对象数量限制';
+      case locked:
+        return '被锁定';
+      case levelTooLow:
+        return '用户等级太低';
+      case duplicateUser:
+        return '重复的用户';
+      case tokenExpired:
+        return 'Token 过期';
+      case passwordTimestampExpired:
+        return '密码时间戳过期';
+      case regionRestricted:
+        return '地理区域限制';
+      case copyrightRestricted:
+        return '版权限制';
+      case deductMoralFailed:
+        return '扣节操失败';
+      case tooFrequent:
+        return '请求过于频繁，请稍后再试';
+      case serverErrorCute:
+        return '对不起，服务器开小差了';
+      default:
+        return '未知错误 ($code)';
     }
+  }
+
+  static bool isDefined(int code) {
+    return !getMessage(code).startsWith('未知错误');
   }
 }

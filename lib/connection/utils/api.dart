@@ -25,4 +25,16 @@ class Api {
   static const String urlLoginQRCodeGenerate = '/x/passport-login/web/qrcode/generate';
   static const String urlLoginQRCodePoll = '/x/passport-login/web/qrcode/poll';
   static const String urlUserInfo = '/x/space/wbi/acc/info';
+
+  // Login APIs (TV Protocol)
+  static const String passportTvBase = 'https://passport.bilibili.com';
+  static const String urlTvLoginQRCodeAuthCode = '/x/passport-tv-login/qrcode/auth_code';
+  static const String urlTvLoginQRCodePoll = '/x/passport-tv-login/qrcode/poll';
+
+  // App Keys for TV API (Android TV Key)
+  static const String tvAppKey = '4409e2ce8ffd12b8';
+  static const String tvAppSecret = '59b43e04ad6965f34319062b478f83dd';
+
+  // Exit API
+  static const String urlExit = '/login/exit/v2';
 }

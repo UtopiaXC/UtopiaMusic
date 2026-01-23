@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/user/user.dart';
+import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:dio/dio.dart';
 
-enum UserVipType {
-  none,
-  vip,
-  annualVip,
-}
+enum UserVipType { none, vip, annualVip }
 
-enum LoginStatus {
-  notLoggedIn,
-  loggedIn,
-  expired,
-}
+enum LoginStatus { notLoggedIn, loggedIn, expired }
 
 class UserInfo {
   final String name;
@@ -32,12 +26,13 @@ class UserInfo {
 class AuthProvider extends ChangeNotifier {
   UserInfo? _userInfo;
   LoginStatus _loginStatus = LoginStatus.notLoggedIn;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  static const String _cookieKey = 'bili_cookies';
   final UserApi _userApi = UserApi();
+  static const String _loginTypeKey = 'auth_login_type';
 
   bool get isLoggedIn => _loginStatus == LoginStatus.loggedIn;
+
   UserInfo? get userInfo => _userInfo;
+
   LoginStatus get loginStatus => _loginStatus;
 
   AuthProvider() {
@@ -45,10 +40,22 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _checkLoginStatus() async {
-    final storedCookies = await _storage.read(key: _cookieKey);
-    if (storedCookies != null && storedCookies.isNotEmpty) {
-      await _fetchUserInfo();
-    } else {
+    try {
+      final jar = await Request().cookieJar;
+      final cookies = await jar.loadForRequest(Uri.parse(Api.urlBase));
+
+      final hasLoginCookie = cookies.any(
+        (c) => c.name == 'DedeUserID' && c.value.isNotEmpty,
+      );
+
+      if (hasLoginCookie) {
+        await _fetchUserInfo();
+      } else {
+        _loginStatus = LoginStatus.notLoggedIn;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Auth: Error checking login status: $e');
       _loginStatus = LoginStatus.notLoggedIn;
       notifyListeners();
     }
@@ -85,34 +92,78 @@ class AuthProvider extends ChangeNotifier {
         _userInfo = null;
       }
     } catch (e) {
-      print('Error fetching user info: $e');
+      print('Auth: Error fetching user info: $e');
       _loginStatus = LoginStatus.expired;
       _userInfo = null;
     }
     notifyListeners();
   }
 
-  Future<void> login() async {
-    // This method is now just a trigger for the UI to show the login dialog
-    // The actual login logic happens in the LoginDialog
-    // But we can expose a method to refresh user info after login
-    await _fetchUserInfo();
+  Future<void> _setLoginType(String type) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_loginTypeKey, type);
+  }
+
+  Future<String?> _getLoginType() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_loginTypeKey);
+  }
+
+  Future<void> login({String type = 'qr'}) async {
+    await _setLoginType(type);
+    await _checkLoginStatus();
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: _cookieKey);
-    _userInfo = null;
-    _loginStatus = LoginStatus.notLoggedIn;
-    
-    // Reload cookies in Request to clear them
-    await Request().reloadCookies();
-    
-    notifyListeners();
+    try {
+      final jar = await Request().cookieJar;
+      final loginType = await _getLoginType();
+      if (loginType == 'qr') {
+        try {
+          final cookies = await jar.loadForRequest(Uri.parse(Api.urlBase));
+          final biliJct = cookies.firstWhere(
+            (c) => c.name == 'bili_jct',
+            orElse: () => null as dynamic,
+          ); // 简化处理
+
+          if (biliJct != null) {
+            await Request()
+                .post(
+                  Api.urlExit,
+                  baseUrl: Api.urlLoginBase,
+                  data: {'biliCSRF': biliJct.value},
+                  options: Options(
+                    contentType: Headers.formUrlEncodedContentType,
+                  ),
+                )
+                .timeout(const Duration(seconds: 2))
+                .catchError((e) {
+                  print(
+                    "Auth: Exit API call failed or timed out (ignoring): $e",
+                  );
+                  return null;
+                });
+          }
+        } catch (e) {
+          print("Auth: Error during exit API call: $e");
+        }
+      }
+
+      await jar.deleteAll();
+      _userInfo = null;
+      _loginStatus = LoginStatus.notLoggedIn;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_loginTypeKey);
+
+      notifyListeners();
+      await Request().fetchGuestCookies();
+    } catch (e) {
+      print('Auth: Error during logout: $e');
+    }
   }
-  
+
   Future<void> saveCookies(String cookieString) async {
-    await _storage.write(key: _cookieKey, value: cookieString);
-    await Request().reloadCookies();
-    await _fetchUserInfo();
+    await Request().setManualCookies(cookieString);
+    await login(type: 'manual');
   }
 }

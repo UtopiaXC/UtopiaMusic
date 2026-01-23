@@ -5,10 +5,10 @@ class UserApi {
   Future<Map<String, dynamic>?> getUserInfo() async {
     try {
       final data = await Request().get(
-        Api.urlUserInfo,
+        Api.urlNav,
         baseUrl: Api.urlBase,
-        useCookie: true,
       );
+
       if (data != null && data is Map && data['code'] == 0) {
         return data['data'];
       }

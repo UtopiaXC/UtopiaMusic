@@ -1,98 +1,96 @@
+import 'dart:io';
 import 'package:dio/dio.dart' hide ResponseType;
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 
 class LoginApi {
-  Future<Map<String, dynamic>?> generateQrCode() async {
+  Future<Map<String, dynamic>?> generateTvQrCode() async {
     try {
-      final data = await Request().get(
-        Api.urlLoginQRCodeGenerate,
-        baseUrl: Api.urlLoginBase,
-        useCookie: false,
+      final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final params = {
+        'appkey': Api.tvAppKey,
+        'local_id': '0',
+        'ts': '$ts',
+      };
+
+      final signedParams = Request().signParams(params);
+      final data = await Request().post(
+        Api.urlTvLoginQRCodeAuthCode,
+        baseUrl: Api.passportTvBase,
+        data: signedParams,
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       );
+
       if (data != null && data is Map && data['code'] == 0) {
         return data['data'];
       }
     } catch (e) {
-      print('Error generating QR code: $e');
+      print('Error generating TV QR code: $e');
     }
     return null;
   }
 
-  Future<Map<String, dynamic>?> pollQrCode(String qrCodeKey) async {
+  Future<Map<String, dynamic>?> pollTvQrCode(String authCode) async {
     try {
-      final response = await Request().get(
-        Api.urlLoginQRCodePoll,
-        baseUrl: Api.urlLoginBase,
-        params: {'qrcode_key': qrCodeKey},
-        useCookie: false,
-        responseType: ResponseType.response,
+      final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final params = {
+        'appkey': Api.tvAppKey,
+        'auth_code': authCode,
+        'local_id': '0',
+        'ts': '$ts',
+      };
+
+      final signedParams = Request().signParams(params);
+
+      final data = await Request().post(
+        Api.urlTvLoginQRCodePoll,
+        baseUrl: Api.passportTvBase,
+        data: signedParams,
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       );
 
-      final data = response.data;
-      
-      print('Poll QR Code Response: $data');
+      print('Poll TV QR Code Response: $data');
 
-      if (data != null && data is Map && data['code'] == 0) {
-        final code = data['data']['code'];
-        // 0: success, 86101: not scanned, 86090: scanned but not confirmed, 86038: expired
-        
+      if (data != null && data is Map) {
+        final code = data['code'];
         if (code == 0) {
-          final List<String>? setCookieList = response.headers['set-cookie'];
-          
-          print('Set-Cookie Headers: $setCookieList');
-          
-          String? cookieString;
-          if (setCookieList != null && setCookieList.isNotEmpty) {
-            final cookies = <String, String>{};
-            for (var cookieStr in setCookieList) {
-              print('Processing cookie: $cookieStr');
-              final parts = cookieStr.split(';');
-              if (parts.isNotEmpty) {
-                final kv = parts[0].split('=');
-                if (kv.length >= 2) {
-                  cookies[kv[0].trim()] = kv.sublist(1).join('=').trim();
-                }
+          final resultData = data['data'];
+          if (resultData != null && resultData.containsKey('cookie_info')) {
+            final cookieInfo = resultData['cookie_info'];
+            if (cookieInfo != null && cookieInfo['cookies'] != null) {
+              List<dynamic> cookieList = cookieInfo['cookies'];
+              List<Cookie> newCookies = [];
+              for (var item in cookieList) {
+                newCookies.add(Cookie(item['name'], item['value']));
               }
+              final jar = await Request().cookieJar;
+              await jar.saveFromResponse(Uri.parse(Api.urlBase), newCookies);
+              await jar.saveFromResponse(Uri.parse(Api.urlLoginBase), newCookies);
+
+              print("Login Success: Cookies saved.");
             }
-            
-            final dedeUserID = cookies['DedeUserID'];
-            final dedeUserIDCkMd5 = cookies['DedeUserID__ckMd5'];
-            final sessData = cookies['SESSDATA'];
-            final biliJct = cookies['bili_jct'];
-            
-            print('Extracted Cookies: DedeUserID=$dedeUserID, DedeUserID__ckMd5=$dedeUserIDCkMd5, SESSDATA=$sessData, bili_jct=$biliJct');
-            
-            if (dedeUserID != null && sessData != null && biliJct != null) {
-              cookieString = 'DedeUserID=$dedeUserID; DedeUserID__ckMd5=$dedeUserIDCkMd5; SESSDATA=$sessData; bili_jct=$biliJct';
-            }
-          } else {
-             final url = data['data']['url'] as String;
-             final uri = Uri.parse(url);
-             final params = uri.queryParameters;
-             
-             final dedeUserID = params['DedeUserID'];
-             final dedeUserIDCkMd5 = params['DedeUserID__ckMd5'];
-             final sessData = params['SESSDATA'];
-             final biliJct = params['bili_jct'];
-             
-             if (dedeUserID != null && sessData != null && biliJct != null) {
-               cookieString = 'DedeUserID=$dedeUserID; DedeUserID__ckMd5=$dedeUserIDCkMd5; SESSDATA=$sessData; bili_jct=$biliJct';
-             }
           }
-          
+
           return {
             'code': 0,
-            'cookie': cookieString,
+            'data': resultData,
           };
         } else {
           return {
             'code': code,
+            'message': data['message'],
           };
         }
       }
     } catch (e) {
-      print('Error polling QR code: $e');
+      print('Error polling TV QR code: $e');
     }
     return null;
   }
