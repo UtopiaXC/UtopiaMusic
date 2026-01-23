@@ -21,6 +21,7 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
   final VideoApi _videoApi = VideoApi();
   final List<Song> _songs = [];
   bool _isLoading = false;
+  bool _hasError = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -36,14 +37,28 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
     setState(() {
       _isLoading = true;
       _songs.clear();
+      _hasError = false;
     });
 
-    final newSongs = await _videoApi.getRankingVideos(context, rid: 119); // 119 for kichiku
-
-    setState(() {
-      _songs.addAll(newSongs);
-      _isLoading = false;
-    });
+    try {
+      final newSongs = await _videoApi.getRankingVideos(context, rid: 119); // 119 for kichiku
+      if (mounted) {
+        setState(() {
+          _songs.addAll(newSongs);
+          _isLoading = false;
+          if (_songs.isEmpty) {
+            _hasError = true;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
   }
 
   Future<void> _handleRefresh() async {
@@ -55,6 +70,33 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
     super.build(context);
     if (_isLoading && _songs.isEmpty) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_hasError && _songs.isEmpty) {
+      return RefreshIndicator(
+        key: widget.refreshIndicatorKey,
+        onRefresh: _handleRefresh,
+        child: ListView(
+          controller: widget.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('无网络或接口请求被风控，请重试'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _loadData,
+                    child: Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(

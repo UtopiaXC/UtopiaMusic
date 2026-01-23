@@ -7,7 +7,7 @@ import 'package:utopia_music/generated/l10n.dart';
 class SearchVideoFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
   final String keyword;
-  final int searchTimestamp; // Added to force refresh
+  final int searchTimestamp;
 
   const SearchVideoFragment({
     super.key,
@@ -29,6 +29,7 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
   bool _isLoading = false;
   bool _isLoadingMore = false;
   int _currentPage = 1;
+  bool _hasError = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -45,7 +46,6 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
   @override
   void didUpdateWidget(covariant SearchVideoFragment oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Check if keyword changed OR timestamp changed (forced refresh)
     if (widget.keyword.isNotEmpty) {
       if (widget.keyword != oldWidget.keyword || widget.searchTimestamp != oldWidget.searchTimestamp) {
         _doSearch(widget.keyword);
@@ -65,6 +65,7 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
             _scrollController.position.maxScrollExtent - 200 &&
         !_isLoadingMore &&
         !_isLoading &&
+        !_hasError &&
         widget.keyword.isNotEmpty) {
       _loadMoreData();
     }
@@ -75,15 +76,28 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       _isLoading = true;
       _currentPage = 1;
       _songs = [];
+      _hasError = false;
     });
 
-    final songs = await _searchApi.searchVideos(context, keyword, page: _currentPage);
+    try {
+      final songs = await _searchApi.searchVideos(context, keyword, page: _currentPage);
 
-    if (mounted) {
-      setState(() {
-        _songs = songs;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _songs = songs;
+          _isLoading = false;
+          if (_songs.isEmpty) {
+            _hasError = true;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
     }
   }
 
@@ -93,13 +107,22 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       _currentPage++;
     });
 
-    final newSongs = await _searchApi.searchVideos(context, widget.keyword, page: _currentPage);
+    try {
+      final newSongs = await _searchApi.searchVideos(context, widget.keyword, page: _currentPage);
 
-    if (mounted) {
-      setState(() {
-        _songs.addAll(newSongs);
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _songs.addAll(newSongs);
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+          // Don't set _hasError here, just stop loading more
+        });
+      }
     }
   }
 
@@ -108,6 +131,22 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
     super.build(context);
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_hasError && _songs.isEmpty && widget.keyword.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('无结果，有可能是无网络或接口请求被风控，请重试'),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => _doSearch(widget.keyword),
+              child: Text('重试'),
+            ),
+          ],
+        ),
+      );
     }
 
     if (_songs.isEmpty && widget.keyword.isNotEmpty) {

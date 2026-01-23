@@ -26,6 +26,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
   List<Song> _songs = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
+  bool _hasError = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -48,7 +49,8 @@ class _RecommendFragmentState extends State<RecommendFragment>
         widget.scrollController.position.pixels >=
             widget.scrollController.position.maxScrollExtent - 200 &&
         !_isLoadingMore &&
-        !_isLoading) {
+        !_isLoading &&
+        !_hasError) {
       _loadMoreData();
     }
   }
@@ -56,13 +58,26 @@ class _RecommendFragmentState extends State<RecommendFragment>
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
+      _hasError = false;
     });
-    final songs = await _videoApi.getRecommentVideos(context);
-    if (mounted) {
-      setState(() {
-        _songs = songs;
-        _isLoading = false;
-      });
+    try {
+      final songs = await _videoApi.getRecommentVideos(context);
+      if (mounted) {
+        setState(() {
+          _songs = songs;
+          _isLoading = false;
+          if (_songs.isEmpty) {
+             _hasError = true;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
     }
   }
 
@@ -70,12 +85,20 @@ class _RecommendFragmentState extends State<RecommendFragment>
     setState(() {
       _isLoadingMore = true;
     });
-    final newSongs = await _videoApi.getRecommentVideos(context);
-    if (mounted) {
-      setState(() {
-        _songs.addAll(newSongs);
-        _isLoadingMore = false;
-      });
+    try {
+      final newSongs = await _videoApi.getRecommentVideos(context);
+      if (mounted) {
+        setState(() {
+          _songs.addAll(newSongs);
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -86,6 +109,33 @@ class _RecommendFragmentState extends State<RecommendFragment>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (_hasError && _songs.isEmpty) {
+      return RefreshIndicator(
+        key: widget.refreshIndicatorKey,
+        onRefresh: _onRefresh,
+        child: ListView(
+          controller: widget.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('无网络或接口请求被风控，请重试'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _loadData,
+                    child: Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return RefreshIndicator(
       key: widget.refreshIndicatorKey,

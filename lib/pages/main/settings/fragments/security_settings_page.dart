@@ -26,7 +26,7 @@ class SecuritySettingsPage extends StatelessWidget {
           ),
           SwitchListTile(
             title: const Text('后台模糊'),
-            subtitle: const Text('在应用切换到后台时模糊显示内容'),
+            subtitle: const Text('在应用切换到后台时模糊显示内容并禁止截图'),
             value: securityProvider.privacyScreenEnabled,
             onChanged: securityProvider.biometricEnabled 
                 ? null
