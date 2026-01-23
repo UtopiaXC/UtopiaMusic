@@ -234,6 +234,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
         backgroundColor: Colors.transparent,
         builder: (context) => OnlinePlaylistDetailSheet(
           playlistInfo: playlist,
+          isCollection: widget.type == PlaylistCategoryType.collections,
         ),
       );
     }

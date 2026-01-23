@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
 import 'package:utopia_music/providers/library_provider.dart';
@@ -12,10 +11,12 @@ import 'package:utopia_music/connection/video/library.dart';
 
 class OnlinePlaylistDetailSheet extends StatefulWidget {
   final PlaylistInfo playlistInfo;
+  final bool isCollection;
 
   const OnlinePlaylistDetailSheet({
     super.key,
     required this.playlistInfo,
+    this.isCollection = false,
   });
 
   @override
@@ -25,7 +26,6 @@ class OnlinePlaylistDetailSheet extends StatefulWidget {
 class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
   List<Song> _songs = [];
   bool _isLoading = true;
-  final VideoApi _videoApi = VideoApi();
   final LibraryApi _libraryApi = LibraryApi();
 
   @override
@@ -38,7 +38,12 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     setState(() => _isLoading = true);
     try {
       final mediaId = widget.playlistInfo.id;
-      final songs = await _libraryApi.getFavoriteResources(mediaId, context);
+      List<Song> songs;
+      if (widget.isCollection) {
+        songs = await _libraryApi.getCollectionResources(mediaId, context);
+      } else {
+        songs = await _libraryApi.getFavoriteResources(mediaId, context);
+      }
       
       if (mounted) {
         setState(() {

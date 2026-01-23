@@ -11,150 +11,7 @@ import '../utils/constants.dart';
 
 class LibraryApi {
   final HtmlUnescape _unescape = HtmlUnescape();
-
-  Future<List<dynamic>> getCreatedFolders(int mid) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
-      final data = await Request().get(
-        Api.urlFavFolderCreatedListAll,
-        baseUrl: Api.urlBase,
-        params: {'up_mid': mid, 'platform': 'web'},
-      );
-      if (data != null && data['code'] == 0) {
-        return data['data']['list'] ?? [];
-      }
-    } catch (e) {
-      print('Error fetching created folders: $e');
-    }
-    return [];
-  }
-
-  Future<List<dynamic>> getCollectedFolders(int mid) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
-      List<dynamic> allCollections = [];
-      int page = 1;
-      bool hasMore = true;
-
-      while (hasMore) {
-        final data = await Request().get(
-          Api.urlFavFolderCollectedList,
-          baseUrl: Api.urlBase,
-          params: {'up_mid': mid, 'pn': page, 'ps': 20, 'platform': 'web'},
-        );
-
-        if (data != null && data['code'] == 0) {
-          final list = data['data']['list'] ?? [];
-          final count = data['data']['count'] ?? 0;
-
-          if (list.isEmpty) {
-            hasMore = false;
-          } else {
-            allCollections.addAll(list);
-            if (allCollections.length >= count) {
-              hasMore = false;
-            } else {
-              page++;
-            }
-          }
-        } else {
-          hasMore = false;
-        }
-      }
-      return allCollections;
-    } catch (e) {
-      print('Error fetching collected folders: $e');
-    }
-    return [];
-  }
-
-  Future<Map<String, dynamic>?> getFolderInfo(String mediaId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
-      final data = await Request().get(
-        Api.urlFavFolderInfo,
-        baseUrl: Api.urlBase,
-        params: {'media_id': mediaId, 'platform': 'web'},
-      );
-
-      if (data != null && data['code'] == 0) {
-        return data['data'];
-      }
-    } catch (e) {
-      print('Error fetching folder info: $e');
-    }
-    return null;
-  }
-
-  Future<List<Song>> getFolderResources(
-    String mediaId,
-    BuildContext context,
-  ) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
-      List<Song> allSongs = [];
-      int page = 1;
-      bool hasMore = true;
-
-      while (hasMore) {
-        final data = await Request().get(
-          Api.urlFavoriteResourceList,
-          baseUrl: Api.urlBase,
-          params: {
-            'media_id': mediaId,
-            'pn': page,
-            'ps': 20,
-            'platform': 'web',
-          },
-        );
-
-        if (data != null && data['code'] == 0) {
-          final List<dynamic> medias = data['data']['medias'] ?? [];
-          final hasMoreData = data['data']['has_more'] ?? false;
-
-          if (medias.isEmpty) {
-            hasMore = false;
-          } else {
-            allSongs.addAll(
-              medias.map((item) => _mapToSong(context, item)).toList(),
-            );
-            if (!hasMoreData) {
-              hasMore = false;
-            } else {
-              page++;
-            }
-          }
-        } else {
-          hasMore = false;
-        }
-      }
-      return allSongs;
-    } catch (e) {
-      print('Error fetching folder resources: $e');
-    }
-    return [];
-  }
-
+  
   Future<List<dynamic>> getFavoriteFolders(int mid) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -244,7 +101,7 @@ class LibraryApi {
     return [];
   }
 
-  Future<List<Song>> getFavoriteResources(
+  Future<List<Song>> getCollectionResources(
     String mediaId,
     BuildContext context,
   ) async {
@@ -271,6 +128,60 @@ class LibraryApi {
           },
         );
 
+
+        if (data != null && data['code'] == 0) {
+          final List<dynamic> medias = data['data']['medias'] ?? [];
+          final hasMoreData = data['data']['has_more'] ?? false;
+
+          if (medias.isEmpty) {
+            hasMore = false;
+          } else {
+            allSongs.addAll(
+              medias.map((item) => _mapToSong(context, item)).toList(),
+            );
+            if (!hasMoreData) {
+              hasMore = false;
+            } else {
+              page++;
+            }
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      return allSongs;
+    } catch (e) {
+      print('Error fetching collection resources: $e');
+    }
+    return [];
+  }
+
+  Future<List<Song>> getFavoriteResources(
+    String mediaId,
+    BuildContext context,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
+      if (delay > 0) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+
+      List<Song> allSongs = [];
+      int page = 1;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final data = await Request().get(
+          Api.urlFavoriteResourceList,
+          baseUrl: Api.urlBase,
+          params: {
+            'media_id': mediaId,
+            'pn': page,
+            'ps': 20,
+            'platform': 'web',
+          },
+        );
 
         if (data != null && data['code'] == 0) {
           final List<dynamic> medias = data['data']['medias'] ?? [];

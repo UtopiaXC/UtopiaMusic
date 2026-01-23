@@ -139,7 +139,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.save_alt),
+                      icon: const Icon(Icons.folder_special_outlined),
                       onPressed: _handleSavePlaylist,
                       tooltip: '保存为歌单',
                     ),
