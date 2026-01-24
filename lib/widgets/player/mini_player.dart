@@ -50,6 +50,9 @@ class MiniPlayer extends StatelessWidget {
     }
 
     Widget buildContent(Song displaySong) {
+      final String optimizedCover =
+          displaySong.coverUrl.isNotEmpty ? '${displaySong.coverUrl}@100w_100h.webp' : '';
+
       return Container(
         height: 64,
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -76,13 +79,25 @@ class MiniPlayer extends StatelessWidget {
               height: 48,
               margin: const EdgeInsets.only(left: 0),
               decoration: BoxDecoration(
-                color: Color(displaySong.colorValue),
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(displaySong.coverUrl),
-                  fit: BoxFit.cover,
-                ),
+                image: displaySong.coverUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(optimizedCover),
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {},
+                      )
+                    : null,
               ),
+              child: displaySong.coverUrl.isEmpty
+                  ? Center(
+                      child: Icon(
+                        Icons.music_note,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        size: 24,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(

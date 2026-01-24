@@ -11,7 +11,6 @@ import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/services/audio_proxy_service.dart';
 
-import '../providers/settings_provider.dart';
 
 class _CacheGroup {
   final String bvid;

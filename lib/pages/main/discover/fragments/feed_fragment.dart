@@ -55,7 +55,6 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
   Future<void> _loadData({bool refresh = false}) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isLoggedIn) {
-      // If not logged in, do not fetch data
       if (refresh) {
         setState(() {
           _songs.clear();
@@ -88,22 +87,35 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
 
     if (result['code'] == 0) {
       final newSongs = result['songs'] as List<Song>;
-      _offset = result['offset'];
-      _hasMore = result['has_more'];
+      final newOffset = result['offset'];
+      final hasMoreData = result['has_more'];
+      
+      if (newOffset == _offset && newSongs.isEmpty) {
+         setState(() {
+           _hasMore = false;
+           _isLoading = false;
+         });
+         return;
+      }
+
+      _offset = newOffset;
+      _hasMore = hasMoreData;
       
       if (newSongs.isEmpty) {
         _hasMore = false;
+      } else if (newSongs.length < 15) {
+         _hasMore = false;
       }
 
       setState(() {
         _songs.addAll(newSongs);
         _isLoading = false;
       });
+      
     } else {
       setState(() {
         _isLoading = false;
       });
-      // Handle error
     }
   }
 
@@ -117,7 +129,6 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       barrierDismissible: false,
       builder: (context) => const LoginDialog(),
     ).then((_) {
-      // Refresh after login dialog closes (assuming login might have happened)
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.isLoggedIn) {
         _handleRefresh();
@@ -154,13 +165,20 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
           onRefresh: _handleRefresh,
           child: ListView.builder(
             controller: widget.scrollController,
-            itemCount: _songs.length + (_hasMore ? 1 : 0),
+            itemCount: _songs.length + 1,
             itemBuilder: (context, index) {
               if (index == _songs.length) {
-                return const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: CircularProgressIndicator()),
-                );
+                if (_hasMore) {
+                   return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                } else {
+                   return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: Text('到底了', style: TextStyle(color: Colors.grey))),
+                  );
+                }
               }
               return SongListItem(
                 song: _songs[index],

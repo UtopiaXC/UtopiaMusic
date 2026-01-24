@@ -12,6 +12,7 @@ import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
+import 'package:utopia_music/widgets/video/video_detail.dart';
 import 'dart:async';
 
 class FullPlayerPage extends StatefulWidget {
@@ -155,25 +156,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             children: [
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.subscriptions_outlined),
-                title: Text(S.of(context).play_control_mode_random_collection),
+                leading: const Icon(Icons.speed),
+                title: const Text('倍速播放'),
                 onTap: () {
                   Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.auto_awesome_motion),
-                title: Text(S.of(context).play_control_mode_random_continue),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.high_quality),
-                title: const Text('音质'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showQualityDialog();
+                  _showSpeedDialog();
                 },
               ),
               const SizedBox(height: 16),
@@ -181,6 +168,48 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           ),
         ),
       ),
+    );
+  }
+  
+  void _showSpeedDialog() {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final currentSpeed = playerProvider.player.speed;
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('选择倍速', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildSpeedOption(0.5, currentSpeed),
+              _buildSpeedOption(0.75, currentSpeed),
+              _buildSpeedOption(1.0, currentSpeed),
+              _buildSpeedOption(1.25, currentSpeed),
+              _buildSpeedOption(1.5, currentSpeed),
+              _buildSpeedOption(2.0, currentSpeed),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildSpeedOption(double speed, double currentSpeed) {
+    return ListTile(
+      title: Text('${speed}x'),
+      trailing: speed == currentSpeed ? const Icon(Icons.check, color: Colors.blue) : null,
+      onTap: () {
+        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+        playerProvider.player.setSpeed(speed);
+        Navigator.pop(context);
+      },
     );
   }
 
@@ -219,6 +248,25 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     );
   }
 
+  void _showVideoDetail() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: VideoDetailPage(bvid: widget.song.bvid),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildCardContent(BuildContext context, Song song, {bool isCurrent = false}) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
 
@@ -254,9 +302,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                       onPlaylist: _showPlaylist,
                       onLyrics: _toggleLyrics,
                       onTimer: _showTimerDialog,
-                      onComment: () {}, 
-                      onInfo: () {}, 
-                      onMore: _showMoreDialog,
+                      onComment: _showQualityDialog,
+                      onInfo: _showSpeedDialog,
+                      onMore: _showVideoDetail,
                     );
                   }
                 )
@@ -286,9 +334,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   Future<void> _showArtistSpace(BuildContext context) async {
     if (widget.song.bvid.isEmpty) return;
-
-    // Show loading indicator or something if needed, but for now just wait
-    // Or we can show a small loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -298,7 +343,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     try {
       final detail = await _videoDetailApi.getVideoDetail(widget.song.bvid);
       if (mounted) {
-        Navigator.pop(context); // Close loading
+        Navigator.pop(context);
         if (detail != null && detail['owner'] != null) {
           final mid = detail['owner']['mid'];
           if (mid != null) {
@@ -317,7 +362,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close loading
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('获取信息失败: $e')),
         );

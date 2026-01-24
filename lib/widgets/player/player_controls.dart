@@ -80,6 +80,43 @@ class PlayerControls extends StatelessWidget {
     }
     return Theme.of(context).colorScheme.primary;
   }
+  
+  Widget _getSpeedIcon(BuildContext context) {
+    final playerProvider = Provider.of<PlayerProvider>(context);
+    final speed = playerProvider.player.speed;
+    
+    String text;
+    if (speed == 1.0) {
+      text = "1.0x";
+    } else if (speed == 0.5) {
+      text = "0.5x";
+    } else if (speed == 0.75) {
+      text = "0.7x";
+    } else if (speed == 1.25) {
+      text = "1.2x";
+    } else if (speed == 1.5) {
+      text = "1.5x";
+    } else if (speed == 2.0) {
+      text = "2.0x";
+    } else {
+      text = "${speed}x";
+    }
+    
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).iconTheme.color,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,24 +153,24 @@ class PlayerControls extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onComment,
-                  icon: const Icon(Icons.comment_outlined),
-                  tooltip: S.of(context).play_control_mode_random_comment,
+                  icon: const Icon(Icons.high_quality),
+                  tooltip: '音质',
                 ),
                 IconButton(
                   onPressed: onInfo,
-                  icon: const Icon(Icons.info_outline),
-                  tooltip: S.of(context).play_control_mode_random_info,
+                  icon: _getSpeedIcon(context),
+                  tooltip: '倍速',
                 ),
                 IconButton(
                   onPressed: onMore,
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: '更多',
+                  icon: const Icon(Icons.info_outline),
+                  tooltip: '详情',
                 ),
               ] else ...[
                 const IconButton(onPressed: null, icon: Icon(Icons.timer_outlined, color: Colors.transparent)),
-                const IconButton(onPressed: null, icon: Icon(Icons.comment_outlined, color: Colors.transparent)),
+                const IconButton(onPressed: null, icon: Icon(Icons.high_quality, color: Colors.transparent)),
+                const IconButton(onPressed: null, icon: Icon(Icons.speed, color: Colors.transparent)),
                 const IconButton(onPressed: null, icon: Icon(Icons.info_outline, color: Colors.transparent)),
-                const IconButton(onPressed: null, icon: Icon(Icons.more_vert, color: Colors.transparent)),
               ],
             ],
           ),

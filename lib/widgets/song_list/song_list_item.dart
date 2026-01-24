@@ -122,20 +122,21 @@ class SongListItem extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Color(song.colorValue),
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(4),
                 image: song.coverUrl.isNotEmpty
                     ? DecorationImage(
                         image: NetworkImage(optimizedCover),
                         fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {},
                       )
                     : null,
               ),
               child: song.coverUrl.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Icon(
                         Icons.music_note,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                         size: 24,
                       ),
                     )

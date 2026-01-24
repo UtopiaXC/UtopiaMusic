@@ -15,6 +15,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _autoCheckUpdateKey = 'auto_check_update';
   static const String _checkPreReleaseKey = 'check_pre_release';
   static const String _ignoredVersionKey = 'ignored_version';
+  static const String _enableCommentsKey = 'enable_comments';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -30,6 +31,7 @@ class SettingsProvider extends ChangeNotifier {
   String? _ignoredVersion;
   bool _isSettingsLoaded = false;
   bool _autoSkipInvalid = true;
+  bool _enableComments = true;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -45,6 +47,7 @@ class SettingsProvider extends ChangeNotifier {
   String? get ignoredVersion => _ignoredVersion;
   bool get isSettingsLoaded => _isSettingsLoaded;
   bool get autoSkipInvalid => _autoSkipInvalid;
+  bool get enableComments => _enableComments;
 
   SettingsProvider() {
     _loadSettings();
@@ -75,6 +78,7 @@ class SettingsProvider extends ChangeNotifier {
     _autoCheckUpdate = prefs.getBool(_autoCheckUpdateKey) ?? true;
     _checkPreRelease = prefs.getBool(_checkPreReleaseKey) ?? false;
     _ignoredVersion = prefs.getString(_ignoredVersionKey);
+    _enableComments = prefs.getBool(_enableCommentsKey) ?? true;
     _isSettingsLoaded = true;
 
     notifyListeners();
@@ -172,6 +176,13 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setEnableComments(bool value) async {
+    _enableComments = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enableCommentsKey, value);
+  }
+
 
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
@@ -187,6 +198,7 @@ class SettingsProvider extends ChangeNotifier {
     _checkPreRelease = false;
     _ignoredVersion = null;
     _autoSkipInvalid = true;
+    _enableComments = true;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_themeModeKey);
@@ -201,6 +213,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_autoCheckUpdateKey);
     await prefs.remove(_checkPreReleaseKey);
     await prefs.remove(_ignoredVersionKey);
+    await prefs.remove(_enableCommentsKey);
   }
 
   Future<void> resetApp() async {

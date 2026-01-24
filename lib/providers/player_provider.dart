@@ -5,11 +5,15 @@ import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/connection/video/video_detail.dart';
+import 'package:flutter/material.dart';
+import 'package:utopia_music/main.dart';
 import 'dart:async';
 
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
+  final VideoDetailApi _videoDetailApi = VideoDetailApi();
   bool _isSwitchingMode = false;
   bool _isSwitchingPlaylist = false;
 
@@ -27,11 +31,14 @@ class PlayerProvider extends ChangeNotifier {
   static const String _autoPlayKey = 'auto_play';
   static const String _decoderKey = 'decoder_type';
   static const String _autoSkipInvalidKey = 'auto_skip_invalid';
+  static const String _recommendationAutoPlayKey = 'recommendation_auto_play';
 
   bool _saveProgress = true;
   bool _autoPlay = false;
   int _decoderType = 1;
   bool _autoSkipInvalid = true;
+  bool _recommendationAutoPlay = false;
+  bool _isFetchingRecommendation = false;
 
 
   // Timer related
@@ -69,6 +76,8 @@ class PlayerProvider extends ChangeNotifier {
   bool get autoSkipInvalid => _autoSkipInvalid;
 
   static String get autoSkipInvalidKey => _autoSkipInvalidKey;
+  
+  bool get recommendationAutoPlay => _recommendationAutoPlay;
 
 
   PlayerProvider() {
@@ -104,6 +113,10 @@ class PlayerProvider extends ChangeNotifier {
           _currentSong = newSong;
           _saveLastPlayedIndex(index);
           notifyListeners();
+
+          if (_recommendationAutoPlay) {
+             _handleRecommendationAutoPlay(newSong);
+          }
         }
       }
     });
@@ -122,23 +135,43 @@ class PlayerProvider extends ChangeNotifier {
       }
     });
     
-    // Listen for playback errors from service (if we implement stream there)
-    // But currently service handles it by skipping.
-    // If we want to remove song, we need a way to know which song failed.
-    // Since service skips, index changes.
-    // We can listen to index changes, but that's normal behavior too.
-    
-    // Let's rely on service skipping for now as requested "play next".
-    // "Remove from playlist" is tricky because we need to know WHICH song failed.
-    // If we are listening to playback errors here:
     _audioPlayerService.player.playbackEventStream.listen((event) {}, onError: (Object e, StackTrace stackTrace) {
-       // This catches errors from the player stream
-       // If it's a 404 or similar source error
        if (e.toString().contains('404') || e.toString().contains('Source error')) {
           print('PlayerProvider: Caught playback error, removing current song and skipping.');
           _handlePlaybackError();
        }
     });
+  }
+  
+  Future<void> _handleRecommendationAutoPlay(Song currentSong) async {
+    if (_isFetchingRecommendation) return;
+    _isFetchingRecommendation = true;
+
+    final context = navigatorKey.currentContext;
+    if (context == null) {
+      _isFetchingRecommendation = false;
+      return;
+    }
+    
+    try {
+      final related = await _videoDetailApi.getRelatedVideos(context, currentSong.bvid);
+      if (related.isNotEmpty) {
+        List<Song> newPlaylist = [currentSong, ...related];
+        await _audioPlayerService.updateQueueKeepPlaying(newPlaylist, 0);
+        _playlist = newPlaylist;
+        _playlist = newPlaylist;
+        await _databaseService.clearPlaylist();
+        await _databaseService.savePlaylist(newPlaylist);
+        await _saveLastPlayedIndex(0);
+        notifyListeners();
+        
+        print("Recommendation Auto Play: Playlist updated for ${currentSong.title}");
+      }
+    } catch (e) {
+      print("Recommendation Auto Play Error: $e");
+    } finally {
+      _isFetchingRecommendation = false;
+    }
   }
   
   Future<void> _handlePlaybackError() async {
@@ -147,11 +180,7 @@ class PlayerProvider extends ChangeNotifier {
     final indexToRemove = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
     
     if (indexToRemove != -1) {
-       // Remove from DB and list
        await removeSong(indexToRemove);
-       // removeSong already handles playing next if current is removed
-       // But removeSong calls _play(next), which might trigger another error if next is also bad.
-       // This loop should work until a good song is found or list empty.
     }
   }
 
@@ -207,6 +236,7 @@ class PlayerProvider extends ChangeNotifier {
     _saveProgress = prefs.getBool(_saveProgressKey) ?? true;
     _autoPlay = prefs.getBool(_autoPlayKey) ?? false;
     _decoderType = prefs.getInt(_decoderKey) ?? 1;
+    _recommendationAutoPlay = prefs.getBool(_recommendationAutoPlayKey) ?? false;
     notifyListeners();
   }
 
@@ -229,6 +259,13 @@ class PlayerProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_decoderKey, value);
+  }
+
+  Future<void> setRecommendationAutoPlay(bool value) async {
+    _recommendationAutoPlay = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_recommendationAutoPlayKey, value);
   }
 
   Future<void> _savePlayMode() async {
@@ -278,6 +315,16 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> togglePlayMode() async {
+    if (_recommendationAutoPlay) {
+       final context = navigatorKey.currentContext;
+       if (context != null) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('当前处于推荐连播，不允许修改循环模式。请在设置或视频详情页停用推荐连播。')),
+         );
+       }
+       return;
+    }
+    
     _isSwitchingMode = true;
     try {
       int nextIndex = (_playMode.index + 1) % PlayMode.values.length;
@@ -331,10 +378,7 @@ class PlayerProvider extends ChangeNotifier {
     _isSwitchingPlaylist = true;
 
     try {
-      // Stop player first
       await _audioPlayerService.stop();
-      
-      // Clear current playlist in memory immediately to avoid race conditions
       _playlist = [];
       _currentSong = null;
       notifyListeners();
@@ -530,6 +574,7 @@ class PlayerProvider extends ChangeNotifier {
     _autoPlay = false;
     _decoderType = 1;
     _autoSkipInvalid = true;
+    _recommendationAutoPlay = false;
 
     notifyListeners();
 
@@ -538,6 +583,7 @@ class PlayerProvider extends ChangeNotifier {
     await prefs.remove(_autoPlayKey);
     await prefs.remove(_decoderKey);
     await prefs.remove(autoSkipInvalidKey);
+    await prefs.remove(_recommendationAutoPlayKey);
   }
 
   bool get hasNext {

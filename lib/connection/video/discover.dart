@@ -138,7 +138,7 @@ class VideoApi {
         baseUrl: Api.urlBase,
         params: {
           'timezone_offset': '-480',
-          'type': 'all',
+          'type': 'video',
           'offset': offset,
         },
       );

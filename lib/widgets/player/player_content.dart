@@ -14,6 +14,9 @@ class PlayerContent extends StatelessWidget {
         double imageSize = min(300.0, constraints.maxHeight - 60);
 
         if (imageSize < 0) imageSize = 0;
+        
+        final String optimizedCover =
+            song.coverUrl.isNotEmpty ? '${song.coverUrl}@600w_600h.webp' : '';
 
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -22,6 +25,7 @@ class PlayerContent extends StatelessWidget {
               width: imageSize,
               height: imageSize,
               decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -30,11 +34,23 @@ class PlayerContent extends StatelessWidget {
                     offset: const Offset(0, 10),
                   ),
                 ],
-                image: DecorationImage(
-                  image: NetworkImage(song.coverUrl),
-                  fit: BoxFit.cover,
-                ),
+                image: song.coverUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(optimizedCover),
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {},
+                      )
+                    : null,
               ),
+              child: song.coverUrl.isEmpty
+                  ? Center(
+                      child: Icon(
+                        Icons.music_note,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        size: imageSize * 0.5,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(height: 32),
           ],
