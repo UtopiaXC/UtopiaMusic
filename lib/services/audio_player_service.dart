@@ -259,22 +259,34 @@ class AudioPlayerService {
   }
 
   Future<void> updateQueueKeepPlaying(List<Song> newQueue, int newIndex) async {
+    bool wasPlaying = _player.playing;
+
     _globalQueue = newQueue;
     _currentIndex = newIndex;
     _indexController.add(newIndex);
 
     if (_isDesktop) {
+      try {
+        if (wasPlaying) {
+          await playWithQueue(newQueue, newIndex, autoPlay: true);
+        } else {
+          await playWithQueue(newQueue, newIndex, autoPlay: false);
+        }
+      } catch (e) {
+        print("Desktop update error: $e");
+      }
       return;
     }
 
     try {
       final source = _player.audioSource as ConcatenatingAudioSource?;
       if (source == null) {
-        await playWithQueue(newQueue, newIndex);
+        await playWithQueue(newQueue, newIndex, autoPlay: wasPlaying);
         return;
       }
 
       final currentSourceIndex = _player.currentIndex ?? 0;
+
       if (currentSourceIndex < source.length - 1) {
         await source.removeRange(currentSourceIndex + 1, source.length);
       }
@@ -297,9 +309,13 @@ class AudioPlayerService {
 
       print("Hot loaded new play list");
 
+      if (!wasPlaying && _player.playing) {
+        await _player.pause();
+      }
+
     } catch (e) {
       print("Error updating playlist: $e");
-      await playWithQueue(newQueue, newIndex);
+      await playWithQueue(newQueue, newIndex, autoPlay: wasPlaying);
     }
   }
 

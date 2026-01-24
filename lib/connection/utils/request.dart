@@ -8,12 +8,14 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart'; // 【新增】引入 Provider
 import 'package:utopia_music/connection/error/error_code.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/connection/utils/wbi.dart';
 import 'package:utopia_music/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:utopia_music/providers/auth_provider.dart'; // 【新增】引入 AuthProvider
 import 'package:utopia_music/providers/settings_provider.dart';
 
 enum ResponseType { data, response }
@@ -24,6 +26,10 @@ class Request {
   late final PersistCookieJar _cookieJar;
   late final Future<void> _initWait;
   int _maxRetries = 2;
+
+  // 【新增】弹窗锁，防止并发请求导致弹窗重叠
+  static bool _isShowingAuthDialog = false;
+  static bool _isShowingErrorDialog = false;
 
   bool _isUserLoggedIn = false;
 
@@ -80,7 +86,7 @@ class Request {
         await fetchGuestCookies();
       } else {
         _isUserLoggedIn = cookies.any(
-          (c) => c.name == 'DedeUserID' && c.value.isNotEmpty,
+              (c) => c.name == 'DedeUserID' && c.value.isNotEmpty,
         );
       }
     } catch (e) {
@@ -136,7 +142,7 @@ class Request {
     try {
       final cookies = await _cookieJar.loadForRequest(Uri.parse(Api.urlBase));
       final biliJct = cookies.firstWhere(
-        (c) => c.name == 'bili_jct',
+            (c) => c.name == 'bili_jct',
         orElse: () => Cookie('bili_jct', ''),
       );
       return biliJct.value;
@@ -146,14 +152,14 @@ class Request {
   }
 
   Future<dynamic> get(
-    String path, {
-    String baseUrl = Api.urlBase,
-    Map<String, dynamic>? params,
-    bool useWbi = false,
-    ResponseType responseType = ResponseType.data,
-    Options? options,
-    bool suppressErrorDialog = false,
-  }) async {
+      String path, {
+        String baseUrl = Api.urlBase,
+        Map<String, dynamic>? params,
+        bool useWbi = false,
+        ResponseType responseType = ResponseType.data,
+        Options? options,
+        bool suppressErrorDialog = false,
+      }) async {
     return _request(
       method: 'GET',
       path: path,
@@ -167,15 +173,15 @@ class Request {
   }
 
   Future<dynamic> post(
-    String path, {
-    String baseUrl = Api.urlBase,
-    dynamic data,
-    Map<String, dynamic>? params,
-    bool useWbi = false,
-    ResponseType responseType = ResponseType.data,
-    Options? options,
-    bool suppressErrorDialog = false,
-  }) async {
+      String path, {
+        String baseUrl = Api.urlBase,
+        dynamic data,
+        Map<String, dynamic>? params,
+        bool useWbi = false,
+        ResponseType responseType = ResponseType.data,
+        Options? options,
+        bool suppressErrorDialog = false,
+      }) async {
     return _request(
       method: 'POST',
       path: path,
@@ -234,10 +240,10 @@ class Request {
   }
 
   Future<dynamic> _requestWithRetry(
-    Future<dynamic> Function() requestFunc, {
-    int retryCount = 0,
-    required bool suppressErrorDialog,
-  }) async {
+      Future<dynamic> Function() requestFunc, {
+        int retryCount = 0,
+        required bool suppressErrorDialog,
+      }) async {
     try {
       final result = await requestFunc();
 
@@ -295,10 +301,9 @@ class Request {
             }
           }
         } else if (code != 0) {
-          // If code is -404 (ErrorCode.notFound), we suppress dialog.
           if (code == ErrorCode.notFound || suppressErrorDialog) {
-             if (kDebugMode) print("Request: Suppressed error dialog for code $code.");
-             return result; // Return result so caller can handle it
+            if (kDebugMode) print("Request: Suppressed error dialog for code $code.");
+            return result;
           }
 
           if (retryCount < _maxRetries) {
@@ -354,6 +359,10 @@ class Request {
   }
 
   Future<void> _handleLoginExpired(int code, String message) async {
+    // 【修复】检查锁，如果正在显示则直接返回，防止弹窗重叠
+    if (_isShowingAuthDialog) return;
+    _isShowingAuthDialog = true;
+
     final context = navigatorKey.currentContext;
     if (context != null) {
       await showDialog(
@@ -368,9 +377,18 @@ class Request {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _cookieJar.deleteAll();
-                _isUserLoggedIn = false;
-                await fetchGuestCookies();
+
+                // 【修复】调用 AuthProvider.logout 进行完整的状态清理和 UI 更新
+                // 这样可以确保 UI 立即响应，而不是只清理了底层 Cookie
+                try {
+                  Provider.of<AuthProvider>(context, listen: false).logout();
+                } catch (e) {
+                  print("Request: Failed to invoke AuthProvider logout: $e");
+                  // Fallback: 如果 Provider 调用失败，手动清理
+                  await _cookieJar.deleteAll();
+                  _isUserLoggedIn = false;
+                  await fetchGuestCookies();
+                }
               },
               child: const Text('退出登录'),
             ),
@@ -382,9 +400,16 @@ class Request {
         ),
       );
     }
+
+    // 【修复】释放锁
+    _isShowingAuthDialog = false;
   }
 
   void _showErrorDialog(int code, String message) {
+    // 【修复】对通用错误也添加锁，避免网络断开时瞬间弹出多个窗口
+    if (_isShowingErrorDialog) return;
+    _isShowingErrorDialog = true;
+
     final context = navigatorKey.currentContext;
     if (context != null) {
       Future.microtask(() {
@@ -397,13 +422,21 @@ class Request {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _isShowingErrorDialog = false; // 关闭时释放锁
+                },
                 child: const Text('确定'),
               ),
             ],
           ),
-        );
+        ).then((_) {
+          // 确保 Dialog 被意外关闭（如点击外部）时也能释放锁
+          _isShowingErrorDialog = false;
+        });
       });
+    } else {
+      _isShowingErrorDialog = false;
     }
   }
 
