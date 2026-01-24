@@ -3,7 +3,9 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
+import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class AppearanceSettingsPage extends StatelessWidget {
   const AppearanceSettingsPage({super.key});
@@ -20,6 +22,7 @@ class AppearanceSettingsPage extends StatelessWidget {
           _buildColorItem(context, settingsProvider),
           _buildStartPageItem(context, settingsProvider),
           _buildLibraryOrderItem(context),
+          _buildDiscoverOrderItem(context),
         ],
       ),
     );
@@ -151,6 +154,21 @@ class AppearanceSettingsPage extends StatelessWidget {
       builder: (context) => const _LibraryOrderDialog(),
     );
   }
+
+  Widget _buildDiscoverOrderItem(BuildContext context) {
+    return ListTile(
+      title: const Text('发现页面排序与显示'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _showDiscoverOrderDialog(context),
+    );
+  }
+
+  void _showDiscoverOrderDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const _DiscoverOrderDialog(),
+    );
+  }
 }
 
 class _LibraryOrderDialog extends StatelessWidget {
@@ -158,53 +176,62 @@ class _LibraryOrderDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scrollController = ScrollController();
     return AlertDialog(
       title: const Text('曲库页面排序与显示'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 300,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+          maxWidth: double.maxFinite,
+        ),
         child: Consumer<LibraryProvider>(
           builder: (context, libraryProvider, child) {
-            return ReorderableListView.builder(
-              itemCount: libraryProvider.categoryOrder.length,
-              onReorder: libraryProvider.updateOrder,
-              itemBuilder: (context, index) {
-                final type = libraryProvider.categoryOrder[index];
-                final isHidden = libraryProvider.hiddenCategories.contains(type);
-                String title = '';
-                switch (type) {
-                  case PlaylistCategoryType.favorites:
-                    title = '收藏夹';
-                    break;
-                  case PlaylistCategoryType.collections:
-                    title = '合集';
-                    break;
-                  case PlaylistCategoryType.local:
-                    title = '本地歌单';
-                    break;
-                }
-                return ListTile(
-                  key: ValueKey(type),
-                  title: Text(
-                    title,
-                    style: TextStyle(
-                      color: isHidden ? Theme.of(context).disabledColor : null,
-                      decoration: isHidden ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => _showVisibilityDialog(context, libraryProvider, type, isHidden),
+            return Scrollbar(
+              controller: scrollController,
+              thumbVisibility: true,
+              child: ReorderableListView.builder(
+                scrollController: scrollController,
+                shrinkWrap: true,
+                itemCount: libraryProvider.categoryOrder.length,
+                onReorder: libraryProvider.updateOrder,
+                itemBuilder: (context, index) {
+                  final type = libraryProvider.categoryOrder[index];
+                  final isHidden = libraryProvider.hiddenCategories.contains(type);
+                  String title = '';
+                  switch (type) {
+                    case PlaylistCategoryType.favorites:
+                      title = '收藏夹';
+                      break;
+                    case PlaylistCategoryType.collections:
+                      title = '合集';
+                      break;
+                    case PlaylistCategoryType.local:
+                      title = '本地歌单';
+                      break;
+                  }
+                  return ListTile(
+                    key: ValueKey(type),
+                    title: Text(
+                      title,
+                      style: TextStyle(
+                        color: isHidden ? Theme.of(context).disabledColor : null,
+                        decoration: isHidden ? TextDecoration.lineThrough : null,
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.drag_handle),
-                    ],
-                  ),
-                );
-              },
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => _showVisibilityDialog(context, libraryProvider, type, isHidden),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.drag_handle),
+                      ],
+                    ),
+                  );
+                },
+              ),
             );
           },
         ),
@@ -224,6 +251,115 @@ class _LibraryOrderDialog extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: Text(isHidden ? '显示控件' : '隐藏控件'),
         content: Text(isHidden ? '是否在曲库中恢复显示该控件？' : '是否在曲库中隐藏该控件？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.toggleCategoryVisibility(type);
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscoverOrderDialog extends StatelessWidget {
+  const _DiscoverOrderDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final scrollController = ScrollController();
+    return AlertDialog(
+      title: const Text('发现页面排序与显示'),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+          maxWidth: double.maxFinite,
+        ),
+        child: Consumer<DiscoverProvider>(
+          builder: (context, discoverProvider, child) {
+            return Scrollbar(
+              controller: scrollController,
+              thumbVisibility: true,
+              child: ReorderableListView.builder(
+                scrollController: scrollController,
+                shrinkWrap: true,
+                itemCount: discoverProvider.categoryOrder.length,
+                onReorder: discoverProvider.updateOrder,
+                itemBuilder: (context, index) {
+                  final type = discoverProvider.categoryOrder[index];
+                  final isHidden = discoverProvider.hiddenCategories.contains(type);
+                  String title = _getCategoryTitle(context, type);
+                  
+                  return ListTile(
+                    key: ValueKey(type),
+                    title: Text(
+                      title,
+                      style: TextStyle(
+                        color: isHidden ? Theme.of(context).disabledColor : null,
+                        decoration: isHidden ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => _showVisibilityDialog(context, discoverProvider, type, isHidden),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.drag_handle),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
+        ),
+      ],
+    );
+  }
+
+  String _getCategoryTitle(BuildContext context, DiscoverCategoryType type) {
+    switch (type) {
+      case DiscoverCategoryType.recommend:
+        return S.of(context).pages_discover_tag_recommend;
+      case DiscoverCategoryType.feed:
+        return S.of(context).pages_discover_tag_feed;
+      case DiscoverCategoryType.history:
+        return '历史';
+      case DiscoverCategoryType.subscribe:
+        return '关注';
+      case DiscoverCategoryType.live:
+        return S.of(context).pages_discover_tag_live;
+      case DiscoverCategoryType.rank:
+        return S.of(context).pages_discover_tag_ranking;
+      case DiscoverCategoryType.musicRank:
+        return S.of(context).pages_discover_tag_ranking_category_music;
+      case DiscoverCategoryType.kichikuRank:
+        return S.of(context).pages_discover_tag_ranking_category_kichiku;
+    }
+  }
+
+  void _showVisibilityDialog(BuildContext context, DiscoverProvider provider, DiscoverCategoryType type, bool isHidden) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isHidden ? '显示控件' : '隐藏控件'),
+        content: Text(isHidden ? '是否在发现页中恢复显示该控件？' : '是否在发现页中隐藏该控件？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),

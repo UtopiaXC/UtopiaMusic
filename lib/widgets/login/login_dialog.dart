@@ -159,19 +159,33 @@ class _LoginDialogState extends State<LoginDialog>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 500),
-        child: Column(
+        child: Stack(
           children: [
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: '扫码登录'),
-                Tab(text: 'Cookie 登录'),
+            Column(
+              children: [
+                const SizedBox(height: 8), // Space for close button
+                TabBar(
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(text: '扫码登录'),
+                    Tab(text: 'Cookie 登录'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [_buildQrLoginView(), _buildCookieLoginView()],
+                  ),
+                ),
               ],
             ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [_buildQrLoginView(), _buildCookieLoginView()],
+            Positioned(
+              right: 8,
+              top: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: '取消',
               ),
             ),
           ],
@@ -185,37 +199,50 @@ class _LoginDialogState extends State<LoginDialog>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 300, maxHeight: 250),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (auth.userInfo?.avatarUrl != null)
-                CircleAvatar(
-                  radius: 32,
-                  backgroundImage: NetworkImage(auth.userInfo!.avatarUrl),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                '欢迎回来，${auth.userInfo?.name ?? "用户"}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (auth.userInfo?.avatarUrl != null)
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundImage: NetworkImage(auth.userInfo!.avatarUrl),
+                    ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '欢迎回来，${auth.userInfo?.name ?? "用户"}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('当前已登录，请尽情使用', style: TextStyle(color: Colors.grey)),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _handleLogout,
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('退出登录'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              const Text('当前已登录，请尽情使用', style: TextStyle(color: Colors.grey)),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _handleLogout,
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                  child: const Text('退出登录'),
-                ),
+            ),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: '关闭',
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

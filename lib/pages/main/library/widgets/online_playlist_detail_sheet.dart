@@ -69,6 +69,26 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
 
   Future<void> _handleClone() async {
     if (_songs.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('克隆歌单'),
+        content: Text('确定要将歌单 "${widget.playlistInfo.title}" 克隆到本地吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('克隆'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
     
     setState(() => _isLoading = true);
     try {
@@ -83,7 +103,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.pop(context);
+        Navigator.pop(context); // Close the sheet
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已克隆到本地歌单')),
         );

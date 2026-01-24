@@ -13,6 +13,6 @@ class SearchLiveFragment extends StatelessWidget {
     if (keyword.isEmpty) {
       return const Center(child: Text('请输入关键词搜索直播'));
     }
-    return const Center(child: Text('直播搜索结果'));
+    return const Center(child: Text('直播搜索功能开发中'));
   }
 }

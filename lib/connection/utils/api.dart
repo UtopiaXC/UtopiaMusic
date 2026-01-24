@@ -39,4 +39,7 @@ class Api {
   static const String urlUserStat = '/x/space/upstat';
   static const String urlUserVideo = '/x/space/wbi/arc/search';
   static const String urlRelationModify = '/x/relation/modify';
+  static const String urlArchiveLike = '/x/web-interface/archive/like';
+  static const String urlArchiveCoin = '/x/web-interface/coin/add';
+  static const String urlArchiveFav = '/x/v3/fav/resource/deal';
 }

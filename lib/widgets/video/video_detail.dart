@@ -9,11 +9,27 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:utopia_music/widgets/user/space_sheet.dart';
+import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
+import 'package:utopia_music/widgets/video/video_detail_info.dart';
+import 'package:utopia_music/widgets/video/favorite_sheet.dart';
+import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
+import 'package:utopia_music/providers/auth_provider.dart';
+import 'package:utopia_music/providers/library_provider.dart';
 
 class VideoDetailPage extends StatefulWidget {
   final String bvid;
+  final bool simplified;
+  final List<Song>? contextList;
+  final ScrollController? scrollController;
 
-  const VideoDetailPage({super.key, required this.bvid});
+  const VideoDetailPage({
+    super.key,
+    required this.bvid,
+    this.simplified = false,
+    this.contextList,
+    this.scrollController,
+  });
 
   @override
   State<VideoDetailPage> createState() => _VideoDetailPageState();
@@ -26,7 +42,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
   Map<String, dynamic>? _videoDetail;
   bool _isLoadingDetail = true;
-  bool _isExpanded = false;
   List<Song> _relatedVideos = [];
   bool _isLoadingRelated = false;
   bool _recommendationAutoPlay = false;
@@ -43,8 +58,16 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
   void initState() {
     super.initState();
     final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    int tabCount = settingsProvider.enableComments ? 3 : 2;
-    _tabController = TabController(length: tabCount, vsync: this);
+    
+    int tabCount = 0;
+    if (!widget.simplified) {
+      tabCount = settingsProvider.enableComments ? 3 : 2;
+    }
+    
+    if (tabCount > 0) {
+      _tabController = TabController(length: tabCount, vsync: this);
+    }
+    
     _loadSettings();
     _loadAllData();
   }
@@ -74,16 +97,52 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
           _isLoadingDetail = false;
         });
         if (detail != null) {
-          _loadRelatedVideos();
-          _loadCollection(detail['aid'] ?? 0);
-          final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-          if (settingsProvider.enableComments) {
-            _loadComments();
+          // Check favorite status using the API requested by user
+          _checkFavStatus(detail['aid'] ?? 0);
+          
+          if (!widget.simplified) {
+            _loadRelatedVideos();
+            _loadCollection(detail['aid'] ?? 0);
+            final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+            if (settingsProvider.enableComments) {
+              _loadComments();
+            }
           }
         }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoadingDetail = false);
+    }
+  }
+  
+  Future<void> _checkFavStatus(int aid) async {
+    if (aid == 0) return;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final int myMid = authProvider.userInfo?.mid ?? 0;
+    if (myMid == 0) return;
+
+    try {
+      final folders = await _userApi.getUserCreatedFavFoldersAll(myMid, aid);
+      bool isFav = false;
+      for (var folder in folders) {
+        if (folder['fav_state'] == 1) {
+          isFav = true;
+          break;
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          if (_videoDetail != null) {
+            if (_videoDetail!['req_user'] == null) {
+              _videoDetail!['req_user'] = {};
+            }
+            _videoDetail!['req_user']['favorite'] = isFav ? 1 : 0;
+          }
+        });
+      }
+    } catch (e) {
+      print('Error checking fav status: $e');
     }
   }
 
@@ -234,149 +293,190 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
   }
 
   Future<void> _handleFav() async {
-    bool isFav = false;
-    if (_videoDetail != null && _videoDetail!['req_user'] != null) {
-      isFav = _videoDetail!['req_user']['favorite'] == 1;
+    if (_videoDetail == null) return;
+    
+    final int aid = _videoDetail!['aid'] ?? 0;
+    if (aid == 0) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final int myMid = authProvider.userInfo?.mid ?? 0;
+    if (myMid == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先登录')));
+      return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('收藏功能开发中')));
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FavoriteSheet(aid: aid, mid: myMid),
+    );
+    
+    if (result != null) {
+      setState(() {
+        if (_videoDetail!['req_user'] == null) {
+          _videoDetail!['req_user'] = {};
+        }
+        _videoDetail!['req_user']['favorite'] = result ? 1 : 0;
+      });
+      
+      // Refresh library to update favorite folder cover and count
+      if (mounted) {
+        Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+      }
+    }
+  }
+
+  void _openSpace(int mid) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SpaceSheet(mid: mid),
+    );
+  }
+
+  void _playVideo(Song song) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    
+    if (playerProvider.playlist.isEmpty) {
+      // If playlist is empty, play directly
+      List<Song> contextList = [song];
+      if (widget.contextList != null && widget.contextList!.isNotEmpty) {
+        contextList = widget.contextList!;
+      } else if (_recommendationAutoPlay && _relatedVideos.isNotEmpty) {
+        contextList.addAll(_relatedVideos);
+      } else if (_hasCollection && _collectionVideos.isNotEmpty) {
+         contextList = _collectionVideos;
+      }
+      
+      playerProvider.setPlaylistAndPlay(contextList, song);
+      if (widget.simplified) {
+        Navigator.pop(context);
+      }
+    } else if (widget.simplified && widget.contextList != null) {
+      // If simplified (opened from song list), show play options dialog
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => PlayOptionsSheet(
+          song: song,
+          contextList: widget.contextList!,
+          onPlayAction: () {
+            // Maybe close the detail sheet?
+            // Navigator.pop(context); 
+            // User didn't specify to close, but usually we stay or close.
+            // Let's keep it open.
+          },
+        ),
+      );
+    } else {
+      // Default behavior for full detail page
+      List<Song> contextList = [song];
+      if (_recommendationAutoPlay && _relatedVideos.isNotEmpty) {
+        contextList.addAll(_relatedVideos);
+      } else if (_hasCollection && _collectionVideos.isNotEmpty) {
+         contextList = _collectionVideos;
+      }
+      
+      playerProvider.setPlaylistAndPlay(contextList, song);
+    }
+  }
+
+  Song _mapDetailToSong(Map<String, dynamic> data) {
+    return Song(
+      title: data['title'] ?? '',
+      artist: data['owner']?['name'] ?? '',
+      coverUrl: data['pic'] ?? '',
+      lyrics: '',
+      colorValue: 0xFF2196F3,
+      bvid: data['bvid'] ?? '',
+      cid: data['cid'] ?? 0,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingDetail) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_videoDetail == null) {
-      return const Center(child: Text('无法加载视频详情'));
-    }
-
-    final data = _videoDetail!;
-    final String title = data['title'] ?? '';
-    final String desc = data['desc'] ?? '无简介';
-    final String pic = data['pic'] ?? '';
-    final Map<String, dynamic> stat = data['stat'] ?? {};
-    final int view = stat['view'] ?? 0;
-    final int danmaku = stat['danmaku'] ?? 0;
-    final int pubdate = data['pubdate'] ?? 0;
-    final String bvid = data['bvid'] ?? '';
-    
-    bool isFav = false;
-    if (data['req_user'] != null) {
-      isFav = data['req_user']['favorite'] == 1;
-    }
-    
     final settingsProvider = Provider.of<SettingsProvider>(context);
+    final playerProvider = Provider.of<PlayerProvider>(context);
+    
+    bool showPlayButton = true;
+    if (playerProvider.currentSong != null && playerProvider.currentSong!.bvid == widget.bvid) {
+      showPlayButton = false;
+    }
 
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.only(top: 16.0, left: 8.0, right: 8.0),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Cover
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    pic,
-                    width: 120,
-                    height: 75,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 120,
-                      height: 75,
-                      color: Colors.grey,
-                      child: const Icon(Icons.broken_image),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _isExpanded = !_isExpanded),
-                              child: Text(
-                                title,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                maxLines: _isExpanded ? null : 1,
-                                overflow: _isExpanded ? null : TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          if (!_isExpanded)
-                            GestureDetector(
-                              onTap: () => setState(() => _isExpanded = true),
-                              child: const Icon(Icons.keyboard_arrow_down, size: 20),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      GestureDetector(
-                        onTap: () => setState(() => _isExpanded = !_isExpanded),
-                        child: Text(
-                          desc,
-                          style: Theme.of(context).textTheme.bodySmall,
-                          maxLines: _isExpanded ? null : 1,
-                          overflow: _isExpanded ? null : TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 IconButton(
-                  onPressed: _handleFav,
-                  icon: Icon(
-                    isFav ? Icons.star : Icons.star_border,
-                    color: isFav ? Colors.amber : null,
-                  ),
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  onPressed: () => Navigator.pop(context),
                 ),
+                const Spacer(),
               ],
             ),
           ),
-          
-          // Metadata
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('播放: ${_formatNumber(view)}', style: Theme.of(context).textTheme.bodySmall),
-                Text('弹幕: ${_formatNumber(danmaku)}', style: Theme.of(context).textTheme.bodySmall),
-                Text('时间: ${_formatDate(pubdate)}', style: Theme.of(context).textTheme.bodySmall),
-                Text(bvid, style: Theme.of(context).textTheme.bodySmall),
-              ],
+          if (_isLoadingDetail)
+            const Expanded(child: Center(child: CircularProgressIndicator()))
+          else if (_videoDetail == null)
+            const Expanded(child: Center(child: Text('无法加载视频详情')))
+          else if (widget.simplified)
+            Expanded(
+              child: ListView(
+                controller: widget.scrollController,
+                children: [
+                  VideoDetailInfo(
+                    data: _videoDetail!,
+                    showPlayButton: showPlayButton,
+                    onPlay: () {
+                      if (_videoDetail != null) {
+                        _playVideo(_mapDetailToSong(_videoDetail!));
+                      }
+                    },
+                    onFav: _handleFav,
+                    onOpenSpace: _openSpace,
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            VideoDetailInfo(
+              data: _videoDetail!,
+              showPlayButton: showPlayButton,
+              onPlay: () {
+                if (_videoDetail != null) {
+                  _playVideo(_mapDetailToSong(_videoDetail!));
+                }
+              },
+              onFav: _handleFav,
+              onOpenSpace: _openSpace,
             ),
-          ),
-          const SizedBox(height: 8),
-          
-          // Tabs
-          TabBar(
-            controller: _tabController,
-            tabs: [
-              const Tab(text: '推荐'),
-              const Tab(text: '合集与分P'),
-              if (settingsProvider.enableComments) const Tab(text: '评论'),
-            ],
-          ),
-          
-          Expanded(
-            child: TabBarView(
+            
+            // Tabs
+            TabBar(
               controller: _tabController,
-              children: [
-                _buildRelatedTab(),
-                _buildCollectionTab(),
-                if (settingsProvider.enableComments) _buildCommentsTab(),
+              tabs: [
+                const Tab(text: '推荐'),
+                const Tab(text: '合集与分P'),
+                if (settingsProvider.enableComments) const Tab(text: '评论'),
               ],
             ),
-          ),
+            
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildRelatedTab(),
+                  _buildCollectionTab(),
+                  if (settingsProvider.enableComments) _buildCommentsTab(),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -397,11 +497,25 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
               : _relatedVideos.isEmpty
                   ? const Center(child: Text('暂无推荐'))
                   : ListView.builder(
+                      controller: widget.scrollController,
                       itemCount: _relatedVideos.length,
                       itemBuilder: (context, index) {
                         return SongListItem(
                           song: _relatedVideos[index],
                           contextList: _relatedVideos,
+                          onPlayAction: () {
+                             // When clicked from related list, we want to open detail page?
+                             // The user said: "lib/widgets/song_list/song_list_item.dart click logic replaced by opening detail page"
+                             // But SongListItem has its own logic. We need to override it or change SongListItem.
+                             // Wait, the user said "lib/widgets/song_list/song_list_item.dart click logic replaced by opening detail page".
+                             // This means we should modify SongListItem or how we use it.
+                             // But here we are inside VideoDetailPage. If we click a related video, we probably want to navigate to its detail page.
+                             
+                             // However, the user also said: "detail page opened via song_list_item should not have recommendation, parts, and comments"
+                             // This suggests a "SimplifiedVideoDetailPage".
+                             
+                             // Let's handle this in SongListItem modification.
+                          },
                         );
                       },
                     ),
@@ -430,6 +544,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         ),
         Expanded(
           child: ListView.builder(
+            controller: widget.scrollController,
             itemCount: _collectionVideos.length,
             itemBuilder: (context, index) {
               final song = _collectionVideos[index];
@@ -462,6 +577,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                     return false;
                   },
                   child: ListView.separated(
+                    controller: widget.scrollController,
                     itemCount: _comments.length + 1,
                     separatorBuilder: (context, index) => const Divider(height: 1),
                     itemBuilder: (context, index) {
@@ -542,11 +658,15 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                           padding: const EdgeInsets.only(top: 4.0),
                           child: GestureDetector(
                             onTap: () => _loadSubReplies(index, oid, rpid),
-                            child: Text(
-                              '查看更多回复 >',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontSize: 12,
+                            behavior: HitTestBehavior.translucent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                                '查看更多回复 >',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
@@ -599,7 +719,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
   String _formatDate(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    return '${date.year}-${date.month}-${date.day}';
+    return '${date.year}-${date.month}-${date.day} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
   
   String _formatFullDate(int timestamp) {

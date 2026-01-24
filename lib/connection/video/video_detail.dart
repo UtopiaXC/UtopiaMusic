@@ -6,6 +6,7 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:dio/dio.dart';
 
 class VideoDetailApi {
   final HtmlUnescape _unescape = HtmlUnescape();
@@ -169,6 +170,85 @@ class VideoDetailApi {
       print('Error fetching sub-replies: $e');
     }
     return [];
+  }
+
+  Future<bool> actionLike(String bvid, bool like) async {
+    try {
+      final data = await Request().post(
+        Api.urlArchiveLike,
+        baseUrl: Api.urlBase,
+        data: {
+          'bvid': bvid,
+          'like': like ? 1 : 2, // 1: like, 2: cancel like
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+      return data != null && data is Map && data['code'] == 0;
+    } catch (e) {
+      print('Error action like: $e');
+    }
+    return false;
+  }
+
+  Future<bool> actionCoin(String bvid, {int count = 1}) async {
+    try {
+      final data = await Request().post(
+        Api.urlArchiveCoin,
+        baseUrl: Api.urlBase,
+        data: {
+          'bvid': bvid,
+          'multiply': count,
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+      return data != null && data is Map && data['code'] == 0;
+    } catch (e) {
+      print('Error action coin: $e');
+    }
+    return false;
+  }
+
+  Future<bool> actionFav(int aid, int addMediaId, {List<int>? delMediaIds}) async {
+    return actionFavList(aid, addMediaIds: [addMediaId], delMediaIds: delMediaIds);
+  }
+
+  Future<bool> actionFavList(int aid, {List<int>? addMediaIds, List<int>? delMediaIds}) async {
+    try {
+      String addIds = '';
+      if (addMediaIds != null && addMediaIds.isNotEmpty) {
+        addIds = addMediaIds.join(',');
+      }
+      
+      String delIds = '';
+      if (delMediaIds != null && delMediaIds.isNotEmpty) {
+        delIds = delMediaIds.join(',');
+      }
+      
+      final data = await Request().post(
+        Api.urlArchiveFav,
+        baseUrl: Api.urlBase,
+        data: {
+          'rid': aid,
+          'type': 2,
+          'add_media_ids': addIds,
+          'del_media_ids': delIds,
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+      return data != null && data is Map && data['code'] == 0;
+    } catch (e) {
+      print('Error action fav: $e');
+    }
+    return false;
   }
 
   Song _mapToSong(BuildContext context, dynamic item) {

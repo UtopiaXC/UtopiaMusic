@@ -35,56 +35,60 @@ class SongList extends StatelessWidget {
       return emptyWidget ?? Center(child: Text(S.of(context).common_no_data));
     }
 
-    return ListView.separated(
+    return Scrollbar(
       controller: scrollController,
-      itemCount: songs.length + 1,
-      padding: const EdgeInsets.only(bottom: 120, top: 8),
-      separatorBuilder: (context, index) =>
-          const Divider(height: 1, indent: 72),
-      itemBuilder: (context, index) {
-        if (index == songs.length) {
-          if (isLoadingMore) {
-            return Container(
-              height: 60,
-              alignment: Alignment.center,
-              child: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
-              ),
-            );
-          } else if (!hasMore) {
-            return Container(
-              height: 60,
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '到底了',
-                    style: TextStyle(
-                      color: Theme.of(context).disabledColor,
-                      fontSize: 12,
+      thumbVisibility: true,
+      child: ListView.separated(
+        controller: scrollController,
+        itemCount: songs.length + 1,
+        padding: const EdgeInsets.only(bottom: 120, top: 8),
+        separatorBuilder: (context, index) =>
+            const Divider(height: 1, indent: 72),
+        itemBuilder: (context, index) {
+          if (index == songs.length) {
+            if (isLoadingMore) {
+              return Container(
+                height: 60,
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+              );
+            } else if (!hasMore) {
+              return Container(
+                height: 60,
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '到底了',
+                      style: TextStyle(
+                        color: Theme.of(context).disabledColor,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            return const SizedBox(height: 60);
+                  ],
+                ),
+              );
+            } else {
+              return const SizedBox(height: 60);
+            }
           }
-        }
 
-        final song = songs[index];
-        return SongListItem(
-          song: song,
-          contextList: songs,
-          menuItems: itemMenuItems,
-          onMenuSelected: onItemMenuSelected != null
-              ? (value) => onItemMenuSelected!(value, song)
-              : null,
-        );
-      },
+          final song = songs[index];
+          return SongListItem(
+            song: song,
+            contextList: songs,
+            menuItems: itemMenuItems,
+            onMenuSelected: onItemMenuSelected != null
+                ? (value) => onItemMenuSelected!(value, song)
+                : null,
+          );
+        },
+      ),
     );
   }
 }

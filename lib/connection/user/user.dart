@@ -97,6 +97,30 @@ class UserApi {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> getUserCreatedFavFoldersAll(int mid, int rid) async {
+    try {
+      final data = await Request().get(
+        Api.urlFavFolderCreatedListAll,
+        baseUrl: Api.urlBase,
+        params: {
+          'up_mid': mid,
+          'type': 2,
+          'rid': rid,
+        },
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        final list = data['data']['list'];
+        if (list is List) {
+          return List<Map<String, dynamic>>.from(list);
+        }
+      }
+    } catch (e) {
+      print('Error fetching user created fav folders all: $e');
+    }
+    return [];
+  }
+
   Future<List<dynamic>> getUserCollectedFavFolders(int mid, int page) async {
     try {
       final data = await Request().get(
@@ -142,5 +166,49 @@ class UserApi {
       print('Error modifying relation: $e');
     }
     return false;
+  }
+
+  Future<List<dynamic>> getFollowings(int mid, int page) async {
+    try {
+      final data = await Request().get(
+        '/x/relation/followings',
+        baseUrl: Api.urlBase,
+        params: {
+          'vmid': mid,
+          'pn': page,
+          'ps': 20,
+          'order': 'desc',
+        },
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return data['data']['list'] ?? [];
+      }
+    } catch (e) {
+      print('Error fetching followings: $e');
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> getHistory(int max, int viewAt) async {
+    try {
+      final data = await Request().get(
+        '/x/web-interface/history/cursor',
+        baseUrl: Api.urlBase,
+        params: {
+          'ps': 20,
+          'max': max,
+          'view_at': viewAt,
+          'business': 'archive',
+        },
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return data['data'];
+      }
+    } catch (e) {
+      print('Error fetching history: $e');
+    }
+    return null;
   }
 }

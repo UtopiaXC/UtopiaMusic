@@ -6,6 +6,7 @@ import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
+import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
@@ -38,6 +39,7 @@ void main() async {
           ChangeNotifierProvider(create: (_) => SettingsProvider()),
           ChangeNotifierProvider(create: (_) => SecurityProvider()),
           ChangeNotifierProvider(create: (_) => LibraryProvider()),
+          ChangeNotifierProvider(create: (_) => DiscoverProvider()),
         ],
         child: const UtopiaMusicApp(),
       ),

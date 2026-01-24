@@ -263,6 +263,18 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
           ),
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0, left: 8.0, right: 8.0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
               _buildHeader(context),
               TabBar(
                 controller: _tabController,

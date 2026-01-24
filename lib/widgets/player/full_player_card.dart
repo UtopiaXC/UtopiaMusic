@@ -489,13 +489,17 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                         ),
                         GestureDetector(
                           onTap: () => _showArtistSpace(context),
-                          child: Text(
-                            widget.song.artist,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              decoration: TextDecoration.underline,
+                          behavior: HitTestBehavior.translucent,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                            child: Text(
+                              widget.song.artist,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                decoration: TextDecoration.underline,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

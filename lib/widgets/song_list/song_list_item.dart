@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
+import 'package:utopia_music/widgets/video/video_detail.dart';
+import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
 
 class SongListItem extends StatelessWidget {
   final Song song;
@@ -24,64 +24,10 @@ class SongListItem extends StatelessWidget {
   void _showPlayOptionsDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.playlist_play),
-              title: Text(S.of(context).dialog_option_replace_play_list_by_song_list),
-              onTap: () {
-                Navigator.pop(context);
-                Provider.of<PlayerProvider>(context, listen: false)
-                    .setPlaylistAndPlay(contextList, song);
-                onPlayAction?.call();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.playlist_add),
-              title: Text(S.of(context).dialog_option_insert_after),
-              onTap: () {
-                Navigator.pop(context);
-                Provider.of<PlayerProvider>(context, listen: false).insertNext(song);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: Text(S.of(context).dialog_option_insert_after_and_play),
-              onTap: () {
-                Navigator.pop(context);
-                Provider.of<PlayerProvider>(context, listen: false)
-                    .insertNextAndPlay(song);
-                onPlayAction?.call();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.playlist_add_check),
-              title: Text(S.of(context).dialog_option_append_to_end),
-              onTap: () {
-                Navigator.pop(context);
-                Provider.of<PlayerProvider>(context, listen: false).addToEnd(song);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.swap_calls),
-              title: Text(S.of(context).dialog_option_replace_by_single_song),
-              onTap: () {
-                Navigator.pop(context);
-                Provider.of<PlayerProvider>(context, listen: false)
-                    .replacePlaylistWithSong(song);
-                onPlayAction?.call();
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.close),
-              title: Text(S.of(context).common_cancel),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
+      builder: (context) => PlayOptionsSheet(
+        song: song,
+        contextList: contextList,
+        onPlayAction: onPlayAction,
       ),
     );
   }
@@ -96,15 +42,28 @@ class SongListItem extends StatelessWidget {
 
   void _handleTap(BuildContext context) {
     FocusScope.of(context).unfocus();
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-
-    if (playerProvider.playlist.isEmpty) {
-      playerProvider.setPlaylistAndPlay(contextList, song);
-      playerProvider.expandPlayer(); // Expand player when starting from empty
-      onPlayAction?.call();
-    } else {
-      _showPlayOptionsDialog(context);
-    }
+    // Open simplified video detail page
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.5, // Adjusted height to 50%
+        minChildSize: 0.3,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: VideoDetailPage(
+              bvid: song.bvid,
+              simplified: true,
+              contextList: contextList, // Pass contextList
+              scrollController: scrollController, // Pass scrollController
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override

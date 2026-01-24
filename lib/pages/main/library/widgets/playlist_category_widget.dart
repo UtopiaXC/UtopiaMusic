@@ -357,82 +357,85 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
       }
     }
 
-    return SizedBox(
-      height: 160,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: _playlists.length,
-        itemBuilder: (context, index) {
-          final playlist = _playlists[index];
-          return GestureDetector(
-            onTap: () => _handlePlaylistTap(playlist),
-            child: Container(
-              width: 110,
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      image: playlist.coverUrl.isNotEmpty
-                          ? DecorationImage(
-                              image: NetworkImage(playlist.coverUrl),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        if (playlist.coverUrl.isEmpty)
-                          Center(child: Icon(Icons.music_note, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                        Positioned(
-                          right: 4,
-                          bottom: 4,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${playlist.count}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      child: SizedBox(
+        height: 160,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.zero,
+          itemCount: _playlists.length,
+          itemBuilder: (context, index) {
+            final playlist = _playlists[index];
+            return GestureDetector(
+              onTap: () => _handlePlaylistTap(playlist),
+              child: Container(
+                width: 110,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        image: playlist.coverUrl.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(playlist.coverUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          if (playlist.coverUrl.isEmpty)
+                            Center(child: Icon(Icons.music_note, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                          Positioned(
+                            right: 4,
+                            bottom: 4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${playlist.count}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    playlist.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 8),
+                    Text(
+                      playlist.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

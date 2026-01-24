@@ -12,6 +12,6 @@ class LiveFragment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('直播内容'));
+    return const Center(child: Text('直播功能开发中'));
   }
 }
