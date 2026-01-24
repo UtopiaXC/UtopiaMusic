@@ -21,7 +21,7 @@ class AudioProxyService {
   final DatabaseService _dbService = DatabaseService();
 
   final Set<String> _activeDownloads = {};
-  int _preferredQuality = 30280; // Default
+  int _preferredQuality = 30280;
 
   int get preferredQuality => _preferredQuality;
 
@@ -46,11 +46,7 @@ class AudioProxyService {
 
   AudioStreamInfo? getStreamInfo(String bvid, int cid) {
     final key = '${bvid}_$cid';
-    final info = _streamInfoMap[key];
-    if (info == null) {
-      print('AudioProxyService: Stream info not found for key: $key. Available keys: ${_streamInfoMap.keys.length}');
-    }
-    return info;
+    return _streamInfoMap[key];
   }
 
   Future<void> start() async {
@@ -73,9 +69,11 @@ class AudioProxyService {
 
         int cid = int.tryParse(cidString ?? '0') ?? 0;
         int originalCid = cid;
+
         int targetQuality = qualityParam != null
             ? (int.tryParse(qualityParam) ?? _preferredQuality)
             : _preferredQuality;
+
         _dbService.recordCacheAccess(bvid, cid, targetQuality);
 
         if (cid == 0) {
@@ -98,12 +96,10 @@ class AudioProxyService {
           if (streamInfo != null) {
             final key = '${bvid}_$cid';
             _streamInfoMap[key] = streamInfo;
-            print('AudioProxyService: Stored stream info for key: $key');
 
             if (originalCid != cid) {
               final originalKey = '${bvid}_$originalCid';
               _streamInfoMap[originalKey] = streamInfo;
-              print('AudioProxyService: Stored stream info for key: $originalKey');
             }
             _streamInfoController.add(null);
           }
@@ -120,7 +116,6 @@ class AudioProxyService {
 
         final String fileName = 'song_${bvid}_${cid}_${streamInfo.quality}.${streamInfo.extension}';
         final File localCacheFile = File('$_cacheDirectory/$fileName');
-
         if (await localCacheFile.exists()) {
           await _serveLocalFile(request, localCacheFile, streamInfo.extension);
           return;
@@ -130,7 +125,6 @@ class AudioProxyService {
           await _handleHeadRequest(request, streamInfo.url, bvid, cid);
           return;
         }
-
         bool isAlreadyDownloading = _activeDownloads.contains(bvid);
         bool enableCaching = !isAlreadyDownloading;
 
@@ -253,13 +247,11 @@ class AudioProxyService {
       targetRequest.headers.set('User-Agent', HttpConstants.userAgent);
       targetRequest.headers.set('Referer', HttpConstants.referer);
 
-      String? rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
-
-      if (rangeHeader != null) {
-        if (rangeHeader.trim() == 'bytes=0-') {
-        } else {
+      final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
+      if (enableCaching) {
+      } else {
+        if (rangeHeader != null) {
           targetRequest.headers.set(HttpHeaders.rangeHeader, rangeHeader);
-          enableCaching = false;
         }
       }
 
@@ -274,13 +266,17 @@ class AudioProxyService {
 
       request.response.statusCode = targetResponse.statusCode;
       request.response.headers.contentType = targetResponse.headers.contentType;
-      request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
+      if (!enableCaching) {
+        request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
+      }
+
       if (targetResponse.headers.value(HttpHeaders.contentLengthHeader) != null) {
         request.response.headers.set(
           HttpHeaders.contentLengthHeader,
           targetResponse.headers.value(HttpHeaders.contentLengthHeader)!,
         );
       }
+
       if (targetResponse.headers.value(HttpHeaders.contentRangeHeader) != null) {
         request.response.headers.set(
           HttpHeaders.contentRangeHeader,
@@ -290,7 +286,6 @@ class AudioProxyService {
 
       IOSink? fileSink;
       File? tempFile;
-
       if (enableCaching && targetResponse.statusCode == HttpStatus.ok) {
         _activeDownloads.add(bvid);
         tempFile = File('$_cacheDirectory/$fileName.part');
@@ -341,6 +336,7 @@ class AudioProxyService {
               if (tempFile != null && await tempFile!.exists()) {
                 await tempFile!.rename(finalFile.path);
                 onCacheFinished?.call(bvid);
+                print("Cache finished for $fileName"); // Debug Log
               }
             } catch (e) {
               print("Error finalizing cache: $e");

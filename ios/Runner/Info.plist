@@ -9,7 +9,7 @@
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<string>0.0.1-Beta01</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -64,5 +64,7 @@
     <array>
         <string>bilibili</string>
     </array>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Use your face id to unlock if you want to enable Biometrics</string>
 </dict>
 </plist>

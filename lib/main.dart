@@ -10,11 +10,13 @@ import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
+import 'package:utopia_music/connection/utils/request.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Request();
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.utopiaxc.utopia.bilimusic',
     androidNotificationChannelName: 'Audio playback',
