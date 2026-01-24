@@ -74,8 +74,8 @@ class PlayerProvider extends ChangeNotifier {
     });
 
     _audioPlayerService.currentIndexStream.listen((index) {
-      if (_isSwitchingMode || _isSwitchingPlaylist) return;
-      if (index != null && index >= 0 && index < _playlist.length) {
+      if (_isSwitchingMode) return;
+      if (index >= 0 && index < _playlist.length) {
         final newSong = _playlist[index];
         if (_currentSong?.bvid != newSong.bvid ||
             _currentSong?.cid != newSong.cid) {

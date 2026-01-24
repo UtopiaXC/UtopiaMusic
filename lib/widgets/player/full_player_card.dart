@@ -31,7 +31,6 @@ class FullPlayerPage extends StatefulWidget {
 class _FullPlayerPageState extends State<FullPlayerPage> {
   bool _isDragging = false;
   double _dragValue = 0.0;
-  Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _showLyrics = false;
   Timer? _timer;
@@ -41,14 +40,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     super.initState();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     
-    playerProvider.player.positionStream.listen((position) {
-      if (mounted && !_isDragging) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
     playerProvider.player.durationStream.listen((duration) {
       if (mounted && duration != null) {
         setState(() {
@@ -59,7 +50,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() {}); // Refresh UI for timer countdown
+        setState(() {});
       }
     });
   }
@@ -95,7 +86,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
     setState(() {
       _isDragging = false;
-      _position = position;
     });
   }
 
@@ -237,29 +227,54 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           Expanded(child: PlayerContent(song: song)),
           Padding(
             padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-            child: PlayerControls(
-              isPlaying: isCurrent ? playerProvider.isPlaying : false,
-              isLoading: isCurrent ? (playerProvider.player.processingState == ProcessingState.buffering ||
-                  playerProvider.player.processingState == ProcessingState.loading) : false,
-              duration: isCurrent ? _duration : Duration.zero,
-              position: isCurrent ? (_isDragging
-                  ? Duration(seconds: _dragValue.toInt())
-                  : _position) : Duration.zero,
-              loopMode: playerProvider.playMode,
-              onSeek: isCurrent ? _onSeekEnd : (v){},
-              onSeekStart: isCurrent ? _onSeekStart : null,
-              onSeekUpdate: isCurrent ? _onSeekUpdate : null,
-              onPlayPause: isCurrent ? playerProvider.togglePlayPause : (){},
-              onNext: isCurrent && playerProvider.hasNext ? () => playerProvider.playNext() : null,
-              onPrevious: isCurrent && playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
-              onShuffle: isCurrent ? playerProvider.togglePlayMode : (){},
-              onPlaylist: isCurrent ? _showPlaylist : (){},
-              onLyrics: isCurrent ? _toggleLyrics : (){},
-              onTimer: isCurrent ? _showTimerDialog : (){},
-              onComment: isCurrent ? () {} : (){}, 
-              onInfo: isCurrent ? () {} : (){}, 
-              onMore: isCurrent ? _showMoreDialog : (){},
-            ),
+            child: isCurrent 
+              ? StreamBuilder<Duration>(
+                  stream: playerProvider.player.positionStream,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    return PlayerControls(
+                      isPlaying: playerProvider.isPlaying,
+                      isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
+                          playerProvider.player.processingState == ProcessingState.loading),
+                      duration: _duration,
+                      position: _isDragging
+                          ? Duration(seconds: _dragValue.toInt())
+                          : position,
+                      loopMode: playerProvider.playMode,
+                      onSeek: _onSeekEnd,
+                      onSeekStart: _onSeekStart,
+                      onSeekUpdate: _onSeekUpdate,
+                      onPlayPause: playerProvider.togglePlayPause,
+                      onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
+                      onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+                      onShuffle: playerProvider.togglePlayMode,
+                      onPlaylist: _showPlaylist,
+                      onLyrics: _toggleLyrics,
+                      onTimer: _showTimerDialog,
+                      onComment: () {}, 
+                      onInfo: () {}, 
+                      onMore: _showMoreDialog,
+                    );
+                  }
+                )
+              : PlayerControls(
+                  isPlaying: false,
+                  isLoading: false,
+                  duration: Duration.zero,
+                  position: Duration.zero,
+                  loopMode: playerProvider.playMode,
+                  onSeek: (v){},
+                  onPlayPause: (){},
+                  onNext: null,
+                  onPrevious: null,
+                  onShuffle: (){},
+                  onPlaylist: (){},
+                  onLyrics: (){},
+                  onTimer: (){},
+                  onComment: (){}, 
+                  onInfo: (){}, 
+                  onMore: (){},
+                ),
           ),
         ],
       ),
@@ -309,6 +324,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
           onVerticalDragUpdate: (details) {
             if (details.primaryDelta! > 10) {
               if (_showLyrics) {

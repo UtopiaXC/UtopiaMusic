@@ -62,11 +62,12 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
     if (!widget.enableSwipe || _isAnimatingOut) return;
     
     final velocity = details.primaryVelocity ?? 0;
-    final threshold = _width * 0.3;
+    final threshold = _width * 0.1;
+    const velocityThreshold = 100.0;
 
-    if ((_dragExtent > threshold || velocity > 1000) && widget.onPrevious != null) {
+    if (widget.onPrevious != null && _dragExtent > 0 && (_dragExtent > threshold || velocity > velocityThreshold)) {
       _animateOut(1.0);
-    } else if ((_dragExtent < -threshold || velocity < -1000) && widget.onNext != null) {
+    } else if (widget.onNext != null && _dragExtent < 0 && (_dragExtent < -threshold || velocity < -velocityThreshold)) {
       _animateOut(-1.0);
     } else {
       _animateBack();
@@ -143,7 +144,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
            _width = MediaQuery.of(context).size.width;
         }
         
-        final rotation = _dragExtent / _width * 0.05; // Slight rotation
+        final rotation = _dragExtent / _width * 0.05;
         final progress = min(_dragExtent.abs(), _width) / _width;
         
         Widget? background;
