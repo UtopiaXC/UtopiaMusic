@@ -139,7 +139,7 @@ class AppearanceSettingsPage extends StatelessWidget {
 
   Widget _buildLibraryOrderItem(BuildContext context) {
     return ListTile(
-      title: const Text('曲库页面排序'),
+      title: const Text('曲库页面排序与显示'),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _showLibraryOrderDialog(context),
     );
@@ -159,7 +159,7 @@ class _LibraryOrderDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('曲库页面排序'),
+      title: const Text('曲库页面排序与显示'),
       content: SizedBox(
         width: double.maxFinite,
         height: 300,
@@ -170,6 +170,7 @@ class _LibraryOrderDialog extends StatelessWidget {
               onReorder: libraryProvider.updateOrder,
               itemBuilder: (context, index) {
                 final type = libraryProvider.categoryOrder[index];
+                final isHidden = libraryProvider.hiddenCategories.contains(type);
                 String title = '';
                 switch (type) {
                   case PlaylistCategoryType.favorites:
@@ -184,8 +185,24 @@ class _LibraryOrderDialog extends StatelessWidget {
                 }
                 return ListTile(
                   key: ValueKey(type),
-                  title: Text(title),
-                  trailing: const Icon(Icons.drag_handle),
+                  title: Text(
+                    title,
+                    style: TextStyle(
+                      color: isHidden ? Theme.of(context).disabledColor : null,
+                      decoration: isHidden ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => _showVisibilityDialog(context, libraryProvider, type, isHidden),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.drag_handle),
+                    ],
+                  ),
                 );
               },
             );
@@ -198,6 +215,29 @@ class _LibraryOrderDialog extends StatelessWidget {
           child: const Text('关闭'),
         ),
       ],
+    );
+  }
+
+  void _showVisibilityDialog(BuildContext context, LibraryProvider provider, PlaylistCategoryType type, bool isHidden) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isHidden ? '显示控件' : '隐藏控件'),
+        content: Text(isHidden ? '是否在曲库中恢复显示该控件？' : '是否在曲库中隐藏该控件？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.toggleCategoryVisibility(type);
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('确认'),
+          ),
+        ],
+      ),
     );
   }
 }

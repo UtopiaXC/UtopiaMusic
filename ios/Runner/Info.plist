@@ -60,5 +60,9 @@
         <key>NSAllowsArbitraryLoads</key>
         <true/>
     </dict>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>bilibili</string>
+    </array>
 </dict>
 </plist>

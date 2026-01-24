@@ -4,6 +4,7 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget
 
 class LibraryProvider extends ChangeNotifier {
   static const String _categoryOrderKey = 'library_category_order';
+  static const String _hiddenCategoriesKey = 'library_hidden_categories';
 
   List<PlaylistCategoryType> _categoryOrder = [
     PlaylistCategoryType.favorites,
@@ -11,7 +12,14 @@ class LibraryProvider extends ChangeNotifier {
     PlaylistCategoryType.local,
   ];
 
+  Set<PlaylistCategoryType> _hiddenCategories = {};
+
   List<PlaylistCategoryType> get categoryOrder => _categoryOrder;
+  Set<PlaylistCategoryType> get hiddenCategories => _hiddenCategories;
+
+  // Returns only visible categories in order
+  List<PlaylistCategoryType> get visibleCategories => 
+      _categoryOrder.where((type) => !_hiddenCategories.contains(type)).toList();
 
   int _refreshSignal = 0;
   int get refreshSignal => _refreshSignal;
@@ -20,13 +28,14 @@ class LibraryProvider extends ChangeNotifier {
   bool get isLocalRefreshOnly => _isLocalRefreshOnly;
 
   LibraryProvider() {
-    _loadOrder();
+    _loadSettings();
   }
 
-  Future<void> _loadOrder() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final List<String>? savedOrder = prefs.getStringList(_categoryOrderKey);
     
+    // Load Order
+    final List<String>? savedOrder = prefs.getStringList(_categoryOrderKey);
     if (savedOrder != null) {
       final List<PlaylistCategoryType> newOrder = [];
       for (var str in savedOrder) {
@@ -44,10 +53,24 @@ class LibraryProvider extends ChangeNotifier {
           newOrder.add(type);
         }
       }
-      
       _categoryOrder = newOrder;
-      notifyListeners();
     }
+
+    // Load Hidden Categories
+    final List<String>? savedHidden = prefs.getStringList(_hiddenCategoriesKey);
+    if (savedHidden != null) {
+      _hiddenCategories = savedHidden.map((str) {
+        try {
+          final index = int.parse(str);
+          if (index >= 0 && index < PlaylistCategoryType.values.length) {
+            return PlaylistCategoryType.values[index];
+          }
+        } catch (e) {}
+        return null;
+      }).whereType<PlaylistCategoryType>().toSet();
+    }
+    
+    notifyListeners();
   }
 
   Future<void> updateOrder(int oldIndex, int newIndex) async {
@@ -61,6 +84,19 @@ class LibraryProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final List<String> orderToSave = _categoryOrder.map((e) => e.index.toString()).toList();
     await prefs.setStringList(_categoryOrderKey, orderToSave);
+  }
+
+  Future<void> toggleCategoryVisibility(PlaylistCategoryType type) async {
+    if (_hiddenCategories.contains(type)) {
+      _hiddenCategories.remove(type);
+    } else {
+      _hiddenCategories.add(type);
+    }
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> hiddenToSave = _hiddenCategories.map((e) => e.index.toString()).toList();
+    await prefs.setStringList(_hiddenCategoriesKey, hiddenToSave);
   }
 
   void refreshLibrary({bool localOnly = false}) {

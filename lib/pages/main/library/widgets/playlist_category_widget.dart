@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/video/discover.dart';
@@ -39,6 +40,8 @@ class PlaylistCategoryWidget extends StatefulWidget {
   final String title;
   final int refreshSignal;
   final VoidCallback? onLoginTap;
+  final bool showDragHandle;
+  final int? dragIndex;
 
   const PlaylistCategoryWidget({
     super.key,
@@ -46,6 +49,8 @@ class PlaylistCategoryWidget extends StatefulWidget {
     required this.title,
     this.refreshSignal = 0,
     this.onLoginTap,
+    this.showDragHandle = false,
+    this.dragIndex,
   });
 
   @override
@@ -240,6 +245,29 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
     }
   }
 
+  Future<void> _launchBilibili() async {
+    const url = 'https://www.bilibili.com';
+    final uri = Uri.parse(url);
+    
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Try to launch app first
+      final appUri = Uri.parse('bilibili://');
+      if (await canLaunchUrl(appUri)) {
+        await launchUrl(appUri);
+        return;
+      }
+    }
+    
+    // Fallback to web
+    if (!await launchUrl(uri)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('无法打开链接')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -283,10 +311,11 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
               ),
             ),
             const Spacer(),
-            ReorderableDragStartListener(
-              index: 0, 
-              child: const Icon(Icons.drag_handle),
-            ),
+            if (widget.showDragHandle && widget.dragIndex != null)
+              ReorderableDragStartListener(
+                index: widget.dragIndex!, 
+                child: const Icon(Icons.drag_handle),
+              ),
             const SizedBox(width: 8),
             Icon(
               _isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -324,9 +353,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
       if (widget.type == PlaylistCategoryType.local) {
         return _buildEmptyState('当前无本地歌单', '创建', _handleCreateLocalPlaylist);
       } else {
-        return _buildEmptyState('当前没有${widget.title}，请前往Bilibili创建', '前往Bilibili', () {
-          launchUrl(Uri.parse('https://www.bilibili.com'));
-        });
+        return _buildEmptyState('当前没有${widget.title}，请前往Bilibili创建', '前往Bilibili', _launchBilibili);
       }
     }
 
@@ -489,54 +516,57 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
             },
             itemBuilder: (context, index) {
               final playlist = _playlists[index];
-              return ListTile(
+              return ReorderableDelayedDragStartListener(
                 key: ValueKey(playlist.id),
-                leading: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    image: playlist.coverUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(playlist.coverUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: Stack(
-                    children: [
-                      if (playlist.coverUrl.isEmpty)
-                        Center(child: Icon(Icons.music_note, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                      Positioned(
-                        right: 2,
-                        bottom: 2,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          child: Text(
-                            '${playlist.count}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
+                index: index,
+                child: ListTile(
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      image: playlist.coverUrl.isNotEmpty
+                          ? DecorationImage(
+                              image: NetworkImage(playlist.coverUrl),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: Stack(
+                      children: [
+                        if (playlist.coverUrl.isEmpty)
+                          Center(child: Icon(Icons.music_note, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        Positioned(
+                          right: 2,
+                          bottom: 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Text(
+                              '${playlist.count}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  title: Text(playlist.title),
+                  subtitle: Text('${playlist.count}首'),
+                  trailing: ReorderableDragStartListener(
+                    index: index,
+                    child: const Icon(Icons.drag_handle),
+                  ),
+                  onTap: () => _handlePlaylistTap(playlist),
                 ),
-                title: Text(playlist.title),
-                subtitle: Text('${playlist.count}首'),
-                trailing: ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(Icons.drag_handle),
-                ),
-                onTap: () => _handlePlaylistTap(playlist),
               );
             },
           ),

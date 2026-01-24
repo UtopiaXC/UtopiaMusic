@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
@@ -68,6 +69,8 @@ class _MusicPageState extends State<MusicPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -102,13 +105,37 @@ class _MusicPageState extends State<MusicPage> {
         onRefresh: _handleRefresh,
         child: Consumer<LibraryProvider>(
           builder: (context, libraryProvider, child) {
+            final visibleCategories = libraryProvider.visibleCategories;
+            final fullList = libraryProvider.categoryOrder;
+            
             return ReorderableListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 120),
-              itemCount: libraryProvider.categoryOrder.length,
+              itemCount: visibleCategories.length,
               buildDefaultDragHandles: false, // Disable default drag handles
-              onReorder: libraryProvider.updateOrder,
+              onReorder: (oldIndex, newIndex) {
+                 final oldType = visibleCategories[oldIndex];
+                 final fullOldIndex = fullList.indexOf(oldType);
+                 
+                 int fullNewIndex;
+                 
+                 if (oldIndex < newIndex) {
+                   // Moving down
+                   // newIndex includes the item itself, so the target is at newIndex - 1 in the visible list
+                   final targetType = visibleCategories[newIndex - 1];
+                   final fullTargetIndex = fullList.indexOf(targetType);
+                   // We want to insert after the target
+                   fullNewIndex = fullTargetIndex + 1;
+                 } else {
+                   // Moving up
+                   // The target is at newIndex in the visible list
+                   final targetType = visibleCategories[newIndex];
+                   fullNewIndex = fullList.indexOf(targetType);
+                 }
+                 
+                 libraryProvider.updateOrder(fullOldIndex, fullNewIndex);
+              },
               itemBuilder: (context, index) {
-                final type = libraryProvider.categoryOrder[index];
+                final type = visibleCategories[index];
                 String title = '';
                 switch (type) {
                   case PlaylistCategoryType.favorites:
@@ -122,14 +149,19 @@ class _MusicPageState extends State<MusicPage> {
                     break;
                 }
                 
-                return Padding(
+                return ReorderableDelayedDragStartListener(
                   key: ValueKey(type),
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PlaylistCategoryWidget(
-                    type: type,
-                    title: title,
-                    refreshSignal: libraryProvider.refreshSignal,
-                    onLoginTap: _showLoginDialog,
+                  index: index,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: PlaylistCategoryWidget(
+                      type: type,
+                      title: title,
+                      refreshSignal: libraryProvider.refreshSignal,
+                      onLoginTap: _showLoginDialog,
+                      showDragHandle: isDesktop,
+                      dragIndex: index,
+                    ),
                   ),
                 );
               },
