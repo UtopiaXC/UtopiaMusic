@@ -140,7 +140,6 @@ class AppearanceSettingsPage extends StatelessWidget {
   Widget _buildLibraryOrderItem(BuildContext context) {
     return ListTile(
       title: const Text('曲库页面排序'),
-      subtitle: const Text('长按拖动调整顺序'),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _showLibraryOrderDialog(context),
     );

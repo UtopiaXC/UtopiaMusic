@@ -5,6 +5,9 @@ import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
+import 'package:utopia_music/connection/update/github_api.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:utopia_music/widgets/update/update_dialog.dart';
 
 class GeneralSettingsPage extends StatelessWidget {
   const GeneralSettingsPage({super.key});
@@ -43,18 +46,90 @@ class GeneralSettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          SwitchListTile(
+            title: const Text('自动检查更新'),
+            value: settingsProvider.autoCheckUpdate,
+            onChanged: (bool value) {
+              settingsProvider.setAutoCheckUpdate(value);
+              if (value) {
+                _checkUpdate(context, settingsProvider, silent: true);
+              }
+            },
+          ),
+          SwitchListTile(
+            title: const Text('检查测试版更新'),
+            value: settingsProvider.checkPreRelease,
+            onChanged: (bool value) {
+              settingsProvider.setCheckPreRelease(value);
+            },
+          ),
           ListTile(
             title: const Text('重置为默认设置'),
             onTap: () => _showResetDefaultsDialog(context, settingsProvider, playerProvider, securityProvider),
           ),
           ListTile(
             title: const Text('重置软件'),
-            subtitle: const Text('将软件彻底重置为刚安装的状态'),
             onTap: () => _showResetAppDialog(context, settingsProvider, playerProvider, securityProvider),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _checkUpdate(BuildContext context, SettingsProvider settingsProvider, {required bool silent}) async {
+    if (!silent) {
+       // Manual check logic is handled in AboutSettingsPage, but if we wanted to reuse logic we could extract it.
+       // However, the requirement says "When opening auto update settings... silently check".
+       // So here we just trigger the silent check.
+    }
+    
+    // Silent check implementation
+    // We should probably move the check logic to a service or utility to avoid duplication
+    // But for now, let's implement the silent check here as requested for the "toggle on" action.
+    
+    // Actually, the requirement says: "When turned on, automatically check... every time app starts AND when clicking auto update setting".
+    // "When clicking auto update setting" likely means when the user toggles the switch to ON.
+    
+    try {
+      final githubApi = GithubApi();
+      Map<String, dynamic>? release;
+      
+      if (settingsProvider.checkPreRelease) {
+        release = await githubApi.getLatestPreRelease();
+      } else {
+        release = await githubApi.getLatestRelease();
+      }
+
+      if (release != null && context.mounted) {
+        final tagName = release['tag_name'] as String;
+        final packageInfo = await PackageInfo.fromPlatform();
+        final currentVersion = 'v${packageInfo.version}'; // Assuming tag starts with v
+
+        // Simple version comparison (string equality for now as per requirement "check if consistent")
+        // Ideally we should parse semantic versioning, but requirement says "check if consistent".
+        // Usually tags are like "v1.0.0", version is "1.0.0".
+        
+        bool hasUpdate = tagName != currentVersion;
+        // If tag doesn't have 'v', add it for comparison or remove 'v' from tag.
+        // Let's try to normalize.
+        String normalizedTag = tagName.startsWith('v') ? tagName.substring(1) : tagName;
+        String normalizedCurrent = packageInfo.version;
+        
+        if (normalizedTag != normalizedCurrent) {
+           // Check if ignored
+           if (settingsProvider.ignoredVersion == tagName) {
+             return;
+           }
+           
+           showDialog(
+             context: context,
+             builder: (context) => UpdateDialog(releaseData: release!),
+           );
+        }
+      }
+    } catch (e) {
+      // Silent error
+    }
   }
 
   void _showResetDefaultsDialog(BuildContext context, SettingsProvider settingsProvider, PlayerProvider playerProvider, SecurityProvider securityProvider) {

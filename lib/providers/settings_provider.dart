@@ -12,6 +12,9 @@ class SettingsProvider extends ChangeNotifier {
   static const String requestDelayKey = 'request_delay';
   static const String _localeKey = 'locale';
   static const String _cacheLimitKey = 'cache_limit';
+  static const String _autoCheckUpdateKey = 'auto_check_update';
+  static const String _checkPreReleaseKey = 'check_pre_release';
+  static const String _ignoredVersionKey = 'ignored_version';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -22,6 +25,10 @@ class SettingsProvider extends ChangeNotifier {
   int _requestDelay = 50;
   Locale? _locale;
   int _cacheLimit = 200;
+  bool _autoCheckUpdate = true;
+  bool _checkPreRelease = false;
+  String? _ignoredVersion;
+  bool _isSettingsLoaded = false;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -32,6 +39,10 @@ class SettingsProvider extends ChangeNotifier {
   int get requestDelay => _requestDelay;
   Locale? get locale => _locale;
   int get cacheLimit => _cacheLimit;
+  bool get autoCheckUpdate => _autoCheckUpdate;
+  bool get checkPreRelease => _checkPreRelease;
+  String? get ignoredVersion => _ignoredVersion;
+  bool get isSettingsLoaded => _isSettingsLoaded;
 
   SettingsProvider() {
     _loadSettings();
@@ -63,6 +74,11 @@ class SettingsProvider extends ChangeNotifier {
 
     _cacheLimit = prefs.getInt(_cacheLimitKey) ?? 200;
 
+    _autoCheckUpdate = prefs.getBool(_autoCheckUpdateKey) ?? true;
+    _checkPreRelease = prefs.getBool(_checkPreReleaseKey) ?? false;
+    _ignoredVersion = prefs.getString(_ignoredVersionKey);
+
+    _isSettingsLoaded = true;
     notifyListeners();
   }
 
@@ -133,6 +149,31 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt(_cacheLimitKey, limit);
   }
 
+  Future<void> setAutoCheckUpdate(bool value) async {
+    _autoCheckUpdate = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoCheckUpdateKey, value);
+  }
+
+  Future<void> setCheckPreRelease(bool value) async {
+    _checkPreRelease = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_checkPreReleaseKey, value);
+  }
+
+  Future<void> setIgnoredVersion(String? version) async {
+    _ignoredVersion = version;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    if (version != null) {
+      await prefs.setString(_ignoredVersionKey, version);
+    } else {
+      await prefs.remove(_ignoredVersionKey);
+    }
+  }
+
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
@@ -143,6 +184,9 @@ class SettingsProvider extends ChangeNotifier {
     _requestDelay = 50;
     _locale = null;
     _cacheLimit = 200;
+    _autoCheckUpdate = true;
+    _checkPreRelease = false;
+    _ignoredVersion = null;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_themeModeKey);
@@ -154,6 +198,9 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(requestDelayKey);
     await prefs.remove(_localeKey);
     await prefs.remove(_cacheLimitKey);
+    await prefs.remove(_autoCheckUpdateKey);
+    await prefs.remove(_checkPreReleaseKey);
+    await prefs.remove(_ignoredVersionKey);
   }
 
   Future<void> resetApp() async {
@@ -166,6 +213,9 @@ class SettingsProvider extends ChangeNotifier {
     _requestDelay = 50;
     _locale = null;
     _cacheLimit = 200;
+    _autoCheckUpdate = true;
+    _checkPreRelease = false;
+    _ignoredVersion = null;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
