@@ -117,10 +117,10 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       if (confirm != true) return;
     }
 
-    await playerProvider.setPlaylistAndPlay(_songs, _songs.first);
     if (mounted) {
       Navigator.pop(context);
     }
+    await playerProvider.setPlaylistAndPlay(_songs, _songs.first);
   }
 
   Future<void> _handleReorder(int oldIndex, int newIndex) async {

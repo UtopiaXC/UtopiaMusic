@@ -117,10 +117,10 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       if (confirm != true) return;
     }
 
-    await playerProvider.setPlaylistAndPlay(_songs, _songs.first);
     if (mounted) {
       Navigator.pop(context);
     }
+    await playerProvider.setPlaylistAndPlay(_songs, _songs.first);
   }
 
   @override

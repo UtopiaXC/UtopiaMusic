@@ -114,6 +114,16 @@ class AudioPlayerService {
 
   Future<void> playWithQueue(List<Song> queue, int index, {bool autoPlay = true}) async {
     try {
+      // Force stop before setting new source to ensure clean state
+      // Wait for stop to complete
+      if (_player.playing) {
+        await _player.stop();
+      }
+      
+      // Also wait for player state to be idle if possible, but stop() should handle it.
+      // Sometimes stop() is async but returns early.
+      // Let's ensure we are not in a transition state.
+
       _globalQueue = queue;
       _currentIndex = index;
       _indexController.add(index);
