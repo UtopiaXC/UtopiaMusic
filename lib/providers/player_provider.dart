@@ -8,6 +8,9 @@ import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:utopia_music/main.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/services/audio_proxy_service.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 
 class PlayerProvider extends ChangeNotifier {
@@ -33,6 +36,7 @@ class PlayerProvider extends ChangeNotifier {
   static const String _decoderKey = 'decoder_type';
   static const String _autoSkipInvalidKey = 'auto_skip_invalid';
   static const String _recommendationAutoPlayKey = 'recommendation_auto_play';
+  static const String _defaultAudioQualityKey = 'default_audio_quality';
 
   bool _saveProgress = true;
   bool _autoPlay = false;
@@ -231,6 +235,10 @@ class PlayerProvider extends ChangeNotifier {
     _autoPlay = prefs.getBool(_autoPlayKey) ?? false;
     _decoderType = prefs.getInt(_decoderKey) ?? 1;
     _recommendationAutoPlay = prefs.getBool(_recommendationAutoPlayKey) ?? false;
+    
+    final quality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
+    AudioProxyService().setPreferredQuality(quality);
+    
     notifyListeners();
   }
 
@@ -377,15 +385,19 @@ class PlayerProvider extends ChangeNotifier {
       List<Song> newPlaylist = [];
       final seen = <String>{};
       for (var song in songs) {
-        if (song.bvid.isNotEmpty && !seen.contains(song.bvid)) {
-          seen.add(song.bvid);
+        // Use bvid + cid as unique key
+        final key = '${song.bvid}_${song.cid}';
+        if (song.bvid.isNotEmpty && !seen.contains(key)) {
+          seen.add(key);
           newPlaylist.add(song);
         }
       }
 
-      if (initialSong.bvid.isNotEmpty &&
-          !newPlaylist.any((s) => s.bvid == initialSong.bvid)) {
-        newPlaylist.insert(0, initialSong);
+      if (initialSong.bvid.isNotEmpty) {
+        final initialKey = '${initialSong.bvid}_${initialSong.cid}';
+        if (!seen.contains(initialKey)) {
+          newPlaylist.insert(0, initialSong);
+        }
       }
 
       _playlist = newPlaylist; // 立即更新

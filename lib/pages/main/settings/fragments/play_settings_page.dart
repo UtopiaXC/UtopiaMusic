@@ -36,6 +36,39 @@ class PlaySettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          ListTile(
+            title: const Text('默认在线播放音质'),
+            trailing: DropdownButton<int>(
+              value: settingsProvider.defaultAudioQuality,
+              onChanged: (int? newValue) {
+                if (newValue != null) {
+                  settingsProvider.setDefaultAudioQuality(newValue);
+                }
+              },
+              items: const [
+                DropdownMenuItem(
+                  value: 30216,
+                  child: Text('64K'),
+                ),
+                DropdownMenuItem(
+                  value: 30232,
+                  child: Text('132K'),
+                ),
+                DropdownMenuItem(
+                  value: 30280,
+                  child: Text('192K'),
+                ),
+                DropdownMenuItem(
+                  value: 30250,
+                  child: Text('杜比全景声 (大会员)'),
+                ),
+                DropdownMenuItem(
+                  value: 30251,
+                  child: Text('Hi-Res无损 (大会员)'),
+                ),
+              ],
+            ),
+          ),
           SwitchListTile(
             title: const Text('自动跳过失效资源'),
             subtitle: const Text('遇到版权或充电视频等无效资源时，静默清理并播放下一首'),

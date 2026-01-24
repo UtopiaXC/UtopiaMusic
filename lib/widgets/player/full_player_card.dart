@@ -4,6 +4,7 @@ import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/player/lyrics_card.dart';
 import 'package:utopia_music/widgets/player/player_content.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
@@ -13,6 +14,9 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
+import 'package:utopia_music/services/audio_proxy_service.dart';
+import 'package:utopia_music/connection/audio/audio_stream.dart';
+import 'package:utopia_music/utils/scheme_launch.dart';
 import 'dart:async';
 
 class FullPlayerPage extends StatefulWidget {
@@ -216,35 +220,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   void _showQualityDialog() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('选择音质', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              _buildQualityOption('低 (64K)'),
-              _buildQualityOption('标准 (132K)'),
-              _buildQualityOption('高 (192K)'),
-              _buildQualityOption('杜比全景声 (大会员)'),
-              _buildQualityOption('HiRes无损 (大会员)'),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQualityOption(String title) {
-    return ListTile(
-      title: Text(title),
-      onTap: () {
-        Navigator.pop(context);
-      },
+      isScrollControlled: true,
+      builder: (context) => _QualityDialog(song: widget.song),
     );
   }
 
@@ -504,6 +481,13 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                         ),
                       ],
                     ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.open_in_new),
+                      onPressed: () {
+                        SchemeLauncher.launchVideo(context, widget.song.bvid);
+                      },
+                      tooltip: '在Bilibili中打开',
+                    ),
                     centerMiddle: true,
                   ),
                 ),
@@ -687,6 +671,151 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
         },
         child: const Text('选择时间'),
       ),
+    );
+  }
+}
+
+class _QualityDialog extends StatefulWidget {
+  final Song song;
+  const _QualityDialog({required this.song});
+
+  @override
+  State<_QualityDialog> createState() => _QualityDialogState();
+}
+
+class _QualityDialogState extends State<_QualityDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  AudioStreamInfo? _streamInfo;
+  StreamSubscription? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadStreamInfo();
+    _subscription = AudioProxyService().onStreamInfoUpdated.listen((_) {
+      if (mounted) {
+        _loadStreamInfo();
+      }
+    });
+  }
+
+  void _loadStreamInfo() {
+    final info = AudioProxyService().getStreamInfo(widget.song.bvid, widget.song.cid);
+    setState(() {
+      _streamInfo = info;
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  String _getQualityLabel(int quality) {
+    switch (quality) {
+      case 30216: return '64K';
+      case 30232: return '132K';
+      case 30280: return '192K';
+      case 30250: return '杜比全景声（大会员）';
+      case 30251: return 'Hi-Res无损（大会员）';
+      default: return '未知 ($quality)';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: SizedBox(
+          height: 400,
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: '默认音质'),
+                  Tab(text: '该曲可用'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildDefaultQualityTab(),
+                    _buildAvailableQualityTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultQualityTab() {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+    final qualities = [30251,30250,30280,30232,30216];
+
+    return ListView.builder(
+      itemCount: qualities.length,
+      itemBuilder: (context, index) {
+        final quality = qualities[index];
+        final isSelected = settingsProvider.defaultAudioQuality == quality;
+        return ListTile(
+          title: Text(_getQualityLabel(quality)),
+          trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+          onTap: () {
+            settingsProvider.setDefaultAudioQuality(quality);
+            Navigator.pop(context);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAvailableQualityTab() {
+    if (_streamInfo == null) {
+      return const Center(child: Text('暂无信息'));
+    }
+
+    final available = _streamInfo!.availableQualities;
+    final current = _streamInfo!.quality;
+
+    if (available.isEmpty) {
+      return const Center(child: Text('无可用音质信息'));
+    }
+
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定。',
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: available.length,
+            itemBuilder: (context, index) {
+              final quality = available[index];
+              final isCurrent = quality == current;
+              return ListTile(
+                title: Text(_getQualityLabel(quality)),
+                subtitle: isCurrent ? const Text('当前使用', style: TextStyle(color: Colors.blue, fontSize: 12)) : null,
+                trailing: isCurrent ? const Icon(Icons.volume_up, color: Colors.blue) : null,
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -8,6 +8,7 @@ import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:utopia_music/utils/scheme_launch.dart';
 
 class SpaceSheet extends StatefulWidget {
   final int mid;
@@ -240,10 +241,9 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     );
 
     if (confirm == true && mounted) {
-      await Provider.of<AuthProvider>(context, listen: false).logout();
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      Navigator.pop(context);
+      authProvider.logout();
     }
   }
 
@@ -272,6 +272,13 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.open_in_new),
+                      onPressed: () {
+                        SchemeLauncher.launchUser(context, widget.mid);
+                      },
+                      tooltip: '在Bilibili中打开',
+                    ),
                   ],
                 ),
               ),

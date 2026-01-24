@@ -16,6 +16,7 @@ import 'package:utopia_music/widgets/video/favorite_sheet.dart';
 import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
+import 'package:utopia_music/utils/scheme_launch.dart';
 
 class VideoDetailPage extends StatefulWidget {
   final String bvid;
@@ -196,13 +197,18 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     int currentPage = (comment['sub_reply_page'] ?? 1) + 1;
     
     final subReplies = await _videoDetailApi.getReplyReplies(oid, rpid, page: currentPage);
-    if (mounted && subReplies.isNotEmpty) {
+    if (mounted) {
       setState(() {
-        if (comment['replies'] == null) {
-          comment['replies'] = [];
+        if (subReplies.isEmpty) {
+          // No more sub-replies
+          comment['no_more_sub_replies'] = true;
+        } else {
+          if (comment['replies'] == null) {
+            comment['replies'] = [];
+          }
+          (comment['replies'] as List).addAll(subReplies);
+          comment['sub_reply_page'] = currentPage;
         }
-        (comment['replies'] as List).addAll(subReplies);
-        comment['sub_reply_page'] = currentPage;
       });
     }
   }
@@ -301,7 +307,33 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final int myMid = authProvider.userInfo?.mid ?? 0;
     if (myMid == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先登录')));
+      // Use a post-frame callback or ensure context is valid for showing snackbar
+      // But since this is inside a modal bottom sheet (VideoDetailPage), 
+      // the ScaffoldMessenger might be covered or not in the right context.
+      // However, usually ScaffoldMessenger works if there is a Scaffold above.
+      // The user says "layer problem, cannot show on detail interface".
+      // This is likely because VideoDetailPage is inside a BottomSheet, and the ScaffoldMessenger
+      // might be showing the SnackBar behind the BottomSheet or attached to a Scaffold that is behind.
+      
+      // To fix this, we can try to show a Toast or use a Dialog, or find the right Scaffold.
+      // But the user asked to "put its layer to the front".
+      // A simple way is to show a Dialog instead of SnackBar for this specific error,
+      // or use a global key for ScaffoldMessenger if available (not easily accessible here).
+      // Another way is to use showDialog which appears above everything.
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('提示'),
+          content: const Text('请先登录'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
       return;
     }
 
@@ -417,6 +449,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                   onPressed: () => Navigator.pop(context),
                 ),
                 const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.open_in_new),
+                  onPressed: () {
+                    SchemeLauncher.launchVideo(context, widget.bvid);
+                  },
+                  tooltip: '在Bilibili中打开',
+                ),
               ],
             ),
           ),
@@ -617,6 +656,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final replies = comment['replies'];
     final int rpid = comment['rpid'] ?? 0;
     final int oid = comment['oid'] ?? 0;
+    final bool noMoreSubReplies = comment['no_more_sub_replies'] ?? false;
     
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -644,6 +684,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                 if (replies != null && replies is List && replies.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
@@ -657,14 +698,14 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: GestureDetector(
-                            onTap: () => _loadSubReplies(index, oid, rpid),
+                            onTap: noMoreSubReplies ? null : () => _loadSubReplies(index, oid, rpid),
                             behavior: HitTestBehavior.translucent,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                               child: Text(
-                                '查看更多回复 >',
+                                noMoreSubReplies ? '到底了' : '查看更多回复 >',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: noMoreSubReplies ? Theme.of(context).disabledColor : Theme.of(context).colorScheme.primary,
                                   fontSize: 12,
                                 ),
                               ),

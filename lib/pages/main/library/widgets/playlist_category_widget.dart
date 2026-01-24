@@ -10,6 +10,7 @@ import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/connection/video/library.dart';
+import 'package:utopia_music/utils/scheme_launch.dart';
 
 enum PlaylistCategoryType {
   favorites,
@@ -246,26 +247,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
   }
 
   Future<void> _launchBilibili() async {
-    const url = 'https://www.bilibili.com';
-    final uri = Uri.parse(url);
-    
-    if (Platform.isAndroid || Platform.isIOS) {
-      // Try to launch app first
-      final appUri = Uri.parse('bilibili://');
-      if (await canLaunchUrl(appUri)) {
-        await launchUrl(appUri);
-        return;
-      }
-    }
-    
-    // Fallback to web
-    if (!await launchUrl(uri)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('无法打开链接')),
-        );
-      }
-    }
+    await SchemeLauncher.launchBilibili(context);
   }
 
   @override

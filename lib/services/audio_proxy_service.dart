@@ -18,20 +18,42 @@ class AudioProxyService {
   final AudioStreamApi _audioStreamApi = AudioStreamApi();
   final SearchApi _searchApi = SearchApi();
   final Set<String> _activeDownloads = {};
+  int _preferredQuality = 30280; // Default
+  
+  // Store stream info for UI display
+  final Map<String, AudioStreamInfo> _streamInfoMap = {};
+  final StreamController<void> _streamInfoController = StreamController.broadcast();
 
   Function(String bvid)? onCacheFinished;
+  
+  Stream<void> get onStreamInfoUpdated => _streamInfoController.stream;
+
   void setCacheDir(String path) {
     _cacheDirectory = path;
   }
 
+  void setPreferredQuality(int quality) {
+    _preferredQuality = quality;
+  }
+
   bool isBvidDownloading(String bvid) {
     return _activeDownloads.contains(bvid);
+  }
+  
+  AudioStreamInfo? getStreamInfo(String bvid, int cid) {
+    final key = '${bvid}_$cid';
+    final info = _streamInfoMap[key];
+    if (info == null) {
+      print('AudioProxyService: Stream info not found for key: $key. Available keys: ${_streamInfoMap.keys.length}');
+    }
+    return info;
   }
 
   Future<void> start() async {
     if (_server != null) return;
 
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, _port);
+    print('AudioProxyService started on port ${_server!.port}');
 
     _server!.listen((HttpRequest request) async {
       try {
@@ -44,13 +66,9 @@ class AudioProxyService {
           return;
         }
 
-        final File localCacheFile = File('$_cacheDirectory/song_$bvid.m4s');
-        if (await localCacheFile.exists()) {
-          await _serveLocalFile(request, localCacheFile);
-          return;
-        }
-
         int cid = int.tryParse(cidString ?? '0') ?? 0;
+        int originalCid = cid;
+
         if (cid == 0) {
           try {
             cid = await _searchApi.fetchCid(bvid);
@@ -61,31 +79,54 @@ class AudioProxyService {
           }
         }
 
-        String? remoteAudioUrl;
+        // Fetch stream info to know quality and extension
+        AudioStreamInfo? streamInfo;
         try {
-          remoteAudioUrl = await _audioStreamApi.getAudioStream(bvid, cid);
+          streamInfo = await _audioStreamApi.getAudioStream(
+            bvid, 
+            cid, 
+            preferredQuality: _preferredQuality
+          );
+          if (streamInfo != null) {
+            final key = '${bvid}_$cid';
+            _streamInfoMap[key] = streamInfo;
+            print('AudioProxyService: Stored stream info for key: $key');
+            
+            if (originalCid != cid) {
+              final originalKey = '${bvid}_$originalCid';
+              _streamInfoMap[originalKey] = streamInfo;
+              print('AudioProxyService: Stored stream info for key: $originalKey');
+            }
+            _streamInfoController.add(null);
+          }
         } catch (error) {
-          print(error);
+          print('AudioProxyService: Error fetching stream info: $error');
         }
 
-        if (remoteAudioUrl == null) {
-          // Notify AudioPlayerService about the failure
+        if (streamInfo == null) {
           AudioPlayerService().notifyPlaybackError(bvid, cid);
-          
           request.response.statusCode = HttpStatus.notFound;
           request.response.close();
           return;
         }
 
+        final String fileName = 'song_${bvid}_${cid}_${streamInfo.quality}.${streamInfo.extension}';
+        final File localCacheFile = File('$_cacheDirectory/$fileName');
+        
+        if (await localCacheFile.exists()) {
+          await _serveLocalFile(request, localCacheFile, streamInfo.extension);
+          return;
+        }
+
         if (request.method == 'HEAD') {
-          await _handleHeadRequest(request, remoteAudioUrl, bvid, cid);
+          await _handleHeadRequest(request, streamInfo.url, bvid, cid);
           return;
         }
 
         bool isAlreadyDownloading = _activeDownloads.contains(bvid);
         bool enableCaching = !isAlreadyDownloading;
 
-        await _proxyAndCache(request, remoteAudioUrl, bvid, cid, enableCaching);
+        await _proxyAndCache(request, streamInfo.url, bvid, cid, enableCaching, fileName);
       } catch (error) {
         try {
           request.response.statusCode = HttpStatus.internalServerError;
@@ -95,12 +136,17 @@ class AudioProxyService {
     });
   }
 
-  Future<void> _serveLocalFile(HttpRequest request, File file) async {
+  Future<void> _serveLocalFile(HttpRequest request, File file, String extension) async {
     try {
       final fileLength = await file.length();
 
       request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
-      request.response.headers.contentType = ContentType.parse("audio/mp4");
+      
+      String contentType = "audio/mp4";
+      if (extension == 'flac') contentType = "audio/flac";
+      else if (extension == 'mp3') contentType = "audio/mpeg";
+      
+      request.response.headers.contentType = ContentType.parse(contentType);
 
       if (request.method == 'HEAD') {
         request.response.headers.set(HttpHeaders.contentLengthHeader, fileLength);
@@ -157,11 +203,8 @@ class AudioProxyService {
 
       final HttpClientResponse targetResponse = await targetRequest.close();
       
-      // Check for 404 or other errors from remote server
       if (targetResponse.statusCode >= 400) {
-        // Notify AudioPlayerService about the failure
         AudioPlayerService().notifyPlaybackError(bvid, cid);
-        
         request.response.statusCode = targetResponse.statusCode;
         request.response.close();
         return;
@@ -193,6 +236,7 @@ class AudioProxyService {
       String bvid,
       int cid,
       bool enableCaching,
+      String fileName,
       ) async {
     final client = HttpClient();
     try {
@@ -209,11 +253,8 @@ class AudioProxyService {
 
       final HttpClientResponse targetResponse = await targetRequest.close();
       
-      // Check for 404 or other errors from remote server
       if (targetResponse.statusCode >= 400) {
-        // Notify AudioPlayerService about the failure
         AudioPlayerService().notifyPlaybackError(bvid, cid);
-
         request.response.statusCode = targetResponse.statusCode;
         request.response.close();
         return;
@@ -241,7 +282,7 @@ class AudioProxyService {
       File? tempFile;
       if (enableCaching && targetResponse.statusCode == HttpStatus.ok) {
         _activeDownloads.add(bvid);
-        tempFile = File('$_cacheDirectory/song_$bvid.part');
+        tempFile = File('$_cacheDirectory/$fileName.part');
         try {
           fileSink = tempFile.openWrite();
         } catch (e) {
@@ -285,7 +326,7 @@ class AudioProxyService {
           if (fileSink != null) {
             try {
               await fileSink!.close();
-              final finalFile = File('$_cacheDirectory/song_$bvid.m4s');
+              final finalFile = File('$_cacheDirectory/$fileName');
               if (tempFile != null && await tempFile!.exists()) {
                 await tempFile!.rename(finalFile.path);
                 onCacheFinished?.call(bvid);
@@ -352,5 +393,6 @@ class AudioProxyService {
   void stop() {
     _server?.close();
     _server = null;
+    _streamInfoController.close();
   }
 }

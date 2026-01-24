@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/services/audio_proxy_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
@@ -16,6 +17,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _checkPreReleaseKey = 'check_pre_release';
   static const String _ignoredVersionKey = 'ignored_version';
   static const String _enableCommentsKey = 'enable_comments';
+  static const String _defaultAudioQualityKey = 'default_audio_quality';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -32,6 +34,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _isSettingsLoaded = false;
   bool _autoSkipInvalid = true;
   bool _enableComments = true;
+  int _defaultAudioQuality = 30280; // Default to 192K
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -48,6 +51,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get isSettingsLoaded => _isSettingsLoaded;
   bool get autoSkipInvalid => _autoSkipInvalid;
   bool get enableComments => _enableComments;
+  int get defaultAudioQuality => _defaultAudioQuality;
 
   SettingsProvider() {
     _loadSettings();
@@ -79,6 +83,8 @@ class SettingsProvider extends ChangeNotifier {
     _checkPreRelease = prefs.getBool(_checkPreReleaseKey) ?? false;
     _ignoredVersion = prefs.getString(_ignoredVersionKey);
     _enableComments = prefs.getBool(_enableCommentsKey) ?? true;
+    _defaultAudioQuality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
+    AudioProxyService().setPreferredQuality(_defaultAudioQuality);
     _isSettingsLoaded = true;
 
     notifyListeners();
@@ -183,6 +189,13 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setBool(_enableCommentsKey, value);
   }
 
+  Future<void> setDefaultAudioQuality(int quality) async {
+    _defaultAudioQuality = quality;
+    AudioProxyService().setPreferredQuality(quality);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_defaultAudioQualityKey, quality);
+  }
 
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
@@ -199,6 +212,8 @@ class SettingsProvider extends ChangeNotifier {
     _ignoredVersion = null;
     _autoSkipInvalid = true;
     _enableComments = true;
+    _defaultAudioQuality = 30280;
+    AudioProxyService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_themeModeKey);
@@ -214,6 +229,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_checkPreReleaseKey);
     await prefs.remove(_ignoredVersionKey);
     await prefs.remove(_enableCommentsKey);
+    await prefs.remove(_defaultAudioQualityKey);
   }
 
   Future<void> resetApp() async {

@@ -94,7 +94,7 @@ class ErrorCode {
       case redirect:
         return '撞车跳转';
       case riskControlFail:
-        return '风控校验失败';
+        return '风控校验失败，请登录';
       case requestError:
         return '请求错误';
       case unauthorized:
