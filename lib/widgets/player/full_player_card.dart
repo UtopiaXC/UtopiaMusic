@@ -796,7 +796,7 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
         const Padding(
           padding: EdgeInsets.all(16.0),
           child: Text(
-            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定。',
+            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定。播放中切换音质下一曲生效。',
             style: TextStyle(color: Colors.grey, fontSize: 12),
             textAlign: TextAlign.center,
           ),

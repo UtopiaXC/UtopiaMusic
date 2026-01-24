@@ -307,20 +307,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final int myMid = authProvider.userInfo?.mid ?? 0;
     if (myMid == 0) {
-      // Use a post-frame callback or ensure context is valid for showing snackbar
-      // But since this is inside a modal bottom sheet (VideoDetailPage), 
-      // the ScaffoldMessenger might be covered or not in the right context.
-      // However, usually ScaffoldMessenger works if there is a Scaffold above.
-      // The user says "layer problem, cannot show on detail interface".
-      // This is likely because VideoDetailPage is inside a BottomSheet, and the ScaffoldMessenger
-      // might be showing the SnackBar behind the BottomSheet or attached to a Scaffold that is behind.
-      
-      // To fix this, we can try to show a Toast or use a Dialog, or find the right Scaffold.
-      // But the user asked to "put its layer to the front".
-      // A simple way is to show a Dialog instead of SnackBar for this specific error,
-      // or use a global key for ScaffoldMessenger if available (not easily accessible here).
-      // Another way is to use showDialog which appears above everything.
-      
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -351,8 +337,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         }
         _videoDetail!['req_user']['favorite'] = result ? 1 : 0;
       });
-      
-      // Refresh library to update favorite folder cover and count
+
       if (mounted) {
         Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
       }
@@ -387,17 +372,12 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         Navigator.pop(context);
       }
     } else if (widget.simplified && widget.contextList != null) {
-      // If simplified (opened from song list), show play options dialog
       showModalBottomSheet(
         context: context,
         builder: (context) => PlayOptionsSheet(
           song: song,
           contextList: widget.contextList!,
           onPlayAction: () {
-            // Maybe close the detail sheet?
-            // Navigator.pop(context); 
-            // User didn't specify to close, but usually we stay or close.
-            // Let's keep it open.
           },
         ),
       );
@@ -543,17 +523,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                           song: _relatedVideos[index],
                           contextList: _relatedVideos,
                           onPlayAction: () {
-                             // When clicked from related list, we want to open detail page?
-                             // The user said: "lib/widgets/song_list/song_list_item.dart click logic replaced by opening detail page"
-                             // But SongListItem has its own logic. We need to override it or change SongListItem.
-                             // Wait, the user said "lib/widgets/song_list/song_list_item.dart click logic replaced by opening detail page".
-                             // This means we should modify SongListItem or how we use it.
-                             // But here we are inside VideoDetailPage. If we click a related video, we probably want to navigate to its detail page.
-                             
-                             // However, the user also said: "detail page opened via song_list_item should not have recommendation, parts, and comments"
-                             // This suggests a "SimplifiedVideoDetailPage".
-                             
-                             // Let's handle this in SongListItem modification.
                           },
                         );
                       },
@@ -657,15 +626,19 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final int rpid = comment['rpid'] ?? 0;
     final int oid = comment['oid'] ?? 0;
     final bool noMoreSubReplies = comment['no_more_sub_replies'] ?? false;
+    final String mid = member['mid']?.toString() ?? '0';
     
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            backgroundImage: NetworkImage(avatar),
-            radius: 16,
+          GestureDetector(
+            onTap: () => _openSpace(int.parse(mid)),
+            child: CircleAvatar(
+              backgroundImage: NetworkImage(avatar),
+              radius: 16,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -675,7 +648,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(uname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    GestureDetector(
+                      onTap: () => _openSpace(int.parse(mid)),
+                      child: Text(uname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
                     Text(_formatFullDate(ctime), style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
@@ -730,6 +706,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final String uname = member['uname'] ?? 'Unknown';
     final String message = content['message'] ?? '';
     final int ctime = reply['ctime'] ?? 0;
+    final String mid = member['mid']?.toString() ?? '0';
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -740,7 +717,17 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
             text: TextSpan(
               style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
               children: [
-                TextSpan(text: '$uname: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.baseline,
+                  baseline: TextBaseline.alphabetic,
+                  child: GestureDetector(
+                    onTap: () => _openSpace(int.parse(mid)),
+                    child: Text(
+                      '$uname: ', 
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ),
                 TextSpan(text: message),
               ],
             ),

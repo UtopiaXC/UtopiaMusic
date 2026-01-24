@@ -18,7 +18,6 @@ class PlayerProvider extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
 
-  // 【移除】移除了所有导致阻塞的异步锁
   bool _isSwitchingMode = false;
 
   Song? _currentSong;
@@ -44,28 +43,41 @@ class PlayerProvider extends ChangeNotifier {
   bool _autoSkipInvalid = true;
   bool _recommendationAutoPlay = false;
 
-  // 【移除】移除了 _isFetchingRecommendation，允许新的请求随时覆盖旧的请求逻辑
-
   Timer? _stopTimer;
   DateTime? _stopTime;
   bool _stopAfterCurrent = false;
   bool _isTimerActive = false;
 
   Song? get currentSong => _currentSong;
+
   bool get isPlaying => _isPlaying;
+
   bool get isPlayerExpanded => _isPlayerExpanded;
+
   bool get showFullPlayer => _showFullPlayer;
+
   AudioPlayer get player => _audioPlayerService.player;
+
   List<Song> get playlist => _playlist;
+
   PlayMode get playMode => _playMode;
+
   bool get saveProgress => _saveProgress;
+
   bool get autoPlay => _autoPlay;
+
   int get decoderType => _decoderType;
+
   bool get isTimerActive => _isTimerActive;
+
   DateTime? get stopTime => _stopTime;
+
   bool get stopAfterCurrent => _stopAfterCurrent;
+
   bool get autoSkipInvalid => _autoSkipInvalid;
+
   static String get autoSkipInvalidKey => _autoSkipInvalidKey;
+
   bool get recommendationAutoPlay => _recommendationAutoPlay;
 
   PlayerProvider() {
@@ -93,13 +105,10 @@ class PlayerProvider extends ChangeNotifier {
     });
 
     _audioPlayerService.currentIndexStream.listen((index) {
-      // 【移除】移除了 _isSwitchingPlaylist 检查，确保 UI 总是响应底层变化
       if (_isSwitchingMode) return;
 
-      // 增加安全检查，防止脏数据导致的越界
       if (index >= 0 && index < _playlist.length) {
         final newSong = _playlist[index];
-        // 只有当歌曲真正改变时才更新状态，避免无效刷新
         if (_currentSong?.bvid != newSong.bvid ||
             _currentSong?.cid != newSong.cid) {
           _currentSong = newSong;
@@ -127,25 +136,43 @@ class PlayerProvider extends ChangeNotifier {
       }
     });
 
-    _audioPlayerService.player.playbackEventStream.listen((event) {}, onError: (Object e, StackTrace stackTrace) {
-      if (e.toString().contains('404') || e.toString().contains('Source error')) {
-        print('PlayerProvider: Caught playback error, removing current song and skipping.');
-        _handlePlaybackError();
+    _audioPlayerService.player.playbackEventStream.listen(
+      (event) {},
+      onError: (Object e, StackTrace stackTrace) {
+        if (e.toString().contains('404') ||
+            e.toString().contains('Source error')) {
+          print(
+            'PlayerProvider: Caught playback error, removing current song and skipping.',
+          );
+          _handlePlaybackError();
+        }
+      },
+    );
+  }
+
+  List<Song> _deduplicate(List<Song> songs) {
+    final Set<String> seen = {};
+    final List<Song> result = [];
+    for (var song in songs) {
+      final key = '${song.bvid}_${song.cid}';
+      if (!seen.contains(key)) {
+        seen.add(key);
+        result.add(song);
       }
-    });
+    }
+    return result;
   }
 
   Future<void> _handleRecommendationAutoPlay(Song currentSong) async {
-    // 【修改】不再检查 _isFetchingRecommendation，允许并发请求（通过后置检查处理竞态）
-
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
     try {
-      final related = await _videoDetailApi.getRelatedVideos(context, currentSong.bvid);
+      final related = await _videoDetailApi.getRelatedVideos(
+        context,
+        currentSong.bvid,
+      );
 
-      // 【重要】网络请求回来后，检查用户是否已经切歌
-      // 如果 _currentSong 变了，说明当前请求已过期，直接丢弃，不锁 UI，不更新列表
       if (_currentSong?.bvid != currentSong.bvid) {
         return;
       }
@@ -153,20 +180,20 @@ class PlayerProvider extends ChangeNotifier {
       if (related.isNotEmpty) {
         List<Song> newPlaylist = [currentSong, ...related];
 
-        // 【关键修复】先更新本地 _playlist 数据模型
-        // 这样当 _audioPlayerService 发出索引变更通知时，监听器能从新列表中取到正确的歌曲
+        newPlaylist = _deduplicate(newPlaylist);
+
         _playlist = newPlaylist;
 
-        // 再更新底层播放队列
         await _audioPlayerService.updateQueueKeepPlaying(newPlaylist, 0);
 
-        // 最后做持久化
         await _databaseService.clearPlaylist();
         await _databaseService.savePlaylist(newPlaylist);
         await _saveLastPlayedIndex(0);
 
         notifyListeners();
-        print("Recommendation Auto Play: Playlist updated for ${currentSong.title}");
+        print(
+          "Recommendation Auto Play: Playlist updated for ${currentSong.title}",
+        );
       }
     } catch (e) {
       print("Recommendation Auto Play Error: $e");
@@ -175,7 +202,9 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> _handlePlaybackError() async {
     if (_playlist.isEmpty || _currentSong == null) return;
-    final indexToRemove = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+    final indexToRemove = _playlist.indexWhere(
+      (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+    );
     if (indexToRemove != -1) {
       await removeSong(indexToRemove);
     }
@@ -215,7 +244,9 @@ class PlayerProvider extends ChangeNotifier {
       } catch (e) {
         print("Init player error: $e");
         if (_decoderType == 1) {
-          print("Hard decoder failed, switching to soft decoder preference (simulated)");
+          print(
+            "Hard decoder failed, switching to soft decoder preference (simulated)",
+          );
           await setDecoderType(0);
           Future.delayed(const Duration(milliseconds: 500), () {
             _init();
@@ -234,11 +265,12 @@ class PlayerProvider extends ChangeNotifier {
     _saveProgress = prefs.getBool(_saveProgressKey) ?? true;
     _autoPlay = prefs.getBool(_autoPlayKey) ?? false;
     _decoderType = prefs.getInt(_decoderKey) ?? 1;
-    _recommendationAutoPlay = prefs.getBool(_recommendationAutoPlayKey) ?? false;
-    
+    _recommendationAutoPlay =
+        prefs.getBool(_recommendationAutoPlayKey) ?? false;
+
     final quality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
     AudioProxyService().setPreferredQuality(quality);
-    
+
     notifyListeners();
   }
 
@@ -293,6 +325,8 @@ class PlayerProvider extends ChangeNotifier {
     _playlist = await _databaseService.getPlaylist(
       shuffle: _playMode == PlayMode.shuffle,
     );
+    // Deduplicate loaded playlist just in case
+    _playlist = _deduplicate(_playlist);
     notifyListeners();
   }
 
@@ -340,10 +374,11 @@ class PlayerProvider extends ChangeNotifier {
       _playlist = await _databaseService.getPlaylist(
         shuffle: _playMode == PlayMode.shuffle,
       );
+      _playlist = _deduplicate(_playlist);
 
       if (_currentSong != null) {
         int newIndex = _playlist.indexWhere(
-              (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+          (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
         );
 
         if (newIndex != -1) {
@@ -375,38 +410,35 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setPlaylistAndPlay(List<Song> songs, Song initialSong) async {
-    // 【移除】移除了 _isSwitchingPlaylist 检查
     try {
       await _audioPlayerService.stop();
       _playlist = [];
       _currentSong = null;
       notifyListeners();
 
-      List<Song> newPlaylist = [];
-      final seen = <String>{};
-      for (var song in songs) {
-        // Use bvid + cid as unique key
-        final key = '${song.bvid}_${song.cid}';
-        if (song.bvid.isNotEmpty && !seen.contains(key)) {
-          seen.add(key);
-          newPlaylist.add(song);
-        }
+      List<Song> rawList = List.from(songs);
+      List<Song> newPlaylist = _deduplicate(rawList);
+      int index = newPlaylist.indexWhere(
+        (s) => s.bvid == initialSong.bvid && s.cid == initialSong.cid,
+      );
+
+      if (index == -1) {
+        newPlaylist.insert(0, initialSong);
+        index = 0;
       }
 
-      if (initialSong.bvid.isNotEmpty) {
-        final initialKey = '${initialSong.bvid}_${initialSong.cid}';
-        if (!seen.contains(initialKey)) {
-          newPlaylist.insert(0, initialSong);
-        }
-      }
-
-      _playlist = newPlaylist; // 立即更新
+      _playlist = newPlaylist;
 
       await _databaseService.clearPlaylist();
       await _databaseService.savePlaylist(newPlaylist);
-      // _loadPlaylist(); // 不需要重新加载，_playlist 已经是最新的
+      await _audioPlayerService.playWithQueue(_playlist, index);
+      await _saveLastPlayedIndex(index);
+      await _setPlayerLoopMode();
 
-      await _play(initialSong);
+      _currentSong = initialSong;
+      _isPlaying = true;
+      _showFullPlayer = true;
+      notifyListeners();
     } catch (e) {
       print("setPlaylistAndPlay error: $e");
     }
@@ -417,6 +449,18 @@ class PlayerProvider extends ChangeNotifier {
       await playSong(song);
       return;
     }
+
+    final existingIndex = _playlist.indexWhere(
+      (s) => s.bvid == song.bvid && s.cid == song.cid,
+    );
+    if (existingIndex != -1) {
+      if (_currentSong?.bvid == song.bvid && _currentSong?.cid == song.cid) {
+        return;
+      }
+
+      await _databaseService.removeSong(song.bvid, song.cid);
+    }
+
     await _databaseService.insertSong(
       song,
       afterSong: _currentSong,
@@ -426,10 +470,13 @@ class PlayerProvider extends ChangeNotifier {
 
     if (_currentSong != null) {
       int currentIndex = _playlist.indexWhere(
-            (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
       );
       if (currentIndex != -1) {
-        await _audioPlayerService.updateQueueKeepPlaying(_playlist, currentIndex);
+        await _audioPlayerService.updateQueueKeepPlaying(
+          _playlist,
+          currentIndex,
+        );
         await _saveLastPlayedIndex(currentIndex);
       }
     }
@@ -442,26 +489,43 @@ class PlayerProvider extends ChangeNotifier {
     await playNext();
   }
 
+  Future<void> clearAllCache() async {
+    await _audioPlayerService.clearCache();
+    notifyListeners();
+  }
+
   Future<void> addToEnd(Song song) async {
     if (_playlist.isEmpty) {
       await playSong(song);
       return;
     }
-    if (!_playlist.any((s) => s.bvid == song.bvid && s.cid == song.cid)) {
-      await _databaseService.addSongToEnd(song);
-      await _loadPlaylist();
 
-      if (_currentSong != null) {
-        int currentIndex = _playlist.indexWhere(
-              (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
-        );
-        if (currentIndex != -1) {
-          await _audioPlayerService.updateQueueKeepPlaying(_playlist, currentIndex);
-        }
+    final existingIndex = _playlist.indexWhere(
+      (s) => s.bvid == song.bvid && s.cid == song.cid,
+    );
+    if (existingIndex != -1) {
+      if (_currentSong?.bvid == song.bvid && _currentSong?.cid == song.cid) {
+        return;
       }
-
-      notifyListeners();
+      await _databaseService.removeSong(song.bvid, song.cid);
     }
+
+    await _databaseService.addSongToEnd(song);
+    await _loadPlaylist();
+
+    if (_currentSong != null) {
+      int currentIndex = _playlist.indexWhere(
+        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+      );
+      if (currentIndex != -1) {
+        await _audioPlayerService.updateQueueKeepPlaying(
+          _playlist,
+          currentIndex,
+        );
+      }
+    }
+
+    notifyListeners();
   }
 
   Future<void> replacePlaylistWithSong(Song song) async {
@@ -475,7 +539,7 @@ class PlayerProvider extends ChangeNotifier {
       await _databaseService.clearPlaylist();
       await _databaseService.savePlaylist([song]);
 
-      _playlist = [song]; // 立即更新
+      _playlist = [song];
 
       await _play(song);
     } catch (e) {
@@ -489,7 +553,7 @@ class PlayerProvider extends ChangeNotifier {
     _showFullPlayer = true;
 
     int index = _playlist.indexWhere(
-          (s) => s.bvid == song.bvid && s.cid == song.cid,
+      (s) => s.bvid == song.bvid && s.cid == song.cid,
     );
     if (index == -1) {
       index = 0;
@@ -566,6 +630,9 @@ class PlayerProvider extends ChangeNotifier {
 
   void togglePlayerExpansion() {
     _isPlayerExpanded = !_isPlayerExpanded;
+    if (_isPlayerExpanded) {
+      _showFullPlayer = true;
+    }
     notifyListeners();
   }
 
@@ -611,7 +678,7 @@ class PlayerProvider extends ChangeNotifier {
     if (_playlist.isEmpty || _currentSong == null) return false;
     if (_playMode == PlayMode.sequence) {
       int index = _playlist.indexWhere(
-            (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
       );
       return index < _playlist.length - 1;
     }
@@ -622,7 +689,7 @@ class PlayerProvider extends ChangeNotifier {
     if (_playlist.isEmpty || _currentSong == null) return false;
     if (_playMode == PlayMode.sequence) {
       int index = _playlist.indexWhere(
-            (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
       );
       return index > 0;
     }
@@ -673,7 +740,7 @@ class PlayerProvider extends ChangeNotifier {
 
     if (_currentSong != null) {
       final currentIndex = _playlist.indexWhere(
-            (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
       );
       if (currentIndex != -1) {
         await _saveLastPlayedIndex(currentIndex);
@@ -688,7 +755,6 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> removeSong(int index) async {
-    // 【移除】移除了锁检查
     try {
       if (index >= 0 && index < _playlist.length) {
         final songToRemove = _playlist[index];
@@ -707,7 +773,7 @@ class PlayerProvider extends ChangeNotifier {
         } else {
           if (_currentSong != null) {
             final currentIndex = _playlist.indexWhere(
-                  (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+              (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
             );
             if (currentIndex != -1) {
               await _audioPlayerService.updateQueueKeepPlaying(
@@ -721,7 +787,6 @@ class PlayerProvider extends ChangeNotifier {
         notifyListeners();
       }
     } finally {
-      // 移除
     }
   }
 

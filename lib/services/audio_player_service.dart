@@ -10,15 +10,35 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/services/audio_proxy_service.dart';
+import 'package:utopia_music/services/database_service.dart';
 
+class _CacheItem {
+  final File file;
+  final String key;
+  final int size;
+  int hitCount;
+  int dbLastAccess;
 
-class _CacheGroup {
-  final String bvid;
-  final List<File> files;
-  final int totalSize;
-  final DateTime lastModified;
+  _CacheItem({
+    required this.file,
+    required this.key,
+    required this.size,
+    this.hitCount = 0,
+    this.dbLastAccess = 0,
+  });
 
-  _CacheGroup(this.bvid, this.files, this.totalSize, this.lastModified);
+  double get retentionScore {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final diffHours = (now - dbLastAccess) / (1000 * 3600) + 0.1;
+    double recencyScore = 1000 / diffHours;
+    double frequencyScore = (hitCount > 0) ? (hitCount * 100.0) : 0.0;
+
+    if (hitCount <= 1 && diffHours > 24) {
+      return 0.0;
+    }
+
+    return recencyScore + frequencyScore;
+  }
 }
 
 class AudioPlayerService {
@@ -29,6 +49,7 @@ class AudioPlayerService {
   factory AudioPlayerService() => _instance;
 
   final AudioProxyService _proxy = AudioProxyService();
+  final DatabaseService _dbService = DatabaseService();
   final AudioPlayer _player = AudioPlayer();
 
   String? _cacheDir;
@@ -37,14 +58,21 @@ class AudioPlayerService {
   bool _autoSkipInvalid = true;
   bool _isHandlingError = false;
 
-  final StreamController<int> _indexController = StreamController<int>.broadcast();
+  final StreamController<int> _indexController =
+      StreamController<int>.broadcast();
+
   Stream<int> get currentIndexStream => _indexController.stream;
 
-  final StreamController<Map<String, dynamic>> _playbackErrorController = StreamController<Map<String, dynamic>>.broadcast();
-  Stream<Map<String, dynamic>> get playbackErrorStream => _playbackErrorController.stream;
+  final StreamController<Map<String, dynamic>> _playbackErrorController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get playbackErrorStream =>
+      _playbackErrorController.stream;
+
   List<Song> get queue => List.unmodifiable(_globalQueue);
 
-  bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  bool get _isDesktop =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   AudioPlayerService._internal() {
     _init();
@@ -56,15 +84,14 @@ class AudioPlayerService {
       }
     });
 
-    _player.playerStateStream.listen((state) {
-    });
+    _player.playerStateStream.listen((state) {});
 
     _player.playbackEventStream.listen(
-            (event) {},
-        onError: (Object e, StackTrace stackTrace) {
-          print('AudioPlayerService: 捕获到播放器底层错误: $e');
-          _handleInvalidResourceAndPlayNext();
-        }
+      (event) {},
+      onError: (Object e, StackTrace stackTrace) {
+        print('AudioPlayerService: 捕获到播放器底层错误: $e');
+        _handleInvalidResourceAndPlayNext();
+      },
     );
   }
 
@@ -90,7 +117,9 @@ class AudioPlayerService {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('资源失效'),
-              content: Text(' "${invalidSong.title}" 无法播放。可能原因：网络波动、资源版权限制、资源为充电视频等。已经自动停止播放，请自行清理失效资源并重新开始播放。如果希望跳过失效资源，请在设置中播放设置启动自动清理失效资源。'),
+              content: Text(
+                ' "${invalidSong.title}" 无法播放。可能原因：网络波动、资源版权限制、资源为充电视频等。已经自动停止播放，请自行清理失效资源并重新开始播放。如果希望跳过失效资源，请在设置中播放设置启动自动清理失效资源。',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -143,7 +172,6 @@ class AudioPlayerService {
         }
       }
       _indexController.add(_currentIndex);
-
     } finally {
       await Future.delayed(const Duration(milliseconds: 500));
       _isHandlingError = false;
@@ -180,7 +208,9 @@ class AudioPlayerService {
   }
 
   AudioPlayer get player => _player;
-  Song? get currentSong => (_currentIndex >= 0 && _currentIndex < _globalQueue.length)
+
+  Song? get currentSong =>
+      (_currentIndex >= 0 && _currentIndex < _globalQueue.length)
       ? _globalQueue[_currentIndex]
       : null;
 
@@ -196,7 +226,13 @@ class AudioPlayerService {
   }
 
   AudioSource _createAudioSource(Song song) {
-    final proxyUrl = _proxy.buildUrl(song.bvid, song.cid);
+    // 传递 quality 参数
+    final proxyUrl = _proxy.buildUrl(
+      song.bvid,
+      song.cid,
+      quality: _proxy.preferredQuality,
+    );
+
     return AudioSource.uri(
       Uri.parse(proxyUrl),
       headers: {
@@ -216,7 +252,11 @@ class AudioPlayerService {
     await playWithQueue([song], 0);
   }
 
-  Future<void> playWithQueue(List<Song> queue, int index, {bool autoPlay = true}) async {
+  Future<void> playWithQueue(
+    List<Song> queue,
+    int index, {
+    bool autoPlay = true,
+  }) async {
     try {
       if (_player.playing) {
         await _player.stop();
@@ -239,7 +279,9 @@ class AudioPlayerService {
           await _handleInvalidResourceAndPlayNext();
         }
       } else {
-        final List<AudioSource> sources = queue.map((s) => _createAudioSource(s)).toList();
+        final List<AudioSource> sources = queue
+            .map((s) => _createAudioSource(s))
+            .toList();
         final playlist = ConcatenatingAudioSource(
           children: sources,
           useLazyPreparation: true,
@@ -303,7 +345,9 @@ class AudioPlayerService {
 
       final postSongs = newQueue.sublist(newIndex + 1);
       if (postSongs.isNotEmpty) {
-        final postSources = postSongs.map((s) => _createAudioSource(s)).toList();
+        final postSources = postSongs
+            .map((s) => _createAudioSource(s))
+            .toList();
         await source.addAll(postSources);
       }
 
@@ -312,7 +356,6 @@ class AudioPlayerService {
       if (!wasPlaying && _player.playing) {
         await _player.pause();
       }
-
     } catch (e) {
       print("Error updating playlist: $e");
       await playWithQueue(newQueue, newIndex, autoPlay: wasPlaying);
@@ -320,7 +363,9 @@ class AudioPlayerService {
   }
 
   Future<void> pause() async => await _player.pause();
+
   Future<void> resume() async => await _player.play();
+
   Future<void> stop() async => await _player.stop();
 
   Future<void> playNext() async {
@@ -344,93 +389,96 @@ class AudioPlayerService {
   }
 
   Future<void> togglePlayPause() async {
-    if (_player.playing) await _player.pause(); else await _player.play();
+    if (_player.playing)
+      await _player.pause();
+    else
+      await _player.play();
   }
 
+  // 【核心修改】智能清理逻辑
   Future<void> _performStrictCleanup() async {
+    if (_isDesktop) return;
+
     try {
       final dirPath = await _getCacheDir();
       final dir = Directory(dirPath);
       if (!await dir.exists()) return;
-
+      final dbMetas = await _dbService.getAllCacheMeta();
+      final Map<String, Map<String, dynamic>> metaMap = {
+        for (var m in dbMetas) m['key']: m,
+      };
       final List<FileSystemEntity> entities = dir.listSync();
-      final Map<String, List<File>> bvidGroups = {};
+      List<_CacheItem> cacheItems = [];
       int totalSize = 0;
+
       for (var entity in entities) {
         if (entity is File) {
-          final path = entity.path;
-          final filename = path.split(Platform.pathSeparator).last;
+          final filename = entity.path.split(Platform.pathSeparator).last;
           if (filename.startsWith('song_')) {
-            String bvid = filename.replaceFirst('song_', '');
-            if (bvid.contains('.')) {
-              bvid = bvid.split('.').first;
-            }
-
-            if (bvid.isNotEmpty) {
-              if (!bvidGroups.containsKey(bvid)) {
-                bvidGroups[bvid] = [];
+            try {
+              final stat = await entity.stat();
+              final size = stat.size;
+              totalSize += size;
+              String key = filename.replaceFirst('song_', '');
+              if (key.contains('.')) {
+                key = key.substring(0, key.lastIndexOf('.'));
               }
-              bvidGroups[bvid]!.add(entity);
-              totalSize += await entity.length();
+
+              int hits = 0;
+              int lastAccess = stat.modified.millisecondsSinceEpoch;
+
+              if (metaMap.containsKey(key)) {
+                hits = metaMap[key]!['hit_count'] ?? 1;
+                lastAccess = metaMap[key]!['last_access_time'] ?? lastAccess;
+              }
+
+              cacheItems.add(
+                _CacheItem(
+                  file: entity,
+                  key: key,
+                  size: size,
+                  hitCount: hits,
+                  dbLastAccess: lastAccess,
+                ),
+              );
+            } catch (e) {
             }
           }
         }
-      }
-
-      final currentBvid = currentSong?.bvid;
-
-      if (_maxCacheSize <= 0) {
-        for (var entry in bvidGroups.entries) {
-          if (entry.key == currentBvid) continue;
-          for (var file in entry.value) {
-            await _tryDeleteFile(file);
-          }
-        }
-        return;
       }
 
       if (totalSize <= _maxCacheSize) return;
-      print("Cache over limitations: ${totalSize ~/ 1024 ~/ 1024}MB, clear");
-      List<_CacheGroup> groups = [];
-      for (var entry in bvidGroups.entries) {
-        final bvid = entry.key;
-        final files = entry.value;
 
-        if (_proxy.isBvidDownloading(bvid) || bvid == currentBvid) {
-          continue;
-        }
+      print(
+        "Smart Cleanup: Current usage ${(totalSize / 1024 / 1024).toStringAsFixed(2)}MB",
+      );
+      cacheItems.sort((a, b) => a.retentionScore.compareTo(b.retentionScore));
 
-        int groupSize = 0;
-        DateTime newestTime = DateTime.fromMillisecondsSinceEpoch(0);
-        for (var f in files) {
-          try {
-            final stat = await f.stat();
-            groupSize += stat.size;
-            if (stat.modified.isAfter(newestTime)) {
-              newestTime = stat.modified;
-            }
-          } catch (e) {
-            print("Error getting file stat: $e");
-          }
-        }
-        groups.add(_CacheGroup(bvid, files, groupSize, newestTime));
-      }
-
-      groups.sort((a, b) => a.lastModified.compareTo(b.lastModified));
-      for (var group in groups) {
+      final currentBvid = currentSong?.bvid;
+      for (var item in cacheItems) {
         if (totalSize <= _maxCacheSize) break;
-
-        print("Cleared cache: ${group.bvid} (Size ${(group.totalSize / 1024 / 1024).toStringAsFixed(2)} MB)");
-
-        for (var file in group.files) {
-          if (await _tryDeleteFile(file)) {
-          }
+        String? bvid;
+        try {
+          final parts = item.key.split('_');
+          if (parts.isNotEmpty) bvid = parts[0];
+        } catch (_) {}
+        if (bvid != null) {
+          if (bvid == currentBvid) continue;
+          if (_proxy.isBvidDownloading(bvid)) continue;
         }
-        totalSize -= group.totalSize;
+
+        if (await _tryDeleteFile(item.file)) {
+          totalSize -= item.size;
+          await _dbService.removeCacheMeta(item.key);
+          print(
+            "Evicted: ${item.key} (Hits: ${item.hitCount}, Score: ${item.retentionScore.toStringAsFixed(1)})",
+          );
+        }
       }
 
-      print("Clear over, now: ${totalSize ~/ 1024 ~/ 1024}MB");
-
+      print(
+        "Cleanup finished. Now: ${(totalSize / 1024 / 1024).toStringAsFixed(2)}MB",
+      );
     } catch (e) {
       print("Strict cleanup error: $e");
     }
@@ -448,25 +496,49 @@ class AudioPlayerService {
     return false;
   }
 
-  Future<void> clearCache() async {
+  Future<int> getUsedCacheSize() async {
     try {
       final dirPath = await _getCacheDir();
       final dir = Directory(dirPath);
+      if (!await dir.exists()) return 0;
+
+      int totalSize = 0;
+      final List<FileSystemEntity> entities = dir.listSync();
+
+      for (var entity in entities) {
+        if (entity is File) {
+          final filename = entity.path.split(Platform.pathSeparator).last;
+          if (filename.startsWith('song_')) {
+            try {
+              totalSize += await entity.length();
+            } catch (e) {}
+          }
+        }
+      }
+      return totalSize;
+    } catch (e) {
+      return 0;
+    }
+  }
+  Future<void> clearCache() async {
+    try {
+      await stop();
+
+      final dirPath = await _getCacheDir();
+      final dir = Directory(dirPath);
       if (await dir.exists()) {
-        final currentBvid = currentSong?.bvid;
         try {
           final List<FileSystemEntity> entities = dir.listSync();
           for (var entity in entities) {
             if (entity is File) {
-              final filename = entity.path.split(Platform.pathSeparator).last;
-              if (currentBvid != null && filename.contains(currentBvid)) {
-                continue;
-              }
               await _tryDeleteFile(entity);
             }
           }
         } catch (_) {}
       }
+
+      await _dbService.clearCacheMetaTable();
+      print("All audio cache and metadata cleared.");
     } catch (e) {
       print("Error clearing cache: $e");
     }

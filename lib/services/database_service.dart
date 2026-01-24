@@ -46,7 +46,7 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), 'utopia_music.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -94,16 +94,13 @@ class DatabaseService {
         FOREIGN KEY(playlist_id) REFERENCES local_playlists(id) ON DELETE CASCADE
       )
     ''');
+    await _createCacheMetaTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Upgrade playlist table
       await db.execute('ALTER TABLE playlist ADD COLUMN origin_title TEXT');
-      // Initialize origin_title with title for existing rows
       await db.execute('UPDATE playlist SET origin_title = title');
-
-      // Create new tables
       await db.execute('''
         CREATE TABLE local_playlists(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,7 +109,6 @@ class DatabaseService {
           create_time INTEGER
         )
       ''');
-
       await db.execute('''
         CREATE TABLE local_playlist_songs(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,9 +126,73 @@ class DatabaseService {
         )
       ''');
     }
+
+    if (oldVersion < 3) {
+      await _createCacheMetaTable(db);
+    }
   }
 
-  // --- Current Playlist Methods ---
+  Future<void> _createCacheMetaTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE cache_meta(
+        key TEXT PRIMARY KEY, 
+        bvid TEXT,
+        cid INTEGER,
+        quality INTEGER,
+        hit_count INTEGER DEFAULT 1,
+        last_access_time INTEGER
+      )
+    ''');
+  }
+
+  Future<void> recordCacheAccess(String bvid, int cid, int quality) async {
+    final db = await database;
+    final key = '${bvid}_${cid}_$quality';
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    await db.transaction((txn) async {
+      final List<Map<String, dynamic>> res = await txn.query(
+        'cache_meta',
+        columns: ['hit_count'],
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+
+      if (res.isEmpty) {
+        await txn.insert('cache_meta', {
+          'key': key,
+          'bvid': bvid,
+          'cid': cid,
+          'quality': quality,
+          'hit_count': 1,
+          'last_access_time': now,
+        });
+      } else {
+        await txn.rawUpdate(
+            'UPDATE cache_meta SET hit_count = hit_count + 1, last_access_time = ? WHERE key = ?',
+            [now, key]
+        );
+      }
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getAllCacheMeta() async {
+    final db = await database;
+    return await db.query('cache_meta');
+  }
+
+  Future<void> removeCacheMeta(String key) async {
+    final db = await database;
+    await db.delete('cache_meta', where: 'key = ?', whereArgs: [key]);
+  }
+
+  Future<void> clearCacheMetaTable() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.execute('DROP TABLE IF EXISTS cache_meta');
+      await _createCacheMetaTable(txn);
+    });
+  }
 
   Future<void> clearPlaylist() async {
     final db = await database;
@@ -196,15 +256,12 @@ class DatabaseService {
   Future<void> insertSong(Song song, {Song? afterSong, required bool isShuffleMode}) async {
     final db = await database;
 
-    // 【修复】使用事务包裹所有数据库操作，防止并发导致的顺序错乱
     await db.transaction((txn) async {
-      // 1. 如果歌曲已存在，先删除（在事务中执行）
       await txn.delete('playlist', where: 'bvid = ? AND cid = ?', whereArgs: [song.bvid, song.cid]);
 
       int sequenceOrder;
       int shuffleOrder;
 
-      // 2. 获取当前最大序号
       final List<Map<String, dynamic>> maxResult = await txn.rawQuery(
           'SELECT MAX(sequence_order) as max_seq, MAX(shuffle_order) as max_shuf FROM playlist'
       );
@@ -230,7 +287,6 @@ class DatabaseService {
           int currentShuf = currentResult.first['shuffle_order'] as int;
 
           if (isShuffleMode) {
-            // 乱序模式插入逻辑
             shuffleOrder = currentShuf + 1;
             await txn.rawUpdate(
                 'UPDATE playlist SET shuffle_order = shuffle_order + 1 WHERE shuffle_order >= ?',
@@ -238,7 +294,6 @@ class DatabaseService {
             );
             sequenceOrder = maxSeq + 1;
           } else {
-            // 顺序模式插入逻辑
             sequenceOrder = currentSeq + 1;
             await txn.rawUpdate(
                 'UPDATE playlist SET sequence_order = sequence_order + 1 WHERE sequence_order >= ?',
@@ -249,7 +304,6 @@ class DatabaseService {
         }
       }
 
-      // 3. 插入新歌曲
       await txn.insert('playlist', {
         'title': song.title,
         'origin_title': song.originTitle,
@@ -269,8 +323,6 @@ class DatabaseService {
     await insertSong(song, afterSong: null, isShuffleMode: false);
   }
 
-  // --- Local Playlist Methods ---
-
   Future<int> createLocalPlaylist(String title, String description) async {
     final db = await database;
     return await db.insert('local_playlists', {
@@ -283,7 +335,6 @@ class DatabaseService {
   Future<void> deleteLocalPlaylist(int id) async {
     final db = await database;
     await db.delete('local_playlists', where: 'id = ?', whereArgs: [id]);
-    // Cascade delete should handle songs, but just in case or if not supported
     await db.delete('local_playlist_songs', where: 'playlist_id = ?', whereArgs: [id]);
   }
 
@@ -307,7 +358,6 @@ class DatabaseService {
     List<LocalPlaylist> playlists = [];
     for (var map in maps) {
       final int id = map['id'];
-      // Get song count and first song cover
       final List<Map<String, dynamic>> songs = await db.query(
         'local_playlist_songs',
         columns: ['cover_url'],
@@ -342,7 +392,6 @@ class DatabaseService {
   Future<void> addSongToLocalPlaylist(int playlistId, Song song) async {
     final db = await database;
 
-    // Get max sort order
     final List<Map<String, dynamic>> maxResult = await db.rawQuery(
         'SELECT MAX(sort_order) as max_order FROM local_playlist_songs WHERE playlist_id = ?',
         [playlistId]

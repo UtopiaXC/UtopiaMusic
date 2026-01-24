@@ -4,6 +4,7 @@ import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/services/audio_player_service.dart';
+import 'package:utopia_music/services/database_service.dart';
 
 class AudioProxyService {
   static final AudioProxyService _instance = AudioProxyService._internal();
@@ -17,15 +18,18 @@ class AudioProxyService {
   String? _cacheDirectory;
   final AudioStreamApi _audioStreamApi = AudioStreamApi();
   final SearchApi _searchApi = SearchApi();
+  final DatabaseService _dbService = DatabaseService();
+
   final Set<String> _activeDownloads = {};
   int _preferredQuality = 30280; // Default
-  
-  // Store stream info for UI display
+
+  int get preferredQuality => _preferredQuality;
+
   final Map<String, AudioStreamInfo> _streamInfoMap = {};
   final StreamController<void> _streamInfoController = StreamController.broadcast();
 
   Function(String bvid)? onCacheFinished;
-  
+
   Stream<void> get onStreamInfoUpdated => _streamInfoController.stream;
 
   void setCacheDir(String path) {
@@ -39,7 +43,7 @@ class AudioProxyService {
   bool isBvidDownloading(String bvid) {
     return _activeDownloads.contains(bvid);
   }
-  
+
   AudioStreamInfo? getStreamInfo(String bvid, int cid) {
     final key = '${bvid}_$cid';
     final info = _streamInfoMap[key];
@@ -59,6 +63,7 @@ class AudioProxyService {
       try {
         final bvid = request.uri.queryParameters['bvid'];
         String? cidString = request.uri.queryParameters['cid'];
+        String? qualityParam = request.uri.queryParameters['quality'];
 
         if (bvid == null || _cacheDirectory == null) {
           request.response.statusCode = HttpStatus.badRequest;
@@ -68,6 +73,10 @@ class AudioProxyService {
 
         int cid = int.tryParse(cidString ?? '0') ?? 0;
         int originalCid = cid;
+        int targetQuality = qualityParam != null
+            ? (int.tryParse(qualityParam) ?? _preferredQuality)
+            : _preferredQuality;
+        _dbService.recordCacheAccess(bvid, cid, targetQuality);
 
         if (cid == 0) {
           try {
@@ -79,19 +88,18 @@ class AudioProxyService {
           }
         }
 
-        // Fetch stream info to know quality and extension
         AudioStreamInfo? streamInfo;
         try {
           streamInfo = await _audioStreamApi.getAudioStream(
-            bvid, 
-            cid, 
-            preferredQuality: _preferredQuality
+              bvid,
+              cid,
+              preferredQuality: targetQuality
           );
           if (streamInfo != null) {
             final key = '${bvid}_$cid';
             _streamInfoMap[key] = streamInfo;
             print('AudioProxyService: Stored stream info for key: $key');
-            
+
             if (originalCid != cid) {
               final originalKey = '${bvid}_$originalCid';
               _streamInfoMap[originalKey] = streamInfo;
@@ -112,7 +120,7 @@ class AudioProxyService {
 
         final String fileName = 'song_${bvid}_${cid}_${streamInfo.quality}.${streamInfo.extension}';
         final File localCacheFile = File('$_cacheDirectory/$fileName');
-        
+
         if (await localCacheFile.exists()) {
           await _serveLocalFile(request, localCacheFile, streamInfo.extension);
           return;
@@ -141,11 +149,11 @@ class AudioProxyService {
       final fileLength = await file.length();
 
       request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
-      
+
       String contentType = "audio/mp4";
       if (extension == 'flac') contentType = "audio/flac";
       else if (extension == 'mp3') contentType = "audio/mpeg";
-      
+
       request.response.headers.contentType = ContentType.parse(contentType);
 
       if (request.method == 'HEAD') {
@@ -202,7 +210,7 @@ class AudioProxyService {
       targetRequest.headers.set('Referer', HttpConstants.referer);
 
       final HttpClientResponse targetResponse = await targetRequest.close();
-      
+
       if (targetResponse.statusCode >= 400) {
         AudioPlayerService().notifyPlaybackError(bvid, cid);
         request.response.statusCode = targetResponse.statusCode;
@@ -245,14 +253,18 @@ class AudioProxyService {
       targetRequest.headers.set('User-Agent', HttpConstants.userAgent);
       targetRequest.headers.set('Referer', HttpConstants.referer);
 
-      final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
+      String? rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
+
       if (rangeHeader != null) {
-        targetRequest.headers.set(HttpHeaders.rangeHeader, rangeHeader);
-        enableCaching = false;
+        if (rangeHeader.trim() == 'bytes=0-') {
+        } else {
+          targetRequest.headers.set(HttpHeaders.rangeHeader, rangeHeader);
+          enableCaching = false;
+        }
       }
 
       final HttpClientResponse targetResponse = await targetRequest.close();
-      
+
       if (targetResponse.statusCode >= 400) {
         AudioPlayerService().notifyPlaybackError(bvid, cid);
         request.response.statusCode = targetResponse.statusCode;
@@ -263,14 +275,12 @@ class AudioProxyService {
       request.response.statusCode = targetResponse.statusCode;
       request.response.headers.contentType = targetResponse.headers.contentType;
       request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
-
       if (targetResponse.headers.value(HttpHeaders.contentLengthHeader) != null) {
         request.response.headers.set(
           HttpHeaders.contentLengthHeader,
           targetResponse.headers.value(HttpHeaders.contentLengthHeader)!,
         );
       }
-
       if (targetResponse.headers.value(HttpHeaders.contentRangeHeader) != null) {
         request.response.headers.set(
           HttpHeaders.contentRangeHeader,
@@ -280,6 +290,7 @@ class AudioProxyService {
 
       IOSink? fileSink;
       File? tempFile;
+
       if (enableCaching && targetResponse.statusCode == HttpStatus.ok) {
         _activeDownloads.add(bvid);
         tempFile = File('$_cacheDirectory/$fileName.part');
@@ -385,9 +396,13 @@ class AudioProxyService {
     }
   }
 
-  String buildUrl(String bvid, int cid) {
+  String buildUrl(String bvid, int cid, {int? quality}) {
     if (_server == null) throw Exception("Proxy server not started");
-    return 'http://127.0.0.1:${_server!.port}/stream?bvid=$bvid&cid=$cid';
+    String url = 'http://127.0.0.1:${_server!.port}/stream?bvid=$bvid&cid=$cid';
+    if (quality != null) {
+      url += '&quality=$quality';
+    }
+    return url;
   }
 
   void stop() {

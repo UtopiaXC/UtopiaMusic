@@ -58,13 +58,16 @@ class PlaylistCategoryWidget extends StatefulWidget {
   State<PlaylistCategoryWidget> createState() => _PlaylistCategoryWidgetState();
 }
 
-class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
+class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with AutomaticKeepAliveClientMixin {
   bool _isExpanded = false;
   bool _isLoading = false;
   String? _errorMessage;
   List<PlaylistInfo> _playlists = [];
   final VideoApi _videoApi = VideoApi();
   final LibraryApi _libraryApi = LibraryApi();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -252,6 +255,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final colorScheme = Theme.of(context).colorScheme;
     
     return Card(
