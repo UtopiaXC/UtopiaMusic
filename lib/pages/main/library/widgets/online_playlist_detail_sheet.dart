@@ -39,7 +39,15 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     try {
       final mediaId = widget.playlistInfo.id;
       List<Song> songs;
-      if (widget.isCollection) {
+      bool isActuallyCollection = widget.isCollection;
+      if (widget.isCollection && widget.playlistInfo.originalData != null) {
+         final attr = widget.playlistInfo.originalData['attr'];
+         if (attr != null && attr != 0) {
+           isActuallyCollection = false;
+         }
+      }
+
+      if (isActuallyCollection) {
         songs = await _libraryApi.getCollectionResources(mediaId, context);
       } else {
         songs = await _libraryApi.getFavoriteResources(mediaId, context);

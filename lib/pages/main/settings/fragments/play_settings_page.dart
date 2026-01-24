@@ -35,6 +35,14 @@ class PlaySettingsPage extends StatelessWidget {
             ),
           ),
           SwitchListTile(
+            title: const Text('自动跳过失效资源'),
+            subtitle: const Text('遇到版权或充电视频等无效资源时，静默清理并播放下一首'),
+            value: playerProvider.autoSkipInvalid,
+            onChanged: (bool value) {
+              playerProvider.setAutoSkipInvalid(value);
+            },
+          ),
+          SwitchListTile(
             title: const Text('保存播放进度（实验性）'),
             subtitle: const Text('重启软件时定位到最后播放的音乐的进度条位置'),
             value: playerProvider.saveProgress,

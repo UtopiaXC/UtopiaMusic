@@ -26,10 +26,13 @@ class PlayerProvider extends ChangeNotifier {
   static const String _saveProgressKey = 'save_progress';
   static const String _autoPlayKey = 'auto_play';
   static const String _decoderKey = 'decoder_type';
+  static const String _autoSkipInvalidKey = 'auto_skip_invalid';
 
   bool _saveProgress = true;
   bool _autoPlay = false;
   int _decoderType = 1;
+  bool _autoSkipInvalid = true;
+
 
   // Timer related
   Timer? _stopTimer;
@@ -62,6 +65,11 @@ class PlayerProvider extends ChangeNotifier {
   DateTime? get stopTime => _stopTime;
 
   bool get stopAfterCurrent => _stopAfterCurrent;
+
+  bool get autoSkipInvalid => _autoSkipInvalid;
+
+  static String get autoSkipInvalidKey => _autoSkipInvalidKey;
+
 
   PlayerProvider() {
     _init();
@@ -113,6 +121,38 @@ class PlayerProvider extends ChangeNotifier {
         );
       }
     });
+    
+    // Listen for playback errors from service (if we implement stream there)
+    // But currently service handles it by skipping.
+    // If we want to remove song, we need a way to know which song failed.
+    // Since service skips, index changes.
+    // We can listen to index changes, but that's normal behavior too.
+    
+    // Let's rely on service skipping for now as requested "play next".
+    // "Remove from playlist" is tricky because we need to know WHICH song failed.
+    // If we are listening to playback errors here:
+    _audioPlayerService.player.playbackEventStream.listen((event) {}, onError: (Object e, StackTrace stackTrace) {
+       // This catches errors from the player stream
+       // If it's a 404 or similar source error
+       if (e.toString().contains('404') || e.toString().contains('Source error')) {
+          print('PlayerProvider: Caught playback error, removing current song and skipping.');
+          _handlePlaybackError();
+       }
+    });
+  }
+  
+  Future<void> _handlePlaybackError() async {
+    if (_playlist.isEmpty || _currentSong == null) return;
+    
+    final indexToRemove = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+    
+    if (indexToRemove != -1) {
+       // Remove from DB and list
+       await removeSong(indexToRemove);
+       // removeSong already handles playing next if current is removed
+       // But removeSong calls _play(next), which might trigger another error if next is also bad.
+       // This loop should work until a good song is found or list empty.
+    }
   }
 
   Future<void> _init() async {
@@ -228,6 +268,13 @@ class PlayerProvider extends ChangeNotifier {
         await _audioPlayerService.player.setLoopMode(LoopMode.all);
         break;
     }
+  }
+
+  Future<void> setAutoSkipInvalid(bool value) async {
+    _autoSkipInvalid = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(autoSkipInvalidKey, value);
   }
 
   Future<void> togglePlayMode() async {
@@ -482,6 +529,7 @@ class PlayerProvider extends ChangeNotifier {
     _saveProgress = false;
     _autoPlay = false;
     _decoderType = 1;
+    _autoSkipInvalid = true;
 
     notifyListeners();
 
@@ -489,6 +537,7 @@ class PlayerProvider extends ChangeNotifier {
     await prefs.remove(_saveProgressKey);
     await prefs.remove(_autoPlayKey);
     await prefs.remove(_decoderKey);
+    await prefs.remove(autoSkipInvalidKey);
   }
 
   bool get hasNext {

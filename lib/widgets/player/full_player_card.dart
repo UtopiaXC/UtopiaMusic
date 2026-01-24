@@ -10,6 +10,8 @@ import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:utopia_music/widgets/player/playlist_sheet.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/widgets/user/space_sheet.dart';
+import 'package:utopia_music/connection/video/video_detail.dart';
 import 'dart:async';
 
 class FullPlayerPage extends StatefulWidget {
@@ -34,6 +36,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Duration _duration = Duration.zero;
   bool _showLyrics = false;
   Timer? _timer;
+  final VideoDetailApi _videoDetailApi = VideoDetailApi();
 
   @override
   void initState() {
@@ -281,6 +284,47 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     );
   }
 
+  Future<void> _showArtistSpace(BuildContext context) async {
+    if (widget.song.bvid.isEmpty) return;
+
+    // Show loading indicator or something if needed, but for now just wait
+    // Or we can show a small loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final detail = await _videoDetailApi.getVideoDetail(widget.song.bvid);
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        if (detail != null && detail['owner'] != null) {
+          final mid = detail['owner']['mid'];
+          if (mid != null) {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => SpaceSheet(mid: mid),
+            );
+            return;
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('无法获取用户信息')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('获取信息失败: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
@@ -398,11 +442,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                             },
                           ),
                         ),
-                        Text(
-                          widget.song.artist,
-                          style: Theme.of(context).textTheme.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        GestureDetector(
+                          onTap: () => _showArtistSpace(context),
+                          child: Text(
+                            widget.song.artist,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              decoration: TextDecoration.underline,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),

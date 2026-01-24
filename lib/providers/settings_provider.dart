@@ -29,6 +29,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _checkPreRelease = false;
   String? _ignoredVersion;
   bool _isSettingsLoaded = false;
+  bool _autoSkipInvalid = true;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -43,6 +44,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get checkPreRelease => _checkPreRelease;
   String? get ignoredVersion => _ignoredVersion;
   bool get isSettingsLoaded => _isSettingsLoaded;
+  bool get autoSkipInvalid => _autoSkipInvalid;
 
   SettingsProvider() {
     _loadSettings();
@@ -58,10 +60,8 @@ class SettingsProvider extends ChangeNotifier {
       _seedColor = Color(colorValue);
     }
     _startPageIndex = prefs.getInt(_startPageKey) ?? 0;
-
     _saveSearchHistory = prefs.getBool(_saveSearchHistoryKey) ?? true;
     _searchHistoryLimit = prefs.getInt(_searchHistoryLimitKey) ?? 10;
-
     _maxRetries = prefs.getInt(maxRetriesKey) ?? 2;
     _requestDelay = prefs.getInt(requestDelayKey) ?? 50;
 
@@ -71,14 +71,12 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _locale = null;
     }
-
     _cacheLimit = prefs.getInt(_cacheLimitKey) ?? 200;
-
     _autoCheckUpdate = prefs.getBool(_autoCheckUpdateKey) ?? true;
     _checkPreRelease = prefs.getBool(_checkPreReleaseKey) ?? false;
     _ignoredVersion = prefs.getString(_ignoredVersionKey);
-
     _isSettingsLoaded = true;
+
     notifyListeners();
   }
 
@@ -174,6 +172,7 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
@@ -187,6 +186,7 @@ class SettingsProvider extends ChangeNotifier {
     _autoCheckUpdate = true;
     _checkPreRelease = false;
     _ignoredVersion = null;
+    _autoSkipInvalid = true;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_themeModeKey);

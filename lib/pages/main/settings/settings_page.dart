@@ -11,6 +11,7 @@ import 'package:utopia_music/pages/main/settings/fragments/security_settings_pag
 import 'package:utopia_music/pages/main/settings/fragments/general_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/about_settings_page.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
+import 'package:utopia_music/widgets/user/space_sheet.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -53,25 +54,11 @@ class SettingsPage extends StatelessWidget {
             builder: (context) => const LoginDialog(),
           );
         } else {
-          showDialog(
+          showModalBottomSheet(
             context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('退出登录'),
-              content: const Text('确定要退出登录吗？'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('取消'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    authProvider.logout();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => SpaceSheet(mid: userInfo!.mid),
           );
         }
       },
@@ -102,20 +89,41 @@ class SettingsPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            _getVipLabel(userInfo.vipType),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _getLevelColor(userInfo.level),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'LV${userInfo.level}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _getVipLabel(userInfo.vipType),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     )
@@ -127,23 +135,31 @@ class SettingsPage extends StatelessWidget {
                       ),
                     ),
             ),
-            if (isLoggedIn)
-              Row(
-                children: [
-                  Text(
-                    '我的投稿',
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-              ),
             const Icon(Icons.chevron_right),
           ],
         ),
       ),
     );
+  }
+
+  Color _getLevelColor(int level) {
+    switch (level) {
+      case 0:
+      case 1:
+        return const Color(0xFFBFBFBF);
+      case 2:
+        return const Color(0xFF95DDB2);
+      case 3:
+        return const Color(0xFF92D1E5);
+      case 4:
+        return const Color(0xFFFFB37C);
+      case 5:
+        return const Color(0xFFFF6C00);
+      case 6:
+        return const Color(0xFFFF0000);
+      default:
+        return const Color(0xFFBFBFBF);
+    }
   }
 
   String _getVipLabel(UserVipType type) {

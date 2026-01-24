@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
+import 'package:utopia_music/services/audio_player_service.dart';
 
 class AudioProxyService {
   static final AudioProxyService _instance = AudioProxyService._internal();
@@ -68,20 +69,23 @@ class AudioProxyService {
         }
 
         if (remoteAudioUrl == null) {
+          // Notify AudioPlayerService about the failure
+          AudioPlayerService().notifyPlaybackError(bvid, cid);
+          
           request.response.statusCode = HttpStatus.notFound;
           request.response.close();
           return;
         }
 
         if (request.method == 'HEAD') {
-          await _handleHeadRequest(request, remoteAudioUrl);
+          await _handleHeadRequest(request, remoteAudioUrl, bvid, cid);
           return;
         }
 
         bool isAlreadyDownloading = _activeDownloads.contains(bvid);
         bool enableCaching = !isAlreadyDownloading;
 
-        await _proxyAndCache(request, remoteAudioUrl, bvid, enableCaching);
+        await _proxyAndCache(request, remoteAudioUrl, bvid, cid, enableCaching);
       } catch (error) {
         try {
           request.response.statusCode = HttpStatus.internalServerError;
@@ -144,7 +148,7 @@ class AudioProxyService {
     }
   }
 
-  Future<void> _handleHeadRequest(HttpRequest request, String remoteUrl) async {
+  Future<void> _handleHeadRequest(HttpRequest request, String remoteUrl, String bvid, int cid) async {
     final client = HttpClient();
     try {
       final HttpClientRequest targetRequest = await client.headUrl(Uri.parse(remoteUrl));
@@ -152,6 +156,16 @@ class AudioProxyService {
       targetRequest.headers.set('Referer', HttpConstants.referer);
 
       final HttpClientResponse targetResponse = await targetRequest.close();
+      
+      // Check for 404 or other errors from remote server
+      if (targetResponse.statusCode >= 400) {
+        // Notify AudioPlayerService about the failure
+        AudioPlayerService().notifyPlaybackError(bvid, cid);
+        
+        request.response.statusCode = targetResponse.statusCode;
+        request.response.close();
+        return;
+      }
 
       request.response.statusCode = targetResponse.statusCode;
       request.response.headers.contentType = targetResponse.headers.contentType;
@@ -177,6 +191,7 @@ class AudioProxyService {
       HttpRequest request,
       String remoteUrl,
       String bvid,
+      int cid,
       bool enableCaching,
       ) async {
     final client = HttpClient();
@@ -193,6 +208,16 @@ class AudioProxyService {
       }
 
       final HttpClientResponse targetResponse = await targetRequest.close();
+      
+      // Check for 404 or other errors from remote server
+      if (targetResponse.statusCode >= 400) {
+        // Notify AudioPlayerService about the failure
+        AudioPlayerService().notifyPlaybackError(bvid, cid);
+
+        request.response.statusCode = targetResponse.statusCode;
+        request.response.close();
+        return;
+      }
 
       request.response.statusCode = targetResponse.statusCode;
       request.response.headers.contentType = targetResponse.headers.contentType;

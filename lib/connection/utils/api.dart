@@ -18,6 +18,7 @@ class Api {
   static const String urlFavoriteFolderList = '/x/v3/fav/folder/list';
   static const String urlFavFolderCreatedListAll =
       '/x/v3/fav/folder/created/list-all';
+  static const String urlFavFolderCreatedList = '/x/v3/fav/folder/created/list';
   static const String urlFavFolderCollectedList =
       '/x/v3/fav/folder/collected/list';
   static const String urlFavFolderInfo = '/x/v3/fav/folder/info';
@@ -34,4 +35,8 @@ class Api {
   static const String tvAppKey = '4409e2ce8ffd12b8';
   static const String tvAppSecret = '59b43e04ad6965f34319062b478f83dd';
   static const String urlExit = '/login/exit/v2';
+  static const String urlUserCard = '/x/web-interface/card';
+  static const String urlUserStat = '/x/space/upstat';
+  static const String urlUserVideo = '/x/space/wbi/arc/search';
+  static const String urlRelationModify = '/x/relation/modify';
 }

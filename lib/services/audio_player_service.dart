@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:utopia_music/main.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
+import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/services/audio_proxy_service.dart';
+
+import '../providers/settings_provider.dart';
 
 class _CacheGroup {
   final String bvid;
@@ -30,20 +35,120 @@ class AudioPlayerService {
   String? _cacheDir;
   List<Song> _globalQueue = [];
   int _currentIndex = 0;
+  bool _autoSkipInvalid = true;
+  bool _isHandlingError = false;
 
   final StreamController<int> _indexController = StreamController<int>.broadcast();
   Stream<int> get currentIndexStream => _indexController.stream;
+
+  final StreamController<Map<String, dynamic>> _playbackErrorController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get playbackErrorStream => _playbackErrorController.stream;
+  List<Song> get queue => List.unmodifiable(_globalQueue);
 
   bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   AudioPlayerService._internal() {
     _init();
+
     _player.currentIndexStream.listen((index) {
       if (!_isDesktop && index != null) {
         _currentIndex = index;
         _indexController.add(index);
       }
     });
+
+    _player.playerStateStream.listen((state) {
+    });
+
+    _player.playbackEventStream.listen(
+            (event) {},
+        onError: (Object e, StackTrace stackTrace) {
+          print('AudioPlayerService: 捕获到播放器底层错误: $e');
+          _handleInvalidResourceAndPlayNext();
+        }
+    );
+  }
+
+  void setAutoSkipInvalid(bool enable) {
+    _autoSkipInvalid = enable;
+  }
+
+  void notifyPlaybackError(String bvid, int cid) {
+    print("AudioPlayerService: Proxy 报告资源无效 ($bvid)");
+    _playbackErrorController.add({'bvid': bvid, 'cid': cid});
+    Future.microtask(() => _handleInvalidResourceAndPlayNext());
+  }
+
+  Future<void> _handleInvalidResourceAndPlayNext() async {
+    final prefs = await SharedPreferences.getInstance();
+    _autoSkipInvalid = prefs.getBool(PlayerProvider.autoSkipInvalidKey) ?? true;
+    if (!_autoSkipInvalid) {
+      if (_currentIndex < _globalQueue.length) {
+        final invalidSong = _globalQueue[_currentIndex];
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('资源失效'),
+              content: Text(' "${invalidSong.title}" 无法播放。可能原因：网络波动、资源版权限制、资源为充电视频等。已经自动停止播放，请自行清理失效资源并重新开始播放。如果希望跳过失效资源，请在设置中播放设置启动自动清理失效资源。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+      await stop();
+      return;
+    }
+
+    if (_globalQueue.isEmpty || _isHandlingError) return;
+    _isHandlingError = true;
+
+    try {
+      if (_currentIndex >= _globalQueue.length) {
+        _currentIndex = 0;
+        if (_globalQueue.isEmpty) return;
+      }
+
+      final invalidSong = _globalQueue[_currentIndex];
+      _globalQueue.removeAt(_currentIndex);
+      if (_globalQueue.isEmpty) {
+        await stop();
+        _indexController.add(0);
+        return;
+      }
+      if (_currentIndex >= _globalQueue.length) {
+        _currentIndex = 0;
+      }
+      if (_isDesktop) {
+        await playWithQueue(_globalQueue, _currentIndex);
+      } else {
+        try {
+          final source = _player.audioSource as ConcatenatingAudioSource?;
+          if (source != null && source.length > _currentIndex) {
+            await source.removeAt(_currentIndex);
+            if (!_player.playing) {
+              await _player.play();
+            }
+          } else {
+            await playWithQueue(_globalQueue, _currentIndex);
+          }
+        } catch (e) {
+          print("Error removing item from playlist source: $e");
+          await playWithQueue(_globalQueue, _currentIndex);
+        }
+      }
+      _indexController.add(_currentIndex);
+
+    } finally {
+      await Future.delayed(const Duration(milliseconds: 500));
+      _isHandlingError = false;
+    }
   }
 
   Future<void> _init() async {
@@ -69,7 +174,7 @@ class AudioPlayerService {
     _maxCacheSize = sizeMb * 1024 * 1024;
     _performStrictCleanup();
   }
-  
+
   Future<int> getMaxCacheSize() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_cacheSizeKey) ?? 200;
@@ -114,15 +219,9 @@ class AudioPlayerService {
 
   Future<void> playWithQueue(List<Song> queue, int index, {bool autoPlay = true}) async {
     try {
-      // Force stop before setting new source to ensure clean state
-      // Wait for stop to complete
       if (_player.playing) {
         await _player.stop();
       }
-      
-      // Also wait for player state to be idle if possible, but stop() should handle it.
-      // Sometimes stop() is async but returns early.
-      // Let's ensure we are not in a transition state.
 
       _globalQueue = queue;
       _currentIndex = index;
@@ -131,9 +230,14 @@ class AudioPlayerService {
       if (_isDesktop) {
         final song = queue[index];
         final source = _createAudioSource(song);
-        await _player.setAudioSource(source);
-        if (autoPlay) {
-          await _player.play();
+        try {
+          await _player.setAudioSource(source);
+          if (autoPlay) {
+            await _player.play();
+          }
+        } catch (e) {
+          print("Desktop load error (likely 403/404): $e");
+          await _handleInvalidResourceAndPlayNext();
         }
       } else {
         final List<AudioSource> sources = queue.map((s) => _createAudioSource(s)).toList();
@@ -143,7 +247,11 @@ class AudioPlayerService {
         );
         await _player.setAudioSource(playlist, initialIndex: index);
         if (autoPlay) {
-          await _player.play();
+          try {
+            await _player.play();
+          } catch (e) {
+            print("Initial play error: $e");
+          }
         }
       }
     } catch (e) {
@@ -157,7 +265,6 @@ class AudioPlayerService {
     _indexController.add(newIndex);
 
     if (_isDesktop) {
-      print("Desktop playlist updated logic only");
       return;
     }
 
@@ -261,7 +368,7 @@ class AudioPlayerService {
         for (var entry in bvidGroups.entries) {
           if (entry.key == currentBvid) continue;
           for (var file in entry.value) {
-             await _tryDeleteFile(file);
+            await _tryDeleteFile(file);
           }
         }
         return;
@@ -277,7 +384,7 @@ class AudioPlayerService {
         if (_proxy.isBvidDownloading(bvid) || bvid == currentBvid) {
           continue;
         }
-        
+
         int groupSize = 0;
         DateTime newestTime = DateTime.fromMillisecondsSinceEpoch(0);
         for (var f in files) {
@@ -335,13 +442,13 @@ class AudioPlayerService {
         try {
           final List<FileSystemEntity> entities = dir.listSync();
           for (var entity in entities) {
-             if (entity is File) {
-               final filename = entity.path.split(Platform.pathSeparator).last;
-               if (currentBvid != null && filename.contains(currentBvid)) {
-                 continue;
-               }
-               await _tryDeleteFile(entity);
-             }
+            if (entity is File) {
+              final filename = entity.path.split(Platform.pathSeparator).last;
+              if (currentBvid != null && filename.contains(currentBvid)) {
+                continue;
+              }
+              await _tryDeleteFile(entity);
+            }
           }
         } catch (_) {}
       }
@@ -354,5 +461,6 @@ class AudioPlayerService {
     _player.dispose();
     _proxy.stop();
     _indexController.close();
+    _playbackErrorController.close();
   }
 }

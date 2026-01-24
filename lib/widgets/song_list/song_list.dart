@@ -8,6 +8,7 @@ class SongList extends StatelessWidget {
   final ScrollController? scrollController;
   final bool isLoading;
   final bool isLoadingMore;
+  final bool hasMore;
   final Widget? emptyWidget;
   final List<PopupMenuEntry<String>>? itemMenuItems;
   final void Function(String, Song)? onItemMenuSelected;
@@ -18,6 +19,7 @@ class SongList extends StatelessWidget {
     this.scrollController,
     this.isLoading = false,
     this.isLoadingMore = false,
+    this.hasMore = true,
     this.emptyWidget,
     this.itemMenuItems,
     this.onItemMenuSelected,
@@ -41,17 +43,36 @@ class SongList extends StatelessWidget {
           const Divider(height: 1, indent: 72),
       itemBuilder: (context, index) {
         if (index == songs.length) {
-          return isLoadingMore
-              ? Container(
-                  height: 60,
-                  alignment: Alignment.center,
-                  child: const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
+          if (isLoadingMore) {
+            return Container(
+              height: 60,
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+            );
+          } else if (!hasMore) {
+            return Container(
+              height: 60,
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '到底了',
+                    style: TextStyle(
+                      color: Theme.of(context).disabledColor,
+                      fontSize: 12,
+                    ),
                   ),
-                )
-              : const SizedBox(height: 60);
+                ],
+              ),
+            );
+          } else {
+            return const SizedBox(height: 60);
+          }
         }
 
         final song = songs[index];

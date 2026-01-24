@@ -14,12 +14,14 @@ class UserInfo {
   final String avatarUrl;
   final UserVipType vipType;
   final int mid;
+  final int level;
 
   UserInfo({
     required this.name,
     required this.avatarUrl,
     required this.vipType,
     required this.mid,
+    required this.level,
   });
 }
 
@@ -70,6 +72,7 @@ class AuthProvider extends ChangeNotifier {
         final avatarUrl = accountData['face'];
         final vipStatus = accountData['vip']['status'];
         final vipTypeInt = accountData['vip']['type'];
+        final level = accountData['level_info']['current_level'] ?? 0;
 
         UserVipType vipType = UserVipType.none;
         if (vipStatus == 1) {
@@ -85,6 +88,7 @@ class AuthProvider extends ChangeNotifier {
           avatarUrl: avatarUrl,
           vipType: vipType,
           mid: mid,
+          level: level,
         );
         _loginStatus = LoginStatus.loggedIn;
       } else {

@@ -73,7 +73,7 @@ class LibraryApi {
         final data = await Request().get(
           Api.urlFavFolderCollectedList,
           baseUrl: Api.urlBase,
-          params: {'up_mid': mid, 'pn': page, 'ps': 20, 'platform': 'web'},
+          params: {'up_mid': mid, 'pn': page, 'ps': 40, 'platform': 'web'},
         );
 
         if (data != null && data['code'] == 0) {
@@ -178,7 +178,7 @@ class LibraryApi {
           params: {
             'media_id': mediaId,
             'pn': page,
-            'ps': 20,
+            'ps': 40,
             'platform': 'web',
           },
         );

@@ -131,6 +131,20 @@ class Request {
     }
   }
 
+  Future<String> getCsrf() async {
+    await _initWait;
+    try {
+      final cookies = await _cookieJar.loadForRequest(Uri.parse(Api.urlBase));
+      final biliJct = cookies.firstWhere(
+        (c) => c.name == 'bili_jct',
+        orElse: () => Cookie('bili_jct', ''),
+      );
+      return biliJct.value;
+    } catch (e) {
+      return '';
+    }
+  }
+
   Future<dynamic> get(
     String path, {
     String baseUrl = Api.urlBase,
@@ -138,6 +152,7 @@ class Request {
     bool useWbi = false,
     ResponseType responseType = ResponseType.data,
     Options? options,
+    bool suppressErrorDialog = false,
   }) async {
     return _request(
       method: 'GET',
@@ -147,6 +162,7 @@ class Request {
       useWbi: useWbi,
       responseType: responseType,
       options: options,
+      suppressErrorDialog: suppressErrorDialog,
     );
   }
 
@@ -158,6 +174,7 @@ class Request {
     bool useWbi = false,
     ResponseType responseType = ResponseType.data,
     Options? options,
+    bool suppressErrorDialog = false,
   }) async {
     return _request(
       method: 'POST',
@@ -168,6 +185,7 @@ class Request {
       useWbi: useWbi,
       responseType: responseType,
       options: options,
+      suppressErrorDialog: suppressErrorDialog,
     );
   }
 
@@ -180,6 +198,7 @@ class Request {
     required bool useWbi,
     required ResponseType responseType,
     Options? options,
+    required bool suppressErrorDialog,
   }) async {
     await _initWait;
 
@@ -211,12 +230,13 @@ class Request {
         return response;
       }
       return response.data;
-    }, retryCount: 0);
+    }, retryCount: 0, suppressErrorDialog: suppressErrorDialog);
   }
 
   Future<dynamic> _requestWithRetry(
     Future<dynamic> Function() requestFunc, {
     int retryCount = 0,
+    required bool suppressErrorDialog,
   }) async {
     try {
       final result = await requestFunc();
@@ -235,6 +255,7 @@ class Request {
           return await _requestWithRetry(
             requestFunc,
             retryCount: retryCount + 1,
+            suppressErrorDialog: suppressErrorDialog,
           );
         } else {
           if (kDebugMode) {
@@ -266,11 +287,20 @@ class Request {
             return await _requestWithRetry(
               requestFunc,
               retryCount: retryCount + 1,
+              suppressErrorDialog: suppressErrorDialog,
             );
           } else {
-            await _handleLoginExpired(code, message);
+            if (!suppressErrorDialog) {
+              await _handleLoginExpired(code, message);
+            }
           }
         } else if (code != 0) {
+          // If code is -404 (ErrorCode.notFound), we suppress dialog.
+          if (code == ErrorCode.notFound || suppressErrorDialog) {
+             if (kDebugMode) print("Request: Suppressed error dialog for code $code.");
+             return result; // Return result so caller can handle it
+          }
+
           if (retryCount < _maxRetries) {
             if (kDebugMode) print("Business error (code $code), retrying...");
             await Future.delayed(
@@ -279,6 +309,7 @@ class Request {
             return await _requestWithRetry(
               requestFunc,
               retryCount: retryCount + 1,
+              suppressErrorDialog: suppressErrorDialog,
             );
           } else {
             if (!_isUserLoggedIn && code == ErrorCode.notLoggedIn)
@@ -296,16 +327,18 @@ class Request {
     } on DioException catch (e) {
       if (e.type != DioExceptionType.cancel && retryCount < _maxRetries) {
         await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
-        return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+        return await _requestWithRetry(requestFunc, retryCount: retryCount + 1, suppressErrorDialog: suppressErrorDialog);
       }
       if (retryCount >= _maxRetries) {
-        _showErrorDialog(ErrorCode.serverError, "网络错误: ${e.message}");
+        if (!suppressErrorDialog) {
+          _showErrorDialog(ErrorCode.serverError, "网络错误: ${e.message}");
+        }
       }
       throw _handleError(e);
     } catch (e) {
       if (retryCount < _maxRetries) {
         await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
-        return await _requestWithRetry(requestFunc, retryCount: retryCount + 1);
+        return await _requestWithRetry(requestFunc, retryCount: retryCount + 1, suppressErrorDialog: suppressErrorDialog);
       }
       rethrow;
     }

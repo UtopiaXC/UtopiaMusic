@@ -80,11 +80,6 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
     final result = await _videoApi.getFeed(context, _offset);
 
     if (result['code'] == -101) {
-      // This might happen if cookie expired during session
-      // But we check isLoggedIn first.
-      // If API returns -101, it means not logged in.
-      // We should probably update AuthProvider status?
-      // But for now just show empty state.
       setState(() {
         _isLoading = false;
       });
@@ -95,6 +90,10 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       final newSongs = result['songs'] as List<Song>;
       _offset = result['offset'];
       _hasMore = result['has_more'];
+      
+      if (newSongs.isEmpty) {
+        _hasMore = false;
+      }
 
       setState(() {
         _songs.addAll(newSongs);
@@ -155,15 +154,13 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
           onRefresh: _handleRefresh,
           child: ListView.builder(
             controller: widget.scrollController,
-            itemCount: _songs.length + 1,
+            itemCount: _songs.length + (_hasMore ? 1 : 0),
             itemBuilder: (context, index) {
               if (index == _songs.length) {
-                return _isLoading
-                    ? const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    : const SizedBox.shrink();
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
               }
               return SongListItem(
                 song: _songs[index],
