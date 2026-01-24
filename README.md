@@ -20,9 +20,20 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 （我不会说我就是为了用CarPlay听小马音乐才开发的这个，乐）  
 <br>
 
-| Home Ranking (Android)                       | Player (Android)                             | Settings (Android)                                | Home Ranking (iOS)                           |
-|----------------------------------------------|----------------------------------------------|---------------------------------------------------|----------------------------------------------|
-| ![home](assets/images/demo/demo_ranking.png) | ![plaer](assets/images/demo/demo_player.png) | ![settings](assets/images/demo/demo_settings.png) | ![home_ios](assets/images/demo/demo_ios.jpg) |
+## 下载
+
+目前仍处于开发阶段，请不要提交关于稳定性和功能不可用相关的issue，如果您有UI/UX的建议欢迎提交issue。  
+[开发测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
+
+## UI/UX Demo
+
+| 播放器                                      | 发现                                           | 详情                                             | 曲库                                         |
+|------------------------------------------|----------------------------------------------|------------------------------------------------|--------------------------------------------|
+| ![player](assets/images/demo/player.jpg) | ![discover](assets/images/demo/discover.jpg) | ![detail](assets/images/demo/video_detail.jpg) | ![library](assets/images/demo/library.jpg) |
+
+| 设置                                         | 收藏夹                                           | 用户主页                                    | 系统播放控件                                               |
+|--------------------------------------------|-----------------------------------------------|-----------------------------------------|------------------------------------------------------|
+| ![player](assets/images/demo/settings.jpg) | ![discover](assets/images/demo/favourite.jpg) | ![detail](assets/images/demo/space.jpg) | ![library](assets/images/demo/system_controller.jpg) |
 
 ## 参考与感谢
 
