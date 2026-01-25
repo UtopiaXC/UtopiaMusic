@@ -4,7 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       buildNumber:
-        description: "Override build number (YYYYMMDDHH)"
+        description: "Build Number (Option)"
+        required: false
+      releaseBody:
+        description: "Release notes"
         required: false
   push:
     tags:
@@ -204,15 +207,21 @@ jobs:
   publish:
     needs: [android, linux, apple, windows]
     runs-on: ubuntu-latest
+    env:
+      RELEASE_BODY: ${{ github.event.inputs.releaseBody || '' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Prepare release body
+        run: |
+          printf "%s" "$RELEASE_BODY" > /tmp/release_body.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
           draft: false
           prerelease: false
+          body_path: /tmp/release_body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
