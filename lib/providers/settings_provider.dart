@@ -19,6 +19,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _enableCommentsKey = 'enable_comments';
   static const String _defaultAudioQualityKey = 'default_audio_quality';
   static const String _defaultDownloadQualityKey = 'default_download_quality';
+  static const String _showSearchSuggestKey = 'show_search_suggest';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -37,6 +38,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _enableComments = true;
   int _defaultAudioQuality = 30280;
   int _defaultDownloadQuality = 30280;
+  bool _showSearchSuggest = true;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -55,6 +57,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get enableComments => _enableComments;
   int get defaultAudioQuality => _defaultAudioQuality;
   int get defaultDownloadQuality => _defaultDownloadQuality;
+  bool get showSearchSuggest => _showSearchSuggest;
 
   SettingsProvider() {
     _loadSettings();
@@ -90,6 +93,7 @@ class SettingsProvider extends ChangeNotifier {
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     _isSettingsLoaded = true;
     _defaultDownloadQuality = prefs.getInt(_defaultDownloadQualityKey) ?? 30280;
+    _showSearchSuggest = prefs.getBool(_showSearchSuggestKey) ?? true;
     notifyListeners();
   }
 
@@ -207,6 +211,13 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setShowSearchSuggest(bool value) async {
+    _showSearchSuggest = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showSearchSuggestKey, value);
+  }
+
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
@@ -224,6 +235,7 @@ class SettingsProvider extends ChangeNotifier {
     _enableComments = true;
     _defaultAudioQuality = 30280;
     _defaultDownloadQuality = 30280;
+    _showSearchSuggest = true;
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -242,6 +254,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_enableCommentsKey);
     await prefs.remove(_defaultAudioQualityKey);
     await prefs.remove(_defaultDownloadQualityKey);
+    await prefs.remove(_showSearchSuggestKey);
   }
 
   Future<void> resetApp() async {
@@ -261,6 +274,7 @@ class SettingsProvider extends ChangeNotifier {
     _enableComments = true;
     _defaultAudioQuality = 30280;
     _defaultDownloadQuality = 30280;
+    _showSearchSuggest = true;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

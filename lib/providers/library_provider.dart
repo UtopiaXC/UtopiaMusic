@@ -16,8 +16,6 @@ class LibraryProvider extends ChangeNotifier {
 
   List<PlaylistCategoryType> get categoryOrder => _categoryOrder;
   Set<PlaylistCategoryType> get hiddenCategories => _hiddenCategories;
-
-  // Returns only visible categories in order
   List<PlaylistCategoryType> get visibleCategories => 
       _categoryOrder.where((type) => !_hiddenCategories.contains(type)).toList();
 
@@ -33,8 +31,7 @@ class LibraryProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Load Order
+
     final List<String>? savedOrder = prefs.getStringList(_categoryOrderKey);
     if (savedOrder != null) {
       final List<PlaylistCategoryType> newOrder = [];
@@ -56,7 +53,6 @@ class LibraryProvider extends ChangeNotifier {
       _categoryOrder = newOrder;
     }
 
-    // Load Hidden Categories
     final List<String>? savedHidden = prefs.getStringList(_hiddenCategoriesKey);
     if (savedHidden != null) {
       _hiddenCategories = savedHidden.map((str) {

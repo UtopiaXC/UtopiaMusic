@@ -42,13 +42,12 @@ class SongListItem extends StatelessWidget {
 
   void _handleTap(BuildContext context) {
     FocusScope.of(context).unfocus();
-    // Open simplified video detail page
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5, // Adjusted height to 50%
+        initialChildSize: 0.5,
         minChildSize: 0.3,
         maxChildSize: 0.95,
         builder: (context, scrollController) {
@@ -57,8 +56,8 @@ class SongListItem extends StatelessWidget {
             child: VideoDetailPage(
               bvid: song.bvid,
               simplified: true,
-              contextList: contextList, // Pass contextList
-              scrollController: scrollController, // Pass scrollController
+              contextList: contextList,
+              scrollController: scrollController,
             ),
           );
         },

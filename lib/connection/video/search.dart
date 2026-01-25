@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -74,6 +75,72 @@ class SearchApi {
         return searchVideos(context, keyword, page: page, retryCount: retryCount + 1);
       }
       print('Error searching videos: $e');
+      return [];
+    }
+  }
+
+  Future<List<String>> getSearchSuggestions(String keyword) async {
+    if (keyword.isEmpty) return [];
+
+    final params = {
+      'term': keyword,
+      'main_ver': 'v1',
+      'highlight': '',
+    };
+
+    try {
+      var data = await Request().get(
+        Api.urlSearchSuggest,
+        baseUrl: Api.urlSearchBase,
+        params: params,
+      );
+
+      // [Fix 1] 关键修复：如果返回的是 String，手动转为 Map
+      if (data is String) {
+        try {
+          data = jsonDecode(data);
+        } catch (e) {
+          print('JSON Decode failed: $e');
+          return [];
+        }
+      }
+
+      // [Fix 2] 健壮的解析逻辑
+      if (data != null && data is Map) {
+        // 打印一下确认转换后的类型 (调试用)
+        // print('Data type: ${data.runtimeType}');
+
+        // 兼容 result 可能是 Map 也可能是 List 的情况
+        if (data['result'] != null) {
+          final resultNode = data['result'];
+
+          // 情况 A: result 是 Map (标准情况，包含 tag 字段)
+          if (resultNode is Map) {
+            if (resultNode['tag'] != null && resultNode['tag'] is List) {
+              final List tags = resultNode['tag'];
+              return tags.map<String>((item) {
+                if (item is Map) {
+                  return item['value']?.toString() ?? item['term']?.toString() ?? '';
+                }
+                return '';
+              }).where((s) => s.isNotEmpty).toList();
+            }
+          }
+          // 情况 B: result 直接就是 List (偶发情况)
+          else if (resultNode is List) {
+            return resultNode.map<String>((item) {
+              if (item is Map) {
+                return item['value']?.toString() ?? '';
+              }
+              return '';
+            }).where((s) => s.isNotEmpty).toList();
+          }
+        }
+      }
+
+      return [];
+    } catch (e) {
+      print('Error fetching search suggestions: $e');
       return [];
     }
   }

@@ -42,20 +42,9 @@ class _MainLayoutState extends State<MainLayout> {
 
   Future<void> _checkUpdate() async {
     final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    
-    // Wait for settings to be loaded if they are not yet
     if (!settingsProvider.isSettingsLoaded) {
-      // Simple retry mechanism or wait
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
-      if (!settingsProvider.isSettingsLoaded) {
-         // If still not loaded, maybe wait more or just proceed if it's critical, 
-         // but here we can just return or try again.
-         // Let's assume it loads fast enough or we can listen to it.
-         // But since we are in addPostFrameCallback, it might be racing.
-         // However, SettingsProvider constructor calls _loadSettings immediately.
-         // It's async, so it might not be ready.
-      }
     }
 
     if (!settingsProvider.autoCheckUpdate) return;
@@ -84,9 +73,7 @@ class _MainLayoutState extends State<MainLayout> {
            );
         }
       }
-    } catch (e) {
-      // Silent error
-    }
+    } catch (e) {}
   }
   
   Future<Map<String, dynamic>?> _fetchRelease(bool checkPreRelease) async {
@@ -103,7 +90,6 @@ class _MainLayoutState extends State<MainLayout> {
     super.didChangeDependencies();
     if (!_isInit) {
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-      // Ensure the index is valid
       int startIndex = settingsProvider.startPageIndex;
       if (startIndex < 0 || startIndex >= _pages.length) {
         startIndex = 0;

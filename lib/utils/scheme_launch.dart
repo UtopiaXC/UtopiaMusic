@@ -11,7 +11,6 @@ class SchemeLauncher {
     final Uri uri = Uri.parse(webUrl);
     
     if (Platform.isAndroid || Platform.isIOS) {
-      // Try to launch app first
       final Uri appUri = Uri.parse('bilibili://$schemePath');
       try {
         if (await canLaunchUrl(appUri)) {
@@ -22,8 +21,7 @@ class SchemeLauncher {
         print('Error launching app scheme: $e');
       }
     }
-    
-    // Fallback to web
+
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         if (context.mounted) {

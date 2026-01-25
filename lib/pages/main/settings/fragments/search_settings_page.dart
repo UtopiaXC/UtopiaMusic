@@ -29,6 +29,14 @@ class SearchSettingsPage extends StatelessWidget {
               _showLimitDialog(context, settingsProvider);
             },
           ),
+          SwitchListTile(
+            title: const Text('显示搜索推荐'),
+            subtitle: const Text('输入时显示联想词'),
+            value: settingsProvider.showSearchSuggest,
+            onChanged: (bool value) {
+              settingsProvider.setShowSearchSuggest(value);
+            },
+          ),
         ],
       ),
     );

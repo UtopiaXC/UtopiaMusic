@@ -1,6 +1,6 @@
 class Song {
   final String title;
-  final String originTitle; // Added for renaming support
+  final String originTitle;
   final String artist;
   final String coverUrl;
   final String lyrics;

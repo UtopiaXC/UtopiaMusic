@@ -90,8 +90,8 @@ class UpdateDialog extends StatelessWidget {
           TextButton(
             onPressed: () {
               Provider.of<SettingsProvider>(context, listen: false).setIgnoredVersion(version);
-              Navigator.pop(dialogContext); // Close ignore dialog
-              Navigator.pop(context); // Close update dialog
+              Navigator.pop(dialogContext);
+              Navigator.pop(context);
             },
             child: const Text('确认'),
           ),

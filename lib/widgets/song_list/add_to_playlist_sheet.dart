@@ -51,7 +51,7 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
       builder: (context) => PlaylistFormSheet(
         onSubmit: (title, description) async {
           await DatabaseService().createLocalPlaylist(title, description);
-          _loadPlaylists(); // Reload list
+          _loadPlaylists();
           if (mounted) {
              Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
           }

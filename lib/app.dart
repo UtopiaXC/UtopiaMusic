@@ -50,7 +50,7 @@ class _UtopiaMusicAppState extends State<UtopiaMusicApp> with WidgetsBindingObse
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'Utopia Music',
-      locale: settingsProvider.locale, // Apply locale from settings
+      locale: settingsProvider.locale,
       supportedLocales: const [
         Locale('en'),
         Locale('zh'),

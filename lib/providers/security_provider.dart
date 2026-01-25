@@ -26,7 +26,7 @@ class SecurityProvider extends ChangeNotifier {
   bool _privacyScreenEnabled = false;
   
   bool _isLocked = false;
-  bool _isAuthenticating = false; // Prevent multiple auth calls
+  bool _isAuthenticating = false;
   DateTime? _lastPausedTime;
 
   bool get biometricEnabled => _biometricEnabled;
@@ -52,21 +52,15 @@ class SecurityProvider extends ChangeNotifier {
     
     _privacyScreenEnabled = prefs.getBool(_privacyScreenEnabledKey) ?? false;
 
-    // If biometric is enabled, privacy screen must be enabled
     if (_biometricEnabled) {
-      _isLocked = true; // Lock on startup if biometric is enabled
+      _isLocked = true;
       _privacyScreenEnabled = true;
       try {
         await PrivacyScreen.instance.enable();
       } catch (e) {
         debugPrint('Error enabling privacy screen: $e');
       }
-      
-      // Trigger authentication immediately if locked on startup
-      // But we should wait a bit for UI to be ready, or let the LockScreen trigger it
-      // The LockScreen usually has a button, but auto-triggering is nice.
-      // However, triggering it here might be too early for context.
-      // Let's rely on LockScreen to trigger it or user interaction.
+
     } else if (_privacyScreenEnabled) {
       try {
         await PrivacyScreen.instance.enable();
@@ -114,8 +108,7 @@ class SecurityProvider extends ChangeNotifier {
     }
 
     _biometricEnabled = enabled;
-    
-    // If enabling biometric, force enable privacy screen
+
     if (enabled) {
       _privacyScreenEnabled = true;
       try {

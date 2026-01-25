@@ -253,7 +253,6 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
             subtitle: Text('当前下载内容占用：$_downloadSizeStr'),
             onTap: _handleClearDownloads,
           ),
-          const Divider(),
           ListTile(
             title: const Text('默认下载音质'),
             trailing: DropdownButton<int>(

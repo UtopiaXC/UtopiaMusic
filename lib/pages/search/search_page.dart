@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,10 +9,12 @@ import 'package:utopia_music/widgets/player/full_player_card.dart';
 import 'package:utopia_music/widgets/player/mini_player.dart';
 import 'package:utopia_music/pages/search/fragment/search_collection_fragment.dart';
 import 'package:utopia_music/widgets/search/search_history.dart';
+import 'package:utopia_music/widgets/search/search_suggest.dart';
 import 'package:utopia_music/pages/search/fragment/search_live_fragment.dart';
 import 'package:utopia_music/pages/search/fragment/search_user_fragment.dart';
 import 'package:utopia_music/pages/search/fragment/search_video_fragment.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/connection/video/search.dart';
 
 class SearchPage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -27,11 +30,15 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   final FocusNode _searchFocusNode = FocusNode();
   late TabController _tabController;
   String _currentKeyword = '';
-  int _searchTimestamp = 0; // To force refresh
+  int _searchTimestamp = 0;
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _historyOverlay;
+  OverlayEntry? _suggestOverlay;
   List<String> _history = [];
+  List<String> _suggestions = [];
   static const String _historyKey = 'search_history';
+  final SearchApi _searchApi = SearchApi();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -41,8 +48,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _loadHistory().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _searchFocusNode.requestFocus();
-        // Show history if text is empty, regardless of _currentKeyword
-        // Because user might have cleared text to search something new
         if (_searchController.text.isEmpty) {
            _showHistoryOverlay(); 
         }
@@ -50,12 +55,17 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     });
     
     _searchFocusNode.addListener(() {
-      if (_searchFocusNode.hasFocus && _searchController.text.isEmpty) {
-        _showHistoryOverlay();
-      } else if (!_searchFocusNode.hasFocus) {
+      if (_searchFocusNode.hasFocus) {
+        if (_searchController.text.isEmpty) {
+          _showHistoryOverlay();
+        } else {
+          _showSuggestOverlay();
+        }
+      } else {
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted && !_searchFocusNode.hasFocus) {
              _removeHistoryOverlay();
+             _removeSuggestOverlay();
           }
         });
       }
@@ -69,6 +79,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     _searchFocusNode.dispose();
     _tabController.dispose();
     _removeHistoryOverlay();
+    _removeSuggestOverlay();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -132,18 +144,48 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   }
 
   void _onSearchChanged() {
-    // Show history if text is empty, even if _currentKeyword is set
-    // This allows user to see history when they clear the search bar
-    if (_searchController.text.isEmpty) {
-      if (_searchFocusNode.hasFocus) {
-         _showHistoryOverlay();
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      
+      final text = _searchController.text;
+      if (text.isEmpty) {
+        _removeSuggestOverlay();
+        if (_searchFocusNode.hasFocus) {
+           _showHistoryOverlay();
+        }
+      } else {
+        _removeHistoryOverlay();
+        _fetchSuggestions(text);
       }
-    } else {
-      _removeHistoryOverlay();
+    });
+  }
+
+  Future<void> _fetchSuggestions(String keyword) async {
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    if (!settingsProvider.showSearchSuggest) return;
+
+    try {
+      final suggestions = await _searchApi.getSearchSuggestions(keyword);
+      if (mounted) {
+        setState(() {
+          _suggestions = suggestions;
+        });
+
+        if (_suggestions.isNotEmpty && _searchFocusNode.hasFocus) {
+          _showSuggestOverlay();
+        } else {
+          _removeSuggestOverlay();
+        }
+      }
+    } catch (e) {
+      print("搜索建议获取失败: $e");
+      if (mounted) _removeSuggestOverlay();
     }
   }
 
   void _showHistoryOverlay() {
+    _removeSuggestOverlay();
     if (_historyOverlay != null) return;
     
     final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
@@ -190,9 +232,66 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     Overlay.of(context).insert(_historyOverlay!);
   }
 
+  void _showSuggestOverlay() {
+    _removeHistoryOverlay();
+    if (_suggestOverlay != null) {
+      _suggestOverlay!.remove();
+      _suggestOverlay = null;
+    }
+
+    if (_suggestions.isEmpty) return;
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    final Size? leaderSize = _layerLink.leaderSize;
+    final double width = leaderSize?.width ?? MediaQuery.of(context).size.width - 80;
+
+    _suggestOverlay = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                _removeSuggestOverlay();
+                _searchFocusNode.unfocus();
+              },
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          Positioned(
+            width: width,
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              offset: Offset(0, (leaderSize?.height ?? 50) + 5),
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.surface,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  child: SearchSuggest(
+                    suggestions: _suggestions,
+                    onSelected: _doSearch,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Overlay.of(context).insert(_suggestOverlay!);
+  }
+
   void _removeHistoryOverlay() {
     _historyOverlay?.remove();
     _historyOverlay = null;
+  }
+
+  void _removeSuggestOverlay() {
+    _suggestOverlay?.remove();
+    _suggestOverlay = null;
   }
 
   void _doSearch(String keyword) {
@@ -204,6 +303,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       _searchTimestamp = DateTime.now().millisecondsSinceEpoch;
     });
     _removeHistoryOverlay();
+    _removeSuggestOverlay();
     _searchFocusNode.unfocus();
   }
 
@@ -262,6 +362,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       onTap: () {
                         if (_searchController.text.isEmpty) {
                           _showHistoryOverlay();
+                        } else {
+                          _showSuggestOverlay();
                         }
                       },
                     ),
@@ -290,6 +392,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   onTap: () {
                     _searchFocusNode.unfocus();
                     _removeHistoryOverlay();
+                    _removeSuggestOverlay();
                   },
                   child: Column(
                     children: [

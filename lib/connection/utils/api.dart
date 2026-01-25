@@ -13,6 +13,7 @@ class Api {
   static const String urlRankingRegion = '/x/web-interface/ranking/region';
   static const String urlPlayUrlWbi = '/x/player/wbi/playurl';
   static const String urlSearch = '/x/web-interface/search/type';
+  static const String urlSearchSuggest = '/main/suggest';
   static const String urlVideoDetail = '/x/web-interface/wbi/view';
   static const String urlDynamicFeed = '/x/polymer/web-dynamic/v1/feed/all';
   static const String urlFavoriteFolderList = '/x/v3/fav/folder/list';

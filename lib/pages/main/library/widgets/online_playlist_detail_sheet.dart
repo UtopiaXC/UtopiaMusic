@@ -75,7 +75,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('克隆歌单'),
-        content: Text('确定要将歌单 "${widget.playlistInfo.title}" 克隆到本地吗？'),
+        content: Text('确定要将 "${widget.playlistInfo.title}" 克隆成本地歌单吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -95,7 +95,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     try {
       final id = await DatabaseService().createLocalPlaylist(
         widget.playlistInfo.title,
-        'Cloned from Bilibili',
+        '',
       );
       
       for (var song in _songs) {

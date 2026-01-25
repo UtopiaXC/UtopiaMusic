@@ -128,7 +128,7 @@ class AuthProvider extends ChangeNotifier {
           final biliJct = cookies.firstWhere(
             (c) => c.name == 'bili_jct',
             orElse: () => null as dynamic,
-          ); // 简化处理
+          );
 
           if (biliJct != null) {
             await Request()

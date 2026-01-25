@@ -163,7 +163,7 @@ class _LoginDialogState extends State<LoginDialog>
           children: [
             Column(
               children: [
-                const SizedBox(height: 48), // Space for close button
+                const SizedBox(height: 48),
                 TabBar(
                   controller: _tabController,
                   tabs: const [
