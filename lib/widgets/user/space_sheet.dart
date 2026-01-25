@@ -9,6 +9,8 @@ import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
+// [Add] 引入播放选项弹窗
+import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
 
 class SpaceSheet extends StatefulWidget {
   final int mid;
@@ -56,6 +58,8 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     _loadCreatedPlaylists();
     _loadCollectedPlaylists();
   }
+
+  // ... (中间省略：_checkIfSelf, _loadUserInfo, _loadVideos, _loadCreatedPlaylists, _loadCollectedPlaylists, _mapVideoToSong, _mapToPlaylistInfo, _handleFollow, _handleLogout 均保持不变) ...
 
   void _checkIfSelf() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -187,7 +191,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
   }
 
   Future<void> _handleFollow() async {
-    final act = _isFollowing ? 2 : 1; // 1: follow, 2: unfollow
+    final act = _isFollowing ? 2 : 1;
     final actionName = _isFollowing ? '取消关注' : '关注';
 
     final confirm = await showDialog<bool>(
@@ -244,8 +248,34 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     }
   }
 
+  // [Add] 处理播放第一首的逻辑
+  void _handlePlayFirst() {
+    if (_videos.isEmpty) return;
+    final song = _videos.first;
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+
+    if (playerProvider.playlist.isEmpty) {
+      // 当前列表为空，直接替换并播放
+      playerProvider.setPlaylistAndPlay(_videos, song);
+      Navigator.pop(context);
+    } else {
+      // 当前列表不为空，弹出选项
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => PlayOptionsSheet(
+          song: song,
+          contextList: _videos,
+          onPlayAction: () {
+            Navigator.pop(context);
+          },
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // ... (build 方法保持不变，直到 _buildVideoList 调用) ...
     final colorScheme = Theme.of(context).colorScheme;
 
     return DraggableScrollableSheet(
@@ -305,6 +335,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     );
   }
 
+  // ... (_buildHeader 保持不变) ...
   Widget _buildHeader(BuildContext context) {
     if (_isLoadingInfo) {
       return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
@@ -424,8 +455,37 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            // [Change] 改为 spaceBetween 以便在左侧放按钮，右侧放排序
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // [Add] 播放按钮（如果有投稿）
+              if (_videos.isNotEmpty)
+                InkWell(
+                  onTap: _handlePlayFirst,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.play_circle_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '播放全部',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(), // 占位
+
               DropdownButton<String>(
                 value: _videoOrder,
                 items: const [
@@ -504,6 +564,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     );
   }
 
+  // ... (其余代码 _buildPlaylistList, _getLevelColor 保持不变) ...
   Widget _buildPlaylistList(ScrollController scrollController, List<PlaylistInfo> playlists, bool isLoading, bool hasMore, String emptyText, {bool isCollection = false}) {
     return Column(
       children: [

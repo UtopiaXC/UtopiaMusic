@@ -5,7 +5,7 @@ import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/pages/main/settings/fragments/appearance_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/search_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/play_settings_page.dart';
-import 'package:utopia_music/pages/main/settings/fragments/performance_settings_page.dart';
+import 'package:utopia_music/pages/main/settings/fragments/download_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/network_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/security_settings_page.dart';
 import 'package:utopia_music/pages/main/settings/fragments/general_settings_page.dart';
@@ -179,7 +179,7 @@ class SettingsPage extends StatelessWidget {
         _buildSettingItem(context, '外观', Icons.palette_outlined, const AppearanceSettingsPage()),
         _buildSettingItem(context, '搜索', Icons.search, const SearchSettingsPage()),
         _buildSettingItem(context, '播放', Icons.play_circle_outline, const PlaySettingsPage()),
-        _buildSettingItem(context, '性能', Icons.speed, const PerformanceSettingsPage()),
+        _buildSettingItem(context, '下载', Icons.download_outlined, const PerformanceSettingsPage()),
         _buildSettingItem(context, '网络', Icons.wifi, const NetworkSettingsPage()),
         _buildSettingItem(context, '安全', Icons.security, const SecuritySettingsPage()),
         _buildSettingItem(context, '通用', Icons.settings_outlined, const GeneralSettingsPage()),

@@ -293,7 +293,7 @@ class _LoginDialogState extends State<LoginDialog>
                   ],
                 )
               else
-                const Text('请使用 哔哩哔哩客户端 扫码登录'),
+                const Text('请截图并使用 哔哩哔哩客户端 扫码登录'),
               const SizedBox(height: 8),
               TextButton(onPressed: _loadQrCode, child: const Text('刷新二维码')),
             ],

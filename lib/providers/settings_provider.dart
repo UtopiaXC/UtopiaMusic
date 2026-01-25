@@ -18,6 +18,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _ignoredVersionKey = 'ignored_version';
   static const String _enableCommentsKey = 'enable_comments';
   static const String _defaultAudioQualityKey = 'default_audio_quality';
+  static const String _defaultDownloadQualityKey = 'default_download_quality';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -35,6 +36,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _autoSkipInvalid = true;
   bool _enableComments = true;
   int _defaultAudioQuality = 30280;
+  int _defaultDownloadQuality = 30280;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -52,6 +54,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get autoSkipInvalid => _autoSkipInvalid;
   bool get enableComments => _enableComments;
   int get defaultAudioQuality => _defaultAudioQuality;
+  int get defaultDownloadQuality => _defaultDownloadQuality;
 
   SettingsProvider() {
     _loadSettings();
@@ -86,7 +89,7 @@ class SettingsProvider extends ChangeNotifier {
     _defaultAudioQuality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     _isSettingsLoaded = true;
-
+    _defaultDownloadQuality = prefs.getInt(_defaultDownloadQualityKey) ?? 30280;
     notifyListeners();
   }
 
@@ -191,10 +194,17 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setDefaultAudioQuality(int quality) async {
     _defaultAudioQuality = quality;
-    AudioPlayerService().setPreferredQuality(quality);
-    notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_defaultAudioQualityKey, quality);
+    await AudioPlayerService().switchQuality(quality);
+    notifyListeners();
+  }
+
+  Future<void> setDefaultDownloadQuality(int quality) async {
+    _defaultDownloadQuality = quality;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_defaultDownloadQualityKey, quality);
+    notifyListeners();
   }
 
   Future<void> resetToDefaults() async {
@@ -213,6 +223,7 @@ class SettingsProvider extends ChangeNotifier {
     _autoSkipInvalid = true;
     _enableComments = true;
     _defaultAudioQuality = 30280;
+    _defaultDownloadQuality = 30280;
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -230,6 +241,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_ignoredVersionKey);
     await prefs.remove(_enableCommentsKey);
     await prefs.remove(_defaultAudioQualityKey);
+    await prefs.remove(_defaultDownloadQualityKey);
   }
 
   Future<void> resetApp() async {
@@ -245,6 +257,10 @@ class SettingsProvider extends ChangeNotifier {
     _autoCheckUpdate = true;
     _checkPreRelease = false;
     _ignoredVersion = null;
+    _autoSkipInvalid = true;
+    _enableComments = true;
+    _defaultAudioQuality = 30280;
+    _defaultDownloadQuality = 30280;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

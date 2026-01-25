@@ -15,14 +15,14 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
-// [Fix] 移除 AudioProxyService 引用
-// import 'package:utopia_music/services/audio_proxy_service.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
+import 'package:utopia_music/utils/quality_utils.dart';
+import 'package:utopia_music/connection/video/search.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
-  final VoidCallback  onCollapse;
+  final VoidCallback onCollapse;
   final Function(Song) onSongSelected;
 
   const FullPlayerPage({
@@ -125,7 +125,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('关闭定时器'),
-          content: Text('当前停止时间为：${playerProvider.stopTime?.toString().split('.')[0]}\n是否关闭定时器？'),
+          content: Text(
+            '当前停止时间为：${playerProvider.stopTime?.toString().split('.')[0]}\n是否关闭定时器？',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -190,7 +192,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             children: [
               const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Text('选择倍速', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  '选择倍速',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               _buildSpeedOption(0.5, currentSpeed),
               _buildSpeedOption(0.75, currentSpeed),
@@ -209,9 +214,14 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Widget _buildSpeedOption(double speed, double currentSpeed) {
     return ListTile(
       title: Text('${speed}x'),
-      trailing: speed == currentSpeed ? const Icon(Icons.check, color: Colors.blue) : null,
+      trailing: speed == currentSpeed
+          ? const Icon(Icons.check, color: Colors.blue)
+          : null,
       onTap: () {
-        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+        final playerProvider = Provider.of<PlayerProvider>(
+          context,
+          listen: false,
+        );
         playerProvider.player.setSpeed(speed);
         Navigator.pop(context);
       },
@@ -245,7 +255,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     );
   }
 
-  Widget _buildCardContent(BuildContext context, Song song, {bool isCurrent = false}) {
+  Widget _buildCardContent(
+    BuildContext context,
+    Song song, {
+    bool isCurrent = false,
+  }) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
 
     return Container(
@@ -258,52 +272,59 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
             child: isCurrent
                 ? StreamBuilder<Duration>(
-                stream: playerProvider.player.positionStream,
-                builder: (context, snapshot) {
-                  final position = snapshot.data ?? Duration.zero;
-                  return PlayerControls(
-                    isPlaying: playerProvider.isPlaying,
-                    isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
-                        playerProvider.player.processingState == ProcessingState.loading),
-                    duration: _duration,
-                    position: _isDragging
-                        ? Duration(seconds: _dragValue.toInt())
-                        : position,
-                    loopMode: playerProvider.playMode,
-                    onSeek: _onSeekEnd,
-                    onSeekStart: _onSeekStart,
-                    onSeekUpdate: _onSeekUpdate,
-                    onPlayPause: playerProvider.togglePlayPause,
-                    onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
-                    onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
-                    onShuffle: playerProvider.togglePlayMode,
-                    onPlaylist: _showPlaylist,
-                    onLyrics: _toggleLyrics,
-                    onTimer: _showTimerDialog,
-                    onComment: _showQualityDialog,
-                    onInfo: _showSpeedDialog,
-                    onMore: _showVideoDetail,
-                  );
-                }
-            )
+                    stream: playerProvider.player.positionStream,
+                    builder: (context, snapshot) {
+                      final position = snapshot.data ?? Duration.zero;
+                      return PlayerControls(
+                        isPlaying: playerProvider.isPlaying,
+                        isLoading:
+                            (playerProvider.player.processingState ==
+                                ProcessingState.buffering ||
+                            playerProvider.player.processingState ==
+                                ProcessingState.loading),
+                        duration: _duration,
+                        position: _isDragging
+                            ? Duration(seconds: _dragValue.toInt())
+                            : position,
+                        loopMode: playerProvider.playMode,
+                        onSeek: _onSeekEnd,
+                        onSeekStart: _onSeekStart,
+                        onSeekUpdate: _onSeekUpdate,
+                        onPlayPause: playerProvider.togglePlayPause,
+                        onNext: playerProvider.hasNext
+                            ? () => playerProvider.playNext()
+                            : null,
+                        onPrevious: playerProvider.hasPrevious
+                            ? () => playerProvider.playPrevious()
+                            : null,
+                        onShuffle: playerProvider.togglePlayMode,
+                        onPlaylist: _showPlaylist,
+                        onLyrics: _toggleLyrics,
+                        onTimer: _showTimerDialog,
+                        onComment: _showQualityDialog,
+                        onInfo: _showSpeedDialog,
+                        onMore: _showVideoDetail,
+                      );
+                    },
+                  )
                 : PlayerControls(
-              isPlaying: false,
-              isLoading: false,
-              duration: Duration.zero,
-              position: Duration.zero,
-              loopMode: playerProvider.playMode,
-              onSeek: (v){},
-              onPlayPause: (){},
-              onNext: null,
-              onPrevious: null,
-              onShuffle: (){},
-              onPlaylist: (){},
-              onLyrics: (){},
-              onTimer: (){},
-              onComment: (){},
-              onInfo: (){},
-              onMore: (){},
-            ),
+                    isPlaying: false,
+                    isLoading: false,
+                    duration: Duration.zero,
+                    position: Duration.zero,
+                    loopMode: playerProvider.playMode,
+                    onSeek: (v) {},
+                    onPlayPause: () {},
+                    onNext: null,
+                    onPrevious: null,
+                    onShuffle: () {},
+                    onPlaylist: () {},
+                    onLyrics: () {},
+                    onTimer: () {},
+                    onComment: () {},
+                    onInfo: () {},
+                    onMore: () {},
+                  ),
           ),
         ],
       ),
@@ -334,16 +355,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             return;
           }
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('无法获取用户信息')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('无法获取用户信息')));
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('获取信息失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('获取信息失败: $e')));
       }
     }
   }
@@ -359,7 +380,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     Song? nextSong;
 
     final playlist = playerProvider.playlist;
-    final currentIndex = playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
+    final currentIndex = playlist.indexWhere(
+      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
+    );
 
     if (currentIndex != -1 && playlist.isNotEmpty) {
       if (hasPrevious) {
@@ -430,7 +453,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               );
-                              final textSpan = TextSpan(text: widget.song.title, style: textStyle);
+                              final textSpan = TextSpan(
+                                text: widget.song.title,
+                                style: textStyle,
+                              );
                               final textPainter = TextPainter(
                                 text: textSpan,
                                 textDirection: TextDirection.ltr,
@@ -448,9 +474,13 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                   velocity: 30.0,
                                   pauseAfterRound: const Duration(seconds: 1),
                                   startPadding: 0.0,
-                                  accelerationDuration: const Duration(seconds: 1),
+                                  accelerationDuration: const Duration(
+                                    seconds: 1,
+                                  ),
                                   accelerationCurve: Curves.linear,
-                                  decelerationDuration: const Duration(milliseconds: 500),
+                                  decelerationDuration: const Duration(
+                                    milliseconds: 500,
+                                  ),
                                   decelerationCurve: Curves.easeOut,
                                 );
                               } else {
@@ -469,12 +499,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           onTap: () => _showArtistSpace(context),
                           behavior: HitTestBehavior.translucent,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 4.0,
+                              horizontal: 8.0,
+                            ),
                             child: Text(
                               widget.song.artist,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                decoration: TextDecoration.underline,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    decoration: TextDecoration.underline,
+                                  ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -500,11 +534,23 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                         curve: Curves.easeInOut,
                         offset: _showLyrics ? const Offset(-1, 0) : Offset.zero,
                         child: SwipeablePlayerCard(
-                          onNext: hasNext ? () => playerProvider.playNext() : null,
-                          onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
-                          previousChild: previousSong != null ? _buildCardContent(context, previousSong) : null,
-                          nextChild: nextSong != null ? _buildCardContent(context, nextSong) : null,
-                          child: _buildCardContent(context, widget.song, isCurrent: true),
+                          onNext: hasNext
+                              ? () => playerProvider.playNext()
+                              : null,
+                          onPrevious: hasPrevious
+                              ? () => playerProvider.playPrevious()
+                              : null,
+                          previousChild: previousSong != null
+                              ? _buildCardContent(context, previousSong)
+                              : null,
+                          nextChild: nextSong != null
+                              ? _buildCardContent(context, nextSong)
+                              : null,
+                          child: _buildCardContent(
+                            context,
+                            widget.song,
+                            isCurrent: true,
+                          ),
                         ),
                       ),
 
@@ -533,7 +579,8 @@ class _TimerDialog extends StatefulWidget {
   State<_TimerDialog> createState() => _TimerDialogState();
 }
 
-class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderStateMixin {
+class _TimerDialogState extends State<_TimerDialog>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _stopAfterCurrent = false;
 
@@ -551,7 +598,10 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
 
   void _setTimer(int minutes) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    playerProvider.setStopTimer(Duration(minutes: minutes), stopAfterCurrent: _stopAfterCurrent);
+    playerProvider.setStopTimer(
+      Duration(minutes: minutes),
+      stopAfterCurrent: _stopAfterCurrent,
+    );
     Navigator.pop(context);
   }
 
@@ -616,10 +666,7 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: [
-                    _buildCountdownTab(),
-                    _buildSpecificTimeTab(),
-                  ],
+                  children: [_buildCountdownTab(), _buildSpecificTimeTab()],
                 ),
               ),
             ],
@@ -646,10 +693,7 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
       child: FilledButton(
         onPressed: () async {
           final now = TimeOfDay.now();
-          final time = await showTimePicker(
-            context: context,
-            initialTime: now,
-          );
+          final time = await showTimePicker(context: context, initialTime: now);
           if (time != null) {
             final nowDateTime = DateTime.now();
             var selectedDateTime = DateTime(
@@ -664,8 +708,14 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
             }
 
             if (mounted) {
-              final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-              playerProvider.setStopTime(selectedDateTime, stopAfterCurrent: _stopAfterCurrent);
+              final playerProvider = Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              );
+              playerProvider.setStopTime(
+                selectedDateTime,
+                stopAfterCurrent: _stopAfterCurrent,
+              );
               Navigator.pop(context);
             }
           }
@@ -678,16 +728,21 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
 
 class _QualityDialog extends StatefulWidget {
   final Song song;
+
   const _QualityDialog({required this.song});
 
   @override
   State<_QualityDialog> createState() => _QualityDialogState();
 }
 
-class _QualityDialogState extends State<_QualityDialog> with SingleTickerProviderStateMixin {
+class _QualityDialogState extends State<_QualityDialog>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   AudioStreamInfo? _streamInfo;
   final AudioStreamApi _audioApi = AudioStreamApi();
+  final SearchApi _searchApi = SearchApi();
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -695,35 +750,48 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
     _tabController = TabController(length: 2, vsync: this);
     _loadStreamInfo();
   }
+
   Future<void> _loadStreamInfo() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
     try {
-      final info = await _audioApi.getAudioStream(widget.song.bvid, widget.song.cid);
+      int cid = widget.song.cid;
+      if (cid == 0) {
+        print("CID is 0, fetching real CID for ${widget.song.bvid}...");
+        cid = await _searchApi.fetchCid(widget.song.bvid);
+        if (cid == 0) {
+          throw Exception("无法获取有效的 CID");
+        }
+      }
+
+      final info = await _audioApi.getAudioStream(widget.song.bvid, cid);
+
       if (mounted) {
         setState(() {
           _streamInfo = info;
+          _isLoading = false;
         });
       }
     } catch (e) {
       print("Failed to load stream info: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    // _subscription?.cancel();
     super.dispose();
-  }
-
-  String _getQualityLabel(int quality) {
-    switch (quality) {
-      case 30216: return '64K';
-      case 30232: return '132K';
-      case 30280: return '192K';
-      case 30250: return '杜比全景声（大会员）';
-      case 30251: return 'Hi-Res无损（大会员）';
-      default: return '未知 ($quality)';
-    }
   }
 
   @override
@@ -761,7 +829,7 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
 
   Widget _buildDefaultQualityTab() {
     final settingsProvider = Provider.of<SettingsProvider>(context);
-    final qualities = [30251,30250,30280,30232,30216];
+    final qualities = QualityUtils.supportQualities;
 
     return ListView.builder(
       itemCount: qualities.length,
@@ -769,8 +837,10 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
         final quality = qualities[index];
         final isSelected = settingsProvider.defaultAudioQuality == quality;
         return ListTile(
-          title: Text(_getQualityLabel(quality)),
-          trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+          title: Text(QualityUtils.getQualityLabel(quality, detailed: true)),
+          trailing: isSelected
+              ? const Icon(Icons.check, color: Colors.blue)
+              : null,
           onTap: () {
             settingsProvider.setDefaultAudioQuality(quality);
             Navigator.pop(context);
@@ -781,23 +851,36 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
   }
 
   Widget _buildAvailableQualityTab() {
-    if (_streamInfo == null) {
-      return const Center(child: Text('加载中...'));
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 36),
+            const SizedBox(height: 8),
+            const Text('加载失败'),
+            TextButton(onPressed: _loadStreamInfo, child: const Text('重试')),
+          ],
+        ),
+      );
     }
 
-    final available = _streamInfo!.availableQualities;
-    final current = _streamInfo!.quality;
-
-    if (available.isEmpty) {
+    if (_streamInfo == null || _streamInfo!.availableQualities.isEmpty) {
       return const Center(child: Text('无可用音质信息'));
     }
-
+    final available = _streamInfo!.availableQualities;
+    final current = context.select<PlayerProvider, int>(
+      (p) => p.currentPlayingQuality,
+    );
     return Column(
       children: [
         const Padding(
           padding: EdgeInsets.all(16.0),
           child: Text(
-            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定。播放中切换音质下一曲生效。',
+            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定，不代表该曲目只有以下音质。',
             style: TextStyle(color: Colors.grey, fontSize: 12),
             textAlign: TextAlign.center,
           ),
@@ -808,10 +891,34 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
             itemBuilder: (context, index) {
               final quality = available[index];
               final isCurrent = quality == current;
+
               return ListTile(
-                title: Text(_getQualityLabel(quality)),
-                subtitle: isCurrent ? const Text('当前使用', style: TextStyle(color: Colors.blue, fontSize: 12)) : null,
-                trailing: isCurrent ? const Icon(Icons.volume_up, color: Colors.blue) : null,
+                title: Text(
+                  QualityUtils.getQualityLabel(quality, detailed: true),
+                ),
+                subtitle: isCurrent
+                    ? Text(
+                        '当前使用',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 12,
+                        ),
+                      )
+                    : null,
+                trailing: isCurrent
+                    ? Icon(
+                        Icons.volume_up,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
+                    : null,
+                onTap: () {
+                  if (!isCurrent) {
+                    Provider.of<SettingsProvider>(
+                      context,
+                      listen: false,
+                    ).setDefaultAudioQuality(quality);
+                  }
+                },
               );
             },
           ),

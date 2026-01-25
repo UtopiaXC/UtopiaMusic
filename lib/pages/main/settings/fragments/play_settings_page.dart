@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/utils/quality_utils.dart';
 
 class PlaySettingsPage extends StatelessWidget {
   const PlaySettingsPage({super.key});
@@ -25,14 +26,8 @@ class PlaySettingsPage extends StatelessWidget {
                 }
               },
               items: const [
-                DropdownMenuItem(
-                  value: 0,
-                  child: Text('软解 (兼容性好，性能差)'),
-                ),
-                DropdownMenuItem(
-                  value: 1,
-                  child: Text('硬解 (性能更好，更省电)'),
-                ),
+                DropdownMenuItem(value: 0, child: Text('软解 (兼容性好，性能差)')),
+                DropdownMenuItem(value: 1, child: Text('硬解 (性能更好，更省电)')),
               ],
             ),
           ),
@@ -45,28 +40,14 @@ class PlaySettingsPage extends StatelessWidget {
                   settingsProvider.setDefaultAudioQuality(newValue);
                 }
               },
-              items: const [
-                DropdownMenuItem(
-                  value: 30216,
-                  child: Text('64K'),
-                ),
-                DropdownMenuItem(
-                  value: 30232,
-                  child: Text('132K'),
-                ),
-                DropdownMenuItem(
-                  value: 30280,
-                  child: Text('192K'),
-                ),
-                DropdownMenuItem(
-                  value: 30250,
-                  child: Text('杜比全景声 (大会员)'),
-                ),
-                DropdownMenuItem(
-                  value: 30251,
-                  child: Text('Hi-Res无损 (大会员)'),
-                ),
-              ],
+              items: QualityUtils.supportQualities.map((quality) {
+                return DropdownMenuItem<int>(
+                  value: quality,
+                  child: Text(
+                    QualityUtils.getQualityLabel(quality, detailed: true),
+                  ),
+                );
+              }).toList(),
             ),
           ),
           SwitchListTile(
@@ -103,7 +84,9 @@ class PlaySettingsPage extends StatelessWidget {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('开启推荐连播'),
-                    content: const Text('如果启动推荐视频自由连播，再切换到下一个视频的时候，将会自动获取下一个视频的推荐并替换播放列表，而不是播放本视频的推荐列表。\n\n本选项与循环模式冲突，当启用时，将禁用循环模式，并接管播放列表。'),
+                    content: const Text(
+                      '如果启动推荐视频自由连播，再切换到下一个视频的时候，将会自动获取下一个视频的推荐并替换播放列表，而不是播放本视频的推荐列表。\n\n本选项与循环模式冲突，当启用时，将禁用循环模式，并接管播放列表。',
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),

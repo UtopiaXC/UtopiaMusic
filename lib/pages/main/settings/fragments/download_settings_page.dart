@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
+import 'package:utopia_music/utils/quality_utils.dart';
 
 class PerformanceSettingsPage extends StatefulWidget {
   const PerformanceSettingsPage({super.key});
@@ -79,17 +81,18 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
       await Provider.of<PlayerProvider>(context, listen: false).clearAllCache();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('缓存已清空')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('缓存已清空')));
         await _loadSettings();
       }
     }
   }
 
   void _showCustomSizeDialog() {
-    final controller =
-    TextEditingController(text: _currentCacheSize.toString());
+    final controller = TextEditingController(
+      text: _currentCacheSize.toString(),
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -98,9 +101,7 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
           controller: controller,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            suffixText: 'MB',
-          ),
+          decoration: const InputDecoration(suffixText: 'MB'),
         ),
         actions: [
           TextButton(
@@ -124,6 +125,7 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     return Scaffold(
       appBar: AppBar(title: const Text('性能')),
       body: ListView(
@@ -132,8 +134,17 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
             title: const Text('音乐缓存上限'),
             subtitle: const Text('缓存可减少重复播放曲目的流量消耗'),
             trailing: DropdownButton<int>(
-              value: [0, 10, 50, 100, 200, 500, 1000, 4096]
-                  .contains(_currentCacheSize)
+              value:
+                  [
+                    0,
+                    10,
+                    50,
+                    100,
+                    200,
+                    500,
+                    1000,
+                    4096,
+                  ].contains(_currentCacheSize)
                   ? _currentCacheSize
                   : -1,
               underline: const SizedBox(),
@@ -161,6 +172,26 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
             title: const Text('清空音乐缓存'),
             subtitle: Text('当前音乐缓存大小：$_usedCacheSizeStr'),
             onTap: _handleClearCache,
+          ),
+          ListTile(
+            title: const Text('默认下载音质'),
+            trailing: DropdownButton<int>(
+              value: settingsProvider.defaultDownloadQuality,
+              underline: const SizedBox(),
+              items: QualityUtils.supportQualities.map((quality) {
+                return DropdownMenuItem<int>(
+                  value: quality,
+                  child: Text(
+                    QualityUtils.getQualityLabel(quality, detailed: true),
+                  ),
+                );
+              }).toList(),
+              onChanged: (int? newValue) {
+                if (newValue != null) {
+                  settingsProvider.setDefaultDownloadQuality(newValue);
+                }
+              },
+            ),
           ),
         ],
       ),

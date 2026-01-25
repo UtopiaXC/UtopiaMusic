@@ -40,6 +40,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
   late TabController _tabController;
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
   final UserApi _userApi = UserApi();
+  bool _isClosing = false;
 
   Map<String, dynamic>? _videoDetail;
   bool _isLoadingDetail = true;
@@ -72,6 +73,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     _loadSettings();
     _loadAllData();
   }
+
+  final ScrollPhysics _scrollPhysics = const BouncingScrollPhysics(
+    parent: AlwaysScrollableScrollPhysics(),
+  );
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -414,87 +419,99 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       showPlayButton = false;
     }
 
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 16.0, left: 8.0, right: 8.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.keyboard_arrow_down),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.open_in_new),
-                  onPressed: () {
-                    SchemeLauncher.launchVideo(context, widget.bvid);
-                  },
-                  tooltip: '在Bilibili中打开',
-                ),
-              ],
+    return NotificationListener<ScrollUpdateNotification>(
+      onNotification: (notification) {
+        if (_isClosing) return false;
+
+        if (notification.metrics.pixels < -80 && notification.dragDetails != null) {
+          _isClosing = true;
+          Navigator.pop(context);
+          return true;
+        }
+        return false;
+      },
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0, left: 8.0, right: 8.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.open_in_new),
+                    onPressed: () {
+                      SchemeLauncher.launchVideo(context, widget.bvid);
+                    },
+                    tooltip: '在Bilibili中打开',
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (_isLoadingDetail)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (_videoDetail == null)
-            const Expanded(child: Center(child: Text('无法加载视频详情')))
-          else if (widget.simplified)
-              Expanded(
-                child: ListView(
-                  controller: widget.scrollController,
-                  children: [
-                    VideoDetailInfo(
-                      data: _videoDetail!,
-                      showPlayButton: showPlayButton,
-                      onPlay: () {
-                        if (_videoDetail != null) {
-                          _playVideo(_mapDetailToSong(_videoDetail!));
-                        }
-                      },
-                      onFav: _handleFav,
-                      onOpenSpace: _openSpace,
-                    ),
-                  ],
-                ),
-              )
-            else ...[
-                VideoDetailInfo(
-                  data: _videoDetail!,
-                  showPlayButton: showPlayButton,
-                  onPlay: () {
-                    if (_videoDetail != null) {
-                      _playVideo(_mapDetailToSong(_videoDetail!));
-                    }
-                  },
-                  onFav: _handleFav,
-                  onOpenSpace: _openSpace,
-                ),
-
-                // Tabs
-                TabBar(
-                  controller: _tabController,
-                  tabs: [
-                    const Tab(text: '推荐'),
-                    const Tab(text: '合集与分P'),
-                    if (settingsProvider.enableComments) const Tab(text: '评论'),
-                  ],
-                ),
-
+            if (_isLoadingDetail)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else if (_videoDetail == null)
+              const Expanded(child: Center(child: Text('无法加载视频详情')))
+            else if (widget.simplified)
                 Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
+                  child: ListView(
+                    physics: _scrollPhysics,
+                    controller: widget.scrollController,
                     children: [
-                      _buildRelatedTab(),
-                      _buildCollectionTab(),
-                      if (settingsProvider.enableComments) _buildCommentsTab(),
+                      VideoDetailInfo(
+                        data: _videoDetail!,
+                        showPlayButton: showPlayButton,
+                        onPlay: () {
+                          if (_videoDetail != null) {
+                            _playVideo(_mapDetailToSong(_videoDetail!));
+                          }
+                        },
+                        onFav: _handleFav,
+                        onOpenSpace: _openSpace,
+                      ),
                     ],
                   ),
-                ),
-              ],
-        ],
+                )
+              else ...[
+                  VideoDetailInfo(
+                    data: _videoDetail!,
+                    showPlayButton: showPlayButton,
+                    onPlay: () {
+                      if (_videoDetail != null) {
+                        _playVideo(_mapDetailToSong(_videoDetail!));
+                      }
+                    },
+                    onFav: _handleFav,
+                    onOpenSpace: _openSpace,
+                  ),
+
+                  TabBar(
+                    controller: _tabController,
+                    tabs: [
+                      const Tab(text: '推荐'),
+                      const Tab(text: '合集与分P'),
+                      if (settingsProvider.enableComments) const Tab(text: '评论'),
+                    ],
+                  ),
+
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildRelatedTab(),
+                        _buildCollectionTab(),
+                        if (settingsProvider.enableComments) _buildCommentsTab(),
+                      ],
+                    ),
+                  ),
+                ],
+          ],
+        ),
       ),
     );
   }
@@ -514,6 +531,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
               : _relatedVideos.isEmpty
               ? const Center(child: Text('暂无推荐'))
               : ListView.builder(
+            physics: _scrollPhysics,
             controller: widget.scrollController,
             itemCount: _relatedVideos.length,
             itemBuilder: (context, index) {
@@ -551,6 +569,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         ),
         Expanded(
           child: ListView.builder(
+            physics: _scrollPhysics,
             controller: widget.scrollController,
             itemCount: _collectionVideos.length,
             itemBuilder: (context, index) {
@@ -587,6 +606,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
               return false;
             },
             child: ListView.separated(
+              physics: _scrollPhysics,
               controller: widget.scrollController,
               itemCount: _comments.length + 1,
               separatorBuilder: (context, index) => const Divider(height: 1),
@@ -606,7 +626,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                     return const SizedBox(height: 60);
                   }
                 }
-
                 final comment = _comments[index];
                 return _buildCommentItem(comment, index);
               },

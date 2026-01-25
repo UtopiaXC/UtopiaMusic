@@ -8,7 +8,6 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
 
@@ -58,13 +57,19 @@ class PlaylistCategoryWidget extends StatefulWidget {
   State<PlaylistCategoryWidget> createState() => _PlaylistCategoryWidgetState();
 }
 
-class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with AutomaticKeepAliveClientMixin {
+class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+
   bool _isExpanded = false;
   bool _isLoading = false;
+  bool _hasLoaded = false;
+
   String? _errorMessage;
   List<PlaylistInfo> _playlists = [];
-  final VideoApi _videoApi = VideoApi();
   final LibraryApi _libraryApi = LibraryApi();
+
+  late AnimationController _expandController;
+  late Animation<double> _animation;
 
   @override
   bool get wantKeepAlive => true;
@@ -72,36 +77,56 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _expandController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animation = CurvedAnimation(
+      parent: _expandController,
+      curve: Curves.fastOutSlowIn,
+    );
+    _loadData(forceRefresh: false);
+  }
+
+  @override
+  void dispose() {
+    _expandController.dispose();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(PlaylistCategoryWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.refreshSignal != oldWidget.refreshSignal) {
-      _loadData();
+      _loadData(forceRefresh: true);
     }
   }
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (!forceRefresh && _hasLoaded) {
+      return;
+    }
 
-  Future<void> _loadData() async {
     final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
     bool isLocalRefreshOnly = libraryProvider.isLocalRefreshOnly;
+    if (!forceRefresh && widget.type != PlaylistCategoryType.local && isLocalRefreshOnly && _playlists.isNotEmpty) {
+      return;
+    }
 
     if (widget.type == PlaylistCategoryType.local) {
       await _loadLocalPlaylists();
     } else {
-      if (isLocalRefreshOnly && _playlists.isNotEmpty) {
-        return;
-      }
       await _loadOnlinePlaylists();
     }
   }
 
   Future<void> _loadLocalPlaylists() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (!_hasLoaded) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
     try {
       final localPlaylists = await DatabaseService().getLocalPlaylists();
       if (mounted) {
@@ -115,6 +140,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
             originalData: p,
           )).toList();
           _isLoading = false;
+          _hasLoaded = true;
         });
       }
     } catch (e) {
@@ -134,12 +160,13 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
         setState(() {
           _errorMessage = 'not_logged_in';
           _playlists = [];
+          _hasLoaded = true;
         });
       }
       return;
     }
 
-    if (mounted) {
+    if (_playlists.isEmpty) {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
@@ -148,7 +175,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
 
     try {
       int mid = authProvider.userInfo?.mid ?? 0;
-      
+
       List<dynamic> rawList = [];
       if (widget.type == PlaylistCategoryType.favorites) {
         rawList = await _libraryApi.getFavoriteFolders(mid);
@@ -158,43 +185,45 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
 
       if (mounted) {
         if (rawList.isEmpty) {
-           setState(() {
-             _playlists = [];
-             _isLoading = false;
-           });
+          setState(() {
+            _playlists = [];
+            _isLoading = false;
+            _hasLoaded = true;
+          });
         } else {
           List<PlaylistInfo> processedList = [];
-          
-          for (var item in rawList) {
-             String id = item['id']?.toString() ?? '';
-             String title = item['title'] ?? '';
-             String cover = item['cover'] ?? '';
-             int count = item['media_count'] ?? 0;
-             
-             if (widget.type == PlaylistCategoryType.favorites && (cover.isEmpty || cover.contains('bfs/archive/'))) {
-               try {
-                 final info = await _libraryApi.getFavoriteFolderInfo(id);
-                 if (info != null) {
-                   cover = info['cover'] ?? cover;
-                 }
-               } catch (e) {
-                 print('Failed to fetch info for folder $id: $e');
-               }
-             }
 
-             processedList.add(PlaylistInfo(
-                id: id,
-                title: title,
-                coverUrl: cover,
-                count: count,
-                isLocal: false,
-                originalData: item,
-              ));
+          for (var item in rawList) {
+            String id = item['id']?.toString() ?? '';
+            String title = item['title'] ?? '';
+            String cover = item['cover'] ?? '';
+            int count = item['media_count'] ?? 0;
+
+            if (widget.type == PlaylistCategoryType.favorites && (cover.isEmpty || cover.contains('bfs/archive/'))) {
+              try {
+                final info = await _libraryApi.getFavoriteFolderInfo(id);
+                if (info != null) {
+                  cover = info['cover'] ?? cover;
+                }
+              } catch (e) {
+                print('Failed to fetch info for folder $id: $e');
+              }
+            }
+
+            processedList.add(PlaylistInfo(
+              id: id,
+              title: title,
+              coverUrl: cover,
+              count: count,
+              isLocal: false,
+              originalData: item,
+            ));
           }
 
           setState(() {
             _playlists = processedList;
             _isLoading = false;
+            _hasLoaded = true;
           });
         }
       }
@@ -216,7 +245,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
         onSubmit: (title, description) async {
           await DatabaseService().createLocalPlaylist(title, description);
           if (mounted) {
-             Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
+            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
           }
         },
       ),
@@ -257,7 +286,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
   Widget build(BuildContext context) {
     super.build(context);
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       elevation: 2,
@@ -268,7 +297,11 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
         children: [
           _buildHeader(colorScheme),
           _buildCoverFlow(),
-          if (_isExpanded) _buildExpandedList(),
+          SizeTransition(
+            sizeFactor: _animation,
+            axisAlignment: -1.0,
+            child: _buildExpandedList(),
+          ),
         ],
       ),
     );
@@ -279,6 +312,11 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
       onTap: () {
         setState(() {
           _isExpanded = !_isExpanded;
+          if (_isExpanded) {
+            _expandController.forward();
+          } else {
+            _expandController.reverse();
+          }
         });
       },
       child: Container(
@@ -299,7 +337,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
             const Spacer(),
             if (widget.showDragHandle && widget.dragIndex != null)
               ReorderableDragStartListener(
-                index: widget.dragIndex!, 
+                index: widget.dragIndex!,
                 child: const Icon(Icons.drag_handle),
               ),
             const SizedBox(width: 8),
@@ -325,7 +363,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
     }
 
     if (_errorMessage != null) {
-      return _buildErrorState(_errorMessage!, '刷新', _loadData);
+      return _buildErrorState(_errorMessage!, '刷新', () => _loadData(forceRefresh: true));
     }
 
     if (_isLoading) {
@@ -369,9 +407,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         image: playlist.coverUrl.isNotEmpty
                             ? DecorationImage(
-                                image: NetworkImage(playlist.coverUrl),
-                                fit: BoxFit.cover,
-                              )
+                          image: NetworkImage(playlist.coverUrl),
+                          fit: BoxFit.cover,
+                        )
                             : null,
                         boxShadow: [
                           BoxShadow(
@@ -435,7 +473,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            message, 
+            message,
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -458,7 +496,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            message, 
+            message,
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -495,13 +533,13 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
             itemCount: _playlists.length,
             buildDefaultDragHandles: false,
             onReorder: (oldIndex, newIndex) {
-               setState(() {
-                 if (oldIndex < newIndex) {
-                   newIndex -= 1;
-                 }
-                 final item = _playlists.removeAt(oldIndex);
-                 _playlists.insert(newIndex, item);
-               });
+              setState(() {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                final item = _playlists.removeAt(oldIndex);
+                _playlists.insert(newIndex, item);
+              });
             },
             itemBuilder: (context, index) {
               final playlist = _playlists[index];
@@ -517,9 +555,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       image: playlist.coverUrl.isNotEmpty
                           ? DecorationImage(
-                              image: NetworkImage(playlist.coverUrl),
-                              fit: BoxFit.cover,
-                            )
+                        image: NetworkImage(playlist.coverUrl),
+                        fit: BoxFit.cover,
+                      )
                           : null,
                     ),
                     child: Stack(
@@ -581,9 +619,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget> with Au
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     image: playlist.coverUrl.isNotEmpty
                         ? DecorationImage(
-                            image: NetworkImage(playlist.coverUrl),
-                            fit: BoxFit.cover,
-                          )
+                      image: NetworkImage(playlist.coverUrl),
+                      fit: BoxFit.cover,
+                    )
                         : null,
                   ),
                   child: Stack(

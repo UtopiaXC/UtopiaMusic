@@ -8,13 +8,13 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
-
-import '../services/download_manager.dart';
+import 'package:utopia_music/services/download_manager.dart';
 
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
+
 
   List<Song> _playlist = [];
   Song? _currentSong;
@@ -34,9 +34,12 @@ class PlayerProvider extends ChangeNotifier {
 
   Timer? _progressSaveTimer;
   Timer? _stopTimer;
+  Timer? _expandTimer;
   DateTime? _stopTime;
   bool _stopAfterCurrent = false;
-  Timer? _expandTimer;
+
+  int _currentPlayingQuality = 30280;
+  int get currentPlayingQuality => _currentPlayingQuality;
 
   static const String _playModeKey = 'play_mode';
   static const String _lastPlayedIndexKey = 'last_played_index';
@@ -114,7 +117,14 @@ class PlayerProvider extends ChangeNotifier {
     });
 
     _audioPlayerService.playbackErrorStream.listen((error) {
-      _handlePlaybackError();
+      _handlePlaybackError(error);
+    });
+
+    _audioPlayerService.actualQualityStream.listen((quality) {
+      if (_currentPlayingQuality != quality) {
+        _currentPlayingQuality = quality;
+        notifyListeners();
+      }
     });
   }
 
@@ -160,6 +170,31 @@ class PlayerProvider extends ChangeNotifier {
 
     if (_recommendationAutoPlay) {
       _handleRecommendationAutoPlay(newSong);
+    }
+  }
+
+  Future<void> _handlePlaybackError(Map<String, dynamic> error) async {
+    if (!_autoSkipInvalid) return;
+
+    final String bvid = error['bvid'] ?? '';
+    final int cid = error['cid'] ?? 0;
+
+    int index = _playlist.indexWhere((s) => s.bvid == bvid && (cid == 0 || s.cid == 0 || s.cid == cid));
+
+    if (index != -1) {
+      print("PlayerProvider: Removing invalid song from playlist: $bvid / $cid");
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('发现无效资源，可能是网络问题、版权视频或充电视频，已自动跳过并清理。'),
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await removeSong(index);
     }
   }
 
@@ -215,12 +250,10 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> playSong(Song song) async {
     int index = _playlist.indexWhere((s) => s.bvid == song.bvid && s.cid == song.cid);
-
     if (index != -1) {
       if (_currentSong?.bvid == song.bvid && _currentSong?.cid == song.cid && _isPlaying) {
         return;
       }
-
       await _startPlay(index);
     } else {
       await setPlaylistAndPlay([song], song);
@@ -230,14 +263,28 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> setPlaylistAndPlay(List<Song> songs, Song initialSong) async {
     try {
       List<Song> newSongs = List.from(songs);
-      if (!newSongs.any((s) => s.bvid == initialSong.bvid && s.cid == initialSong.cid)) {
+
+      int existingIndex = newSongs.indexWhere((s) {
+        if (s.bvid != initialSong.bvid) return false;
+        if (s.cid == 0 || initialSong.cid == 0) return true;
+        return s.cid == initialSong.cid;
+      });
+
+      if (existingIndex != -1) {
+        newSongs[existingIndex] = initialSong;
+      } else {
         newSongs.insert(0, initialSong);
       }
 
       await _databaseService.replacePlaylist(newSongs);
       await _reloadPlaylistFromDb();
 
-      int index = _playlist.indexWhere((s) => s.bvid == initialSong.bvid && s.cid == initialSong.cid);
+      int index = _playlist.indexWhere((s) {
+        if (s.bvid != initialSong.bvid) return false;
+        if (s.cid == 0 || initialSong.cid == 0) return true;
+        return s.cid == initialSong.cid;
+      });
+
       if (index == -1) index = 0;
 
       await _startPlay(index);
@@ -286,13 +333,18 @@ class PlayerProvider extends ChangeNotifier {
     await _databaseService.removeSong(songToRemove.bvid, songToRemove.cid);
     await _reloadPlaylistFromDb();
 
-    if (_currentSong?.bvid == songToRemove.bvid && _currentSong?.cid == songToRemove.cid) {
+    bool isCurrent = _currentSong != null &&
+        _currentSong!.bvid == songToRemove.bvid &&
+        (_currentSong!.cid == 0 || songToRemove.cid == 0 || _currentSong!.cid == songToRemove.cid);
+
+    if (isCurrent) {
       if (_playlist.isEmpty) {
         await closePlayer();
       } else {
         int nextIndex = index;
         if (nextIndex >= _playlist.length) nextIndex = 0;
-        await _audioPlayerService.playWithQueue(_playlist, nextIndex, autoPlay: _isPlaying);
+
+        await _audioPlayerService.playWithQueue(_playlist, nextIndex, autoPlay: true);
       }
     } else {
       await _syncPlayerQueue();
@@ -346,26 +398,30 @@ class PlayerProvider extends ChangeNotifier {
       }
       return;
     }
-
+    final oldMode = _playMode;
     int nextIndex = (_playMode.index + 1) % PlayMode.values.length;
-    _playMode = PlayMode.values[nextIndex];
-
+    final newMode = PlayMode.values[nextIndex];
+    _playMode = newMode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_playModeKey, _playMode.index);
+    bool isOrderChanged = (oldMode == PlayMode.shuffle) || (newMode == PlayMode.shuffle);
 
-    await _reloadPlaylistFromDb();
+    if (isOrderChanged) {
+      await _reloadPlaylistFromDb();
 
-    if (_currentSong != null) {
-      int newIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
-      if (newIndex != -1) {
-        await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
-      } else if (_playlist.isNotEmpty) {
-        await _startPlay(0);
+      if (_currentSong != null) {
+        int newIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+        if (newIndex != -1) {
+          await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
+        } else if (_playlist.isNotEmpty) {
+          await _startPlay(0);
+        }
       }
+    } else {
+      notifyListeners();
     }
 
     await _setPlayerLoopMode();
-    notifyListeners();
   }
 
   Future<void> _setPlayerLoopMode() async {
@@ -488,23 +544,26 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> togglePlayPause() async => await _audioPlayerService.togglePlayPause();
   Future<void> seek(Duration position) async => await player.seek(position);
 
-  Future<void> _handlePlaybackError() async {
-    if (_playlist.isEmpty || _currentSong == null) return;
-    notifyListeners();
-  }
-
   void expandPlayer() {
+    _expandTimer?.cancel();
     _showFullPlayer = true;
-    Future.delayed(const Duration(milliseconds: 50), () {
+    notifyListeners();
+    _expandTimer = Timer(const Duration(milliseconds: 50), () {
       _isPlayerExpanded = true;
       notifyListeners();
     });
-    notifyListeners();
   }
 
   void collapsePlayer() {
+    _expandTimer?.cancel();
     _isPlayerExpanded = false;
     notifyListeners();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!_isPlayerExpanded) {
+        _showFullPlayer = false;
+        notifyListeners();
+      }
+    });
   }
 
   void togglePlayerExpansion() {
@@ -521,11 +580,11 @@ class PlayerProvider extends ChangeNotifier {
     _playlist = [];
     await _databaseService.clearPlaylist();
     _isPlaying = false;
-
     _showFullPlayer = false;
     _isPlayerExpanded = false;
 
     _stopProgressTimer();
+    cancelStopTimer();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_lastPlayedBvidKey);
@@ -608,6 +667,7 @@ class PlayerProvider extends ChangeNotifier {
   void dispose() {
     _stopProgressTimer();
     _stopTimer?.cancel();
+    _expandTimer?.cancel();
     _audioPlayerService.dispose();
     super.dispose();
   }

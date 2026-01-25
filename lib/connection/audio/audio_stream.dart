@@ -1,5 +1,6 @@
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:utopia_music/utils/quality_utils.dart';
 
 class AudioStreamInfo {
   final String url;
@@ -126,19 +127,6 @@ class AudioStreamApi {
   }
 
   int getScore(int id) {
-    switch (id) {
-      case 30251:
-        return 5; // Hi-Res
-      case 30250:
-        return 4; // Dolby
-      case 30280:
-        return 3; // 192K
-      case 30232:
-        return 2; // 132K
-      case 30216:
-        return 1; // 64K
-      default:
-        return 0;
-    }
+    return QualityUtils.getScore(id);
   }
 }
