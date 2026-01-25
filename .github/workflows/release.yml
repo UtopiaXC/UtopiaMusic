@@ -272,7 +272,7 @@ jobs:
           path: artifacts
       - name: Prepare release body
         run: |
-          note_file="assets/documentations/release_note/${BUILD_NAME}"
+          note_file="assets/documentations/release_note/${BUILD_NAME}.md"
           if [ -f "$note_file" ]; then
             cp "$note_file" /tmp/release_body.md
           else
@@ -281,6 +281,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.BUILD_NAME }}
           files: artifacts/**/*
           draft: false
           prerelease: false
