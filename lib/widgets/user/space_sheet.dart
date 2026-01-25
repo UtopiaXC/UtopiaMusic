@@ -47,6 +47,11 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
   int _collectedPage = 1;
   bool _hasMoreCollected = true;
 
+  List<PlaylistInfo> _seasonsSeries = [];
+  bool _isLoadingSeasons = false;
+  int _seasonsPage = 1;
+  bool _hasMoreSeasons = true;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +61,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     _loadVideos();
     _loadCreatedPlaylists();
     _loadCollectedPlaylists();
+    _loadSeasonsSeries();
   }
 
   void _checkIfSelf() {
@@ -160,6 +166,50 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _loadSeasonsSeries({bool refresh = false}) async {
+    if (_isLoadingSeasons) return;
+    if (refresh) {
+      _seasonsPage = 1;
+      _hasMoreSeasons = true;
+      _seasonsSeries = [];
+    }
+    if (!_hasMoreSeasons) return;
+
+    setState(() => _isLoadingSeasons = true);
+    final data = await _userApi.getUserSeasonsSeriesList(widget.mid, _seasonsPage);
+    if (mounted) {
+      if (data == null || data['items_lists'] == null || (data['items_lists'] as Map).isEmpty) {
+        _hasMoreSeasons = false;
+      } else {
+        final itemsLists = data['items_lists'] as Map<String, dynamic>;
+        final seasonsList = itemsLists['seasons_list'] as List<dynamic>? ?? [];
+        final seriesList = itemsLists['series_list'] as List<dynamic>? ?? [];
+        
+        final allItems = [...seasonsList, ...seriesList];
+        
+        if (allItems.isEmpty) {
+           _hasMoreSeasons = false;
+        } else {
+           final newPlaylists = allItems.map((item) => _mapSeasonToPlaylistInfo(item)).toList();
+           _seasonsSeries.addAll(newPlaylists);
+           
+           final pageInfo = data['page'] as Map<String, dynamic>?;
+           if (pageInfo != null) {
+             final total = pageInfo['total'] as int? ?? 0;
+             if (_seasonsSeries.length >= total) {
+               _hasMoreSeasons = false;
+             } else {
+               _seasonsPage++;
+             }
+           } else {
+             _hasMoreSeasons = false;
+           }
+        }
+      }
+      setState(() => _isLoadingSeasons = false);
+    }
+  }
+
   Song _mapVideoToSong(dynamic item) {
     String cover = item['pic'] ?? '';
     if (cover.startsWith('http://')) {
@@ -184,6 +234,18 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
       count: item['media_count'] ?? 0,
       isLocal: false,
       originalData: item,
+    );
+  }
+
+  PlaylistInfo _mapSeasonToPlaylistInfo(dynamic item) {
+    final meta = item['meta'];
+    return PlaylistInfo(
+      id: meta['season_id'].toString(),
+      title: meta['name'],
+      coverUrl: meta['cover'] ?? '',
+      count: meta['total'] ?? 0,
+      isLocal: false,
+      originalData: null,
     );
   }
 
@@ -307,7 +369,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
                 controller: _tabController,
                 tabs: const [
                   Tab(text: '投稿'),
-                  Tab(text: '创建'),
+                  Tab(text: '合集'),
                   Tab(text: '收藏'),
                 ],
               ),
@@ -316,8 +378,8 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
                   controller: _tabController,
                   children: [
                     _buildVideoList(scrollController),
-                    _buildPlaylistList(scrollController, _createdPlaylists, _isLoadingCreated, _hasMoreCreated, '当前用户没有公开的合集或收藏夹'),
-                    _buildPlaylistList(scrollController, _collectedPlaylists, _isLoadingCollected, _hasMoreCollected, '当前用户没有公开收藏他人的收藏夹', isCollection: true),
+                    _buildPlaylistList(scrollController, _seasonsSeries, _isLoadingSeasons, _hasMoreSeasons, '当前用户没有公开的合集', isCollection: true),
+                    _buildCombinedFavList(scrollController),
                   ],
                 ),
               ),
@@ -565,9 +627,10 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
             onNotification: (notification) {
               if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
                 if (isCollection) {
-                  _loadCollectedPlaylists();
+                  _loadSeasonsSeries();
                 } else {
-                  _loadCreatedPlaylists();
+                  // This branch is now only for seasons/series if isCollection is true
+                  // For created playlists, we use _buildCombinedFavList
                 }
               }
               return false;
@@ -636,6 +699,159 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCombinedFavList(ScrollController scrollController) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+          if (_hasMoreCreated && !_isLoadingCreated) {
+            _loadCreatedPlaylists();
+          }
+          if (_hasMoreCollected && !_isLoadingCollected) {
+            _loadCollectedPlaylists();
+          }
+        }
+        return false;
+      },
+      child: CustomScrollView(
+        controller: scrollController,
+        slivers: [
+          if (_createdPlaylists.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  '创建的收藏夹',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final playlist = _createdPlaylists[index];
+                  return ListTile(
+                    leading: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        image: playlist.coverUrl.isNotEmpty
+                            ? DecorationImage(image: NetworkImage(playlist.coverUrl), fit: BoxFit.cover)
+                            : null,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      ),
+                      child: playlist.coverUrl.isEmpty ? const Icon(Icons.music_note) : null,
+                    ),
+                    title: Text(playlist.title),
+                    subtitle: Text('${playlist.count}首'),
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => OnlinePlaylistDetailSheet(
+                          playlistInfo: playlist,
+                          isCollection: false,
+                        ),
+                      );
+                    },
+                  );
+                },
+                childCount: _createdPlaylists.length,
+              ),
+            ),
+            if (_isLoadingCreated)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            const SliverToBoxAdapter(child: Divider()),
+          ],
+          
+          if (_collectedPlaylists.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  '收藏的收藏夹',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final playlist = _collectedPlaylists[index];
+                  return ListTile(
+                    leading: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        image: playlist.coverUrl.isNotEmpty
+                            ? DecorationImage(image: NetworkImage(playlist.coverUrl), fit: BoxFit.cover)
+                            : null,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      ),
+                      child: playlist.coverUrl.isEmpty ? const Icon(Icons.music_note) : null,
+                    ),
+                    title: Text(playlist.title),
+                    subtitle: Text('${playlist.count}首'),
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => OnlinePlaylistDetailSheet(
+                          playlistInfo: playlist,
+                          isCollection: false,
+                        ),
+                      );
+                    },
+                  );
+                },
+                childCount: _collectedPlaylists.length,
+              ),
+            ),
+            if (_isLoadingCollected)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+          ],
+          
+          if (_createdPlaylists.isEmpty && _collectedPlaylists.isEmpty && !_isLoadingCreated && !_isLoadingCollected)
+            const SliverFillRemaining(
+              child: Center(child: Text('暂无收藏夹')),
+            ),
+            
+          if (!_hasMoreCreated && !_hasMoreCollected && (_createdPlaylists.isNotEmpty || _collectedPlaylists.isNotEmpty))
+            SliverToBoxAdapter(
+              child: Container(
+                height: 60,
+                alignment: Alignment.center,
+                child: Text(
+                  '到底了',
+                  style: TextStyle(
+                    color: Theme.of(context).disabledColor,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

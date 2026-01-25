@@ -19,6 +19,8 @@ class Api {
   static const String urlFavoriteFolderList = '/x/v3/fav/folder/list';
   static const String urlFavFolderCreatedListAll =
       '/x/v3/fav/folder/created/list-all';
+  static const String urlCreatedCollections =
+      '/x/polymer/web-space/seasons_series_list';
   static const String urlFavFolderCreatedList = '/x/v3/fav/folder/created/list';
   static const String urlFavFolderCollectedList =
       '/x/v3/fav/folder/collected/list';

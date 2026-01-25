@@ -143,6 +143,28 @@ class UserApi {
     return [];
   }
 
+  Future<Map<String, dynamic>?> getUserSeasonsSeriesList(int mid, int page) async {
+    try {
+      final data = await Request().get(
+        Api.urlCreatedCollections,
+        baseUrl: Api.urlBase,
+        params: {
+          'mid': mid,
+          'page_num': page,
+          'page_size': 20,
+          'web_location': 0.0,
+        },
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return data['data'];
+      }
+    } catch (e) {
+      print('Error fetching user seasons series list: $e');
+    }
+    return null;
+  }
+
   Future<bool> modifyRelation(int fid, int act) async {
     try {
       final data = await Request().post(

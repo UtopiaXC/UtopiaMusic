@@ -85,7 +85,7 @@ class _MusicRankFragmentState extends State<MusicRankFragment> with AutomaticKee
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('无网络或接口请求被风控，请重试'),
+                  Text('无网络或接口请求被风控，请重试\n排行榜对风控较严，如未登录可尝试登录后重试'),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: _loadData,
