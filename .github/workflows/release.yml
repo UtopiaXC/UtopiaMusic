@@ -14,32 +14,45 @@ on:
       - "v*"
 
 env:
-  BUILD_NAME: "0.1.0"
+  DEFAULT_BUILD_NAME: "0.0.0"
   FLUTTER_CHANNEL: "stable"
 
 jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
+      BUILD_NAME: ${{ steps.ver.outputs.build_name }}
       BUILD_NUMBER: ${{ steps.ver.outputs.build_number }}
       VERSION: ${{ steps.ver.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
       - name: Compute version
         id: ver
         shell: bash
         run: |
+          build_name=""
+          if [ -d assets/documentations/release_note ]; then
+            build_name=$(find assets/documentations/release_note -maxdepth 1 -type f -printf '%f\n' | head -n1)
+          fi
+          if [ -z "$build_name" ]; then
+            build_name="${DEFAULT_BUILD_NAME}"
+          fi
+
           if [ -n "${{ github.event.inputs.buildNumber }}" ]; then
             bn="${{ github.event.inputs.buildNumber }}"
           else
             bn=$(date -u +%Y%m%d%H)
           fi
+
+          echo "build_name=$build_name" >> "$GITHUB_OUTPUT"
           echo "build_number=$bn" >> "$GITHUB_OUTPUT"
-          echo "version=${BUILD_NAME}+$bn" >> "$GITHUB_OUTPUT"
+          echo "version=${build_name}+$bn" >> "$GITHUB_OUTPUT"
 
   android:
     needs: version
     runs-on: ubuntu-latest
     env:
+      BUILD_NAME: ${{ needs.version.outputs.BUILD_NAME }}
       BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
       VERSION: ${{ needs.version.outputs.VERSION }}
     steps:
@@ -78,6 +91,7 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     env:
+      BUILD_NAME: ${{ needs.version.outputs.BUILD_NAME }}
       BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
       VERSION: ${{ needs.version.outputs.VERSION }}
     steps:
@@ -133,6 +147,7 @@ jobs:
     needs: version
     runs-on: macos-latest
     env:
+      BUILD_NAME: ${{ needs.version.outputs.BUILD_NAME }}
       BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
       VERSION: ${{ needs.version.outputs.VERSION }}
     steps:
@@ -167,6 +182,7 @@ jobs:
     needs: version
     runs-on: windows-latest
     env:
+      BUILD_NAME: ${{ needs.version.outputs.BUILD_NAME }}
       BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
       VERSION: ${{ needs.version.outputs.VERSION }}
     steps:
@@ -205,17 +221,24 @@ jobs:
           path: out/*
 
   publish:
-    needs: [android, linux, apple, windows]
+    needs: [version, android, linux, apple, windows]
     runs-on: ubuntu-latest
     env:
+      BUILD_NAME: ${{ needs.version.outputs.BUILD_NAME }}
       RELEASE_BODY: ${{ github.event.inputs.releaseBody || '' }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Prepare release body
         run: |
-          printf "%s" "$RELEASE_BODY" > /tmp/release_body.md
+          note_file="assets/documentations/release_note/${BUILD_NAME}"
+          if [ -f "$note_file" ]; then
+            cp "$note_file" /tmp/release_body.md
+          else
+            printf "%s" "$RELEASE_BODY" > /tmp/release_body.md
+          fi
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
