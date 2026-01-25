@@ -67,15 +67,6 @@ class VideoDetailApi {
         await Future.delayed(Duration(milliseconds: delay));
       }
 
-      // First try to get collection info from video detail (ugc_season)
-      // But usually we need to fetch collection list if it belongs to one.
-      // The API for collection list is often /x/polymer/web-space/seasons_archives_list
-      // or similar, but simpler is to check 'ugc_season' in video detail.
-      // If we want to fetch the full list, we might need season_id.
-      
-      // For simplicity, let's assume we get the season_id from somewhere or use a different API.
-      // Actually, 'ugc_season' in video detail contains 'sections' which has 'episodes'.
-      
       final detail = await getVideoDetail(bvid);
       if (detail != null && detail['ugc_season'] != null) {
          final sections = detail['ugc_season']['sections'];
@@ -103,11 +94,7 @@ class VideoDetailApi {
       if (delay > 0) {
         await Future.delayed(Duration(milliseconds: delay));
       }
-      
-      // Need aid for reply API usually, but let's try to get aid first if not provided
-      // Or just use bvid if API supports it (Reply API usually needs type=1 and oid=aid)
-      // We need to fetch aid from bvid first.
-      
+
       int aid = 0;
       final detail = await getVideoDetail(bvid);
       if (detail != null) {

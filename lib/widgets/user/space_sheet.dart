@@ -628,9 +628,6 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
               if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
                 if (isCollection) {
                   _loadSeasonsSeries();
-                } else {
-                  // This branch is now only for seasons/series if isCollection is true
-                  // For created playlists, we use _buildCombinedFavList
                 }
               }
               return false;

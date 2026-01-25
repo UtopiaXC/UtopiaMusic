@@ -233,4 +233,78 @@ class UserApi {
     }
     return null;
   }
+
+  Future<bool> createFavFolder(String title, String intro, bool isPublic) async {
+    try {
+      final data = await Request().post(
+        Api.urlFavFolderAdd,
+        baseUrl: Api.urlBase,
+        data: {
+          'title': title,
+          'intro': intro,
+          'privacy': isPublic ? 0 : 1,
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return true;
+      }
+    } catch (e) {
+      print('Error creating fav folder: $e');
+    }
+    return false;
+  }
+
+  Future<bool> editFavFolder(int mediaId, String title, String intro, bool isPublic) async {
+    try {
+      final data = await Request().post(
+        Api.urlFavFolderEdit,
+        baseUrl: Api.urlBase,
+        data: {
+          'media_id': mediaId,
+          'title': title,
+          'intro': intro,
+          'privacy': isPublic ? 0 : 1,
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return true;
+      }
+    } catch (e) {
+      print('Error editing fav folder: $e');
+    }
+    return false;
+  }
+
+  Future<bool> deleteFavFolder(int mediaId) async {
+    try {
+      final data = await Request().post(
+        Api.urlFavFolderDel,
+        baseUrl: Api.urlBase,
+        data: {
+          'media_ids': mediaId.toString(),
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return true;
+      }
+    } catch (e) {
+      print('Error deleting fav folder: $e');
+    }
+    return false;
+  }
 }

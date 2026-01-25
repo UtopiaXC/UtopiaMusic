@@ -19,14 +19,13 @@ class Api {
   static const String urlFavoriteFolderList = '/x/v3/fav/folder/list';
   static const String urlFavFolderCreatedListAll =
       '/x/v3/fav/folder/created/list-all';
-  static const String urlCreatedCollections =
-      '/x/polymer/web-space/seasons_series_list';
   static const String urlFavFolderCreatedList = '/x/v3/fav/folder/created/list';
   static const String urlFavFolderCollectedList =
       '/x/v3/fav/folder/collected/list';
   static const String urlFavFolderInfo = '/x/v3/fav/folder/info';
   static const String urlFavoriteResourceList = '/x/v3/fav/resource/list';
   static const String urlCollectionResourceList = '/x/space/fav/season/list';
+  static const String urlCreatedCollections = '/x/polymer/web-space/seasons_series_list';
   static const String urlLoginQRCodeGenerate =
       '/x/passport-login/web/qrcode/generate';
   static const String urlLoginQRCodePoll = '/x/passport-login/web/qrcode/poll';
@@ -45,4 +44,7 @@ class Api {
   static const String urlArchiveLike = '/x/web-interface/archive/like';
   static const String urlArchiveCoin = '/x/web-interface/coin/add';
   static const String urlArchiveFav = '/x/v3/fav/resource/deal';
+  static const String urlFavFolderAdd = '/x/v3/fav/folder/add';
+  static const String urlFavFolderEdit = '/x/v3/fav/folder/edit';
+  static const String urlFavFolderDel = '/x/v3/fav/folder/del';
 }

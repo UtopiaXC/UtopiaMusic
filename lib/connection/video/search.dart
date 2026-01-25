@@ -95,7 +95,6 @@ class SearchApi {
         params: params,
       );
 
-      // [Fix 1] 关键修复：如果返回的是 String，手动转为 Map
       if (data is String) {
         try {
           data = jsonDecode(data);
@@ -105,16 +104,9 @@ class SearchApi {
         }
       }
 
-      // [Fix 2] 健壮的解析逻辑
       if (data != null && data is Map) {
-        // 打印一下确认转换后的类型 (调试用)
-        // print('Data type: ${data.runtimeType}');
-
-        // 兼容 result 可能是 Map 也可能是 List 的情况
         if (data['result'] != null) {
           final resultNode = data['result'];
-
-          // 情况 A: result 是 Map (标准情况，包含 tag 字段)
           if (resultNode is Map) {
             if (resultNode['tag'] != null && resultNode['tag'] is List) {
               final List tags = resultNode['tag'];
@@ -126,7 +118,6 @@ class SearchApi {
               }).where((s) => s.isNotEmpty).toList();
             }
           }
-          // 情况 B: result 直接就是 List (偶发情况)
           else if (resultNode is List) {
             return resultNode.map<String>((item) {
               if (item is Map) {

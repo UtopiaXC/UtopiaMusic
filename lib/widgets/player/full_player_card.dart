@@ -19,6 +19,10 @@ import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/services/download_manager.dart';
+import 'package:utopia_music/utils/scheme_launch.dart';
+import 'package:utopia_music/widgets/video/favorite_sheet.dart';
+import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
+import 'package:utopia_music/providers/auth_provider.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -285,6 +289,110 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
   }
 
+  Future<void> _handleAddToFav() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final int myMid = authProvider.userInfo?.mid ?? 0;
+    if (myMid == 0) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('提示'),
+          content: const Text('请先登录'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    try {
+      final detail = await _videoDetailApi.getVideoDetail(widget.song.bvid);
+      if (detail != null && detail['aid'] != null) {
+        final int aid = detail['aid'];
+        if (mounted) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => FavoriteSheet(aid: aid, mid: myMid),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('无法获取视频信息')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleAddToLocalPlaylist() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => AddToPlaylistSheet(song: widget.song),
+    );
+  }
+
+  void _showMoreMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('在 Bilibili 打开'),
+              onTap: () {
+                Navigator.pop(context);
+                SchemeLauncher.launchVideo(context, widget.song.bvid);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_border),
+              title: const Text('添加到 B 站收藏夹'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleAddToFav();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.playlist_add),
+              title: const Text('添加到本地歌单'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleAddToLocalPlaylist();
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.download,
+                color: _isDownloaded ? Colors.green : null,
+              ),
+              title: Text(_isDownloaded ? '已下载' : '下载'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleDownload();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCardContent(
     BuildContext context,
     Song song, {
@@ -547,12 +655,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                       ],
                     ),
                     trailing: IconButton(
-                      icon: Icon(
-                        Icons.download,
-                        color: _isDownloaded ? Colors.green : null,
-                      ),
-                      onPressed: _handleDownload,
-                      tooltip: '下载',
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: _showMoreMenu,
+                      tooltip: '更多',
                     ),
                     centerMiddle: true,
                   ),
@@ -911,7 +1016,7 @@ class _QualityDialogState extends State<_QualityDialog>
         const Padding(
           padding: EdgeInsets.all(16.0),
           child: Text(
-            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定，不代表该曲目只有以下音质。',
+            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定，不代表该曲目只有以下音质。\n下载的曲目仅能使用下载时的音质。',
             style: TextStyle(color: Colors.grey, fontSize: 12),
             textAlign: TextAlign.center,
           ),
@@ -942,14 +1047,7 @@ class _QualityDialogState extends State<_QualityDialog>
                         color: Theme.of(context).colorScheme.primary,
                       )
                     : null,
-                onTap: () {
-                  if (!isCurrent) {
-                    Provider.of<SettingsProvider>(
-                      context,
-                      listen: false,
-                    ).setDefaultAudioQuality(quality);
-                  }
-                },
+                enabled: false,
               );
             },
           ),

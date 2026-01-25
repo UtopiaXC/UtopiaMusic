@@ -6,6 +6,7 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:dio/dio.dart';
 
 import '../utils/constants.dart';
 
@@ -233,5 +234,89 @@ class LibraryApi {
       bvid: item['bvid'] ?? '',
       cid: item['cid'] ?? 0,
     );
+  }
+
+  Future<Map<String, dynamic>?> getFolderInfo(int mediaId) async {
+    try {
+      final data = await Request().get(
+        Api.urlFavFolderInfo,
+        baseUrl: Api.urlBase,
+        params: {'media_id': mediaId},
+      );
+
+      if (data != null && data['code'] == 0) {
+        return data['data'];
+      }
+    } catch (e) {
+      print('Error fetching folder info: $e');
+    }
+    return null;
+  }
+
+  Future<bool> editFolder(int mediaId, String title, String intro, bool isPublic) async {
+    try {
+      final data = await Request().post(
+        '/x/v3/fav/folder/edit',
+        baseUrl: Api.urlBase,
+        data: {
+          'media_id': mediaId,
+          'title': title,
+          'intro': intro,
+          'privacy': isPublic ? 0 : 1,
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+
+      if (data != null && data['code'] == 0) {
+        return true;
+      }
+    } catch (e) {
+      print('Error editing folder: $e');
+    }
+    return false;
+  }
+
+  Future<Map<String, dynamic>?> getVideoDetailForAid(String bvid) async {
+    try {
+      final data = await Request().get(
+        Api.urlVideoDetail,
+        baseUrl: Api.urlBase,
+        params: {'bvid': bvid},
+      );
+
+      if (data != null && data['code'] == 0) {
+        return data['data'];
+      }
+    } catch (e) {
+      print('Error fetching video detail for aid: $e');
+    }
+    return null;
+  }
+
+  Future<bool> removeResource(int mediaId, int aid) async {
+    try {
+      final data = await Request().post(
+        '/x/v3/fav/resource/batch-del',
+        baseUrl: Api.urlBase,
+        data: {
+          'media_id': mediaId,
+          'resources': '$aid:2',
+          'csrf': await Request().getCsrf(),
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
+
+      if (data != null && data['code'] == 0) {
+        return true;
+      }
+    } catch (e) {
+      print('Error removing resource: $e');
+    }
+    return false;
   }
 }

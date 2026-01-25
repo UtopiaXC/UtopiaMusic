@@ -28,7 +28,6 @@ class DiscoverPageState extends State<DiscoverPage>
   TabController? _tabController;
   int _currentTabIndex = 0;
 
-  // Pool of controllers and keys, enough for max possible tabs (8)
   final List<ScrollController> _scrollControllers = [];
   final List<GlobalKey<RefreshIndicatorState>> _refreshKeys = [];
 
