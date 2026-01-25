@@ -224,7 +224,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "out\UtopiaMusic_${env:VERSION}_Windows_x64_portable.zip"
-      - name: Package setup exe (Inno Setup if windows\\installer.iss exists)
+      - name: Package setup exe
         run: |
           if (Test-Path "windows\installer.iss") {
             choco install innosetup -y
@@ -232,28 +232,28 @@ jobs:
           } else {
             Write-Host "installer.iss not found, skipping setup exe"
           }
-      - name: Package MSI (WiX if windows\\installer.wxs exists)
-        run: |
-          if (Test-Path "windows\installer.wxs") {
-            choco install wixtoolset -y
-            
-            if ($env:WIX -and (Test-Path "$env:WIX\bin")) {
-                $env:Path = "$env:WIX\bin;$env:Path"
-            }
-            
-            # Harvest all files from the release directory
-            # -sreg: Suppress self-registration harvesting (fixes HEAT5150 warnings)
-            heat dir build\windows\x64\runner\Release -dr INSTALLDIR -cg MainComponents -gg -g1 -sf -srd -sreg -var "var.SourceDir" -out dependencies.wxs
-            
-            # Compile both the main installer and the harvested dependencies
-            # Removed -out . because it caused PowerShell parsing error
-            candle windows\installer.wxs dependencies.wxs -dVersion=${env:VERSION} -dSourceDir=build\windows\x64\runner\Release -arch x64
-            
-            # Link them together
-            light installer.wixobj dependencies.wixobj -o "out\UtopiaMusic_${env:VERSION}_Windows_x64_msi.msi" -spdb
-          } else {
-            Write-Host "installer.wxs not found, skipping msi"
-          }
+#      - name: Package MSI
+#        run: |
+#          if (Test-Path "windows\installer.wxs") {
+#            choco install wixtoolset -y
+#
+#            if ($env:WIX -and (Test-Path "$env:WIX\bin")) {
+#                $env:Path = "$env:WIX\bin;$env:Path"
+#            }
+#
+#            # Harvest all files from the release directory
+#            # -sreg: Suppress self-registration harvesting (fixes HEAT5150 warnings)
+#            heat dir build\windows\x64\runner\Release -dr INSTALLDIR -cg MainComponents -gg -g1 -sf -srd -sreg -var "var.SourceDir" -out dependencies.wxs
+#
+#            # Compile both the main installer and the harvested dependencies
+#            # Removed -out . because it caused PowerShell parsing error
+#            candle windows\installer.wxs dependencies.wxs -dVersion=${env:VERSION} -dSourceDir=build\windows\x64\runner\Release -arch x64
+#
+#            # Link them together
+#            light installer.wixobj dependencies.wixobj -o "out\UtopiaMusic_${env:VERSION}_Windows_x64_msi.msi" -spdb
+#          } else {
+#            Write-Host "installer.wxs not found, skipping msi"
+#          }
       - uses: actions/upload-artifact@v4
         with:
           name: windows
