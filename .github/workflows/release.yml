@@ -126,7 +126,9 @@ jobs:
         run: |
           mkdir -p dist/AppDir/usr/bin dist/AppDir/usr/share/applications dist/AppDir/usr/share/icons/hicolor/256x256/apps
           cp -r build/linux/x64/release/bundle/* dist/AppDir/usr/bin/
-          cat > dist/AppDir/usr/share/applications/utopiamusic.desktop <<'EOF'
+          
+          # Create desktop file in root of AppDir
+          cat > dist/AppDir/utopiamusic.desktop <<'EOF'
           [Desktop Entry]
           Type=Application
           Name=UtopiaMusic
@@ -134,8 +136,19 @@ jobs:
           Icon=utopiamusic
           Categories=Audio;Music;
           EOF
-          # use an existing png as icon if available
-          if [ -f assets/images/ic_windows.png ]; then cp assets/images/ic_windows.png dist/AppDir/usr/share/icons/hicolor/256x256/apps/utopiamusic.png; fi
+          
+          # Copy to standard location
+          cp dist/AppDir/utopiamusic.desktop dist/AppDir/usr/share/applications/
+          
+          # Icon
+          if [ -f assets/images/ic_windows.png ]; then 
+            cp assets/images/ic_windows.png dist/AppDir/utopiamusic.png
+            cp assets/images/ic_windows.png dist/AppDir/usr/share/icons/hicolor/256x256/apps/utopiamusic.png
+          fi
+          
+          # AppRun
+          ln -s usr/bin/UtopiaMusic dist/AppDir/AppRun
+          
           (cd dist && ARCH=x86_64 ../appimagetool AppDir "UtopiaMusic_${VERSION}_Linux_x64.AppImage")
           DEB_VER=${VERSION/+/-}
           fpm -s dir -t deb -n utopiamusic -v "$DEB_VER" --architecture amd64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
@@ -223,8 +236,19 @@ jobs:
         run: |
           if (Test-Path "windows\installer.wxs") {
             choco install wixtoolset -y
-            & 'C:\Program Files (x86)\WiX Toolset v3.11\bin\candle.exe' windows\installer.wxs -dVersion=${env:VERSION} -out installer.wixobj
-            & 'C:\Program Files (x86)\WiX Toolset v3.11\bin\light.exe' installer.wixobj -o "out\UtopiaMusic_${env:VERSION}_Windows_x64_msi.msi"
+            
+            if ($env:WIX -and (Test-Path "$env:WIX\bin")) {
+                $env:Path = "$env:WIX\bin;$env:Path"
+            }
+            
+            # Harvest all files from the release directory
+            heat dir build\windows\x64\runner\Release -dr INSTALLDIR -cg MainComponents -gg -g1 -sf -srd -var "var.SourceDir" -out dependencies.wxs
+            
+            # Compile both the main installer and the harvested dependencies
+            candle windows\installer.wxs dependencies.wxs -dVersion=${env:VERSION} -dSourceDir=build\windows\x64\runner\Release -out .
+            
+            # Link them together
+            light installer.wixobj dependencies.wixobj -o "out\UtopiaMusic_${env:VERSION}_Windows_x64_msi.msi" -spdb
           } else {
             Write-Host "installer.wxs not found, skipping msi"
           }
