@@ -22,6 +22,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _showSearchSuggestKey = 'show_search_suggest';
   static const String _enableHistoryReportKey = 'enable_history_report';
   static const String _historyReportDelayKey = 'history_report_delay';
+  static const String _enableBlurBackgroundKey = 'enable_blur_background';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -43,6 +44,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _showSearchSuggest = true;
   bool _enableHistoryReport = false;
   int _historyReportDelay = 3;
+  bool _enableBlurBackground = true;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -64,6 +66,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get showSearchSuggest => _showSearchSuggest;
   bool get enableHistoryReport => _enableHistoryReport;
   int get historyReportDelay => _historyReportDelay;
+  bool get enableBlurBackground => _enableBlurBackground;
 
   SettingsProvider() {
     _loadSettings();
@@ -102,6 +105,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = prefs.getBool(_showSearchSuggestKey) ?? true;
     _enableHistoryReport = prefs.getBool(_enableHistoryReportKey) ?? false;
     _historyReportDelay = prefs.getInt(_historyReportDelayKey) ?? 3;
+    _enableBlurBackground = prefs.getBool(_enableBlurBackgroundKey) ?? true;
     notifyListeners();
   }
 
@@ -240,6 +244,13 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt(_historyReportDelayKey, value);
   }
 
+  Future<void> setEnableBlurBackground(bool value) async {
+    _enableBlurBackground = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enableBlurBackgroundKey, value);
+  }
+
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
@@ -260,6 +271,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = true;
     _enableHistoryReport = false;
     _historyReportDelay = 3;
+    _enableBlurBackground = true;
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -281,6 +293,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_showSearchSuggestKey);
     await prefs.remove(_enableHistoryReportKey);
     await prefs.remove(_historyReportDelayKey);
+    await prefs.remove(_enableBlurBackgroundKey);
   }
 
   Future<void> resetApp() async {
@@ -303,6 +316,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = true;
     _enableHistoryReport = false;
     _historyReportDelay = 3;
+    _enableBlurBackground = true;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

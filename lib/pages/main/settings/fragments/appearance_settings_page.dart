@@ -20,6 +20,7 @@ class AppearanceSettingsPage extends StatelessWidget {
         children: [
           _buildThemeModeItem(context, settingsProvider),
           _buildColorItem(context, settingsProvider),
+          _buildBlurBackgroundItem(context, settingsProvider),
           _buildStartPageItem(context, settingsProvider),
           _buildLibraryOrderItem(context),
           _buildDiscoverOrderItem(context),
@@ -73,6 +74,15 @@ class AppearanceSettingsPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBlurBackgroundItem(BuildContext context, SettingsProvider provider) {
+    return SwitchListTile(
+      title: const Text('播放页高斯模糊背景'),
+      subtitle: const Text('非常费电'),
+      value: provider.enableBlurBackground,
+      onChanged: (value) => provider.setEnableBlurBackground(value),
     );
   }
 

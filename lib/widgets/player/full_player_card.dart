@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:marquee/marquee.dart';
@@ -402,67 +403,77 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
     return Container(
       key: ValueKey('${song.bvid}_${song.cid}'),
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: Colors.transparent,
       child: Column(
         children: [
           Expanded(child: PlayerContent(song: song)),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-            child: isCurrent
-                ? StreamBuilder<Duration>(
-                    stream: playerProvider.player.positionStream,
-                    builder: (context, snapshot) {
-                      final position = snapshot.data ?? Duration.zero;
-                      return PlayerControls(
-                        isPlaying: playerProvider.isPlaying,
-                        isLoading:
-                            (playerProvider.player.processingState ==
-                                ProcessingState.buffering ||
-                            playerProvider.player.processingState ==
-                                ProcessingState.loading),
-                        duration: _duration,
-                        position: _isDragging
-                            ? Duration(seconds: _dragValue.toInt())
-                            : position,
-                        loopMode: playerProvider.playMode,
-                        onSeek: _onSeekEnd,
-                        onSeekStart: _onSeekStart,
-                        onSeekUpdate: _onSeekUpdate,
-                        onPlayPause: playerProvider.togglePlayPause,
-                        onNext: playerProvider.hasNext
-                            ? () => playerProvider.playNext()
-                            : null,
-                        onPrevious: playerProvider.hasPrevious
-                            ? () => playerProvider.playPrevious()
-                            : null,
-                        onShuffle: playerProvider.togglePlayMode,
-                        onPlaylist: _showPlaylist,
-                        onLyrics: _toggleLyrics,
-                        onTimer: _showTimerDialog,
-                        onComment: _showQualityDialog,
-                        onInfo: _showSpeedDialog,
-                        onMore: _showVideoDetail,
-                      );
-                    },
-                  )
-                : PlayerControls(
-                    isPlaying: false,
-                    isLoading: false,
-                    duration: Duration.zero,
-                    position: Duration.zero,
-                    loopMode: playerProvider.playMode,
-                    onSeek: (v) {},
-                    onPlayPause: () {},
-                    onNext: null,
-                    onPrevious: null,
-                    onShuffle: () {},
-                    onPlaylist: () {},
-                    onLyrics: () {},
-                    onTimer: () {},
-                    onComment: () {},
-                    onInfo: () {},
-                    onMore: () {},
-                  ),
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onVerticalDragUpdate: (details) {
+              if (details.primaryDelta! > 10) {
+                widget.onCollapse();
+              } else if (details.primaryDelta! < -10) {
+                _toggleLyrics();
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+              child: isCurrent
+                  ? StreamBuilder<Duration>(
+                      stream: playerProvider.player.positionStream,
+                      builder: (context, snapshot) {
+                        final position = snapshot.data ?? Duration.zero;
+                        return PlayerControls(
+                          isPlaying: playerProvider.isPlaying,
+                          isLoading:
+                              (playerProvider.player.processingState ==
+                                  ProcessingState.buffering ||
+                              playerProvider.player.processingState ==
+                                  ProcessingState.loading),
+                          duration: _duration,
+                          position: _isDragging
+                              ? Duration(seconds: _dragValue.toInt())
+                              : position,
+                          loopMode: playerProvider.playMode,
+                          onSeek: _onSeekEnd,
+                          onSeekStart: _onSeekStart,
+                          onSeekUpdate: _onSeekUpdate,
+                          onPlayPause: playerProvider.togglePlayPause,
+                          onNext: playerProvider.hasNext
+                              ? () => playerProvider.playNext()
+                              : null,
+                          onPrevious: playerProvider.hasPrevious
+                              ? () => playerProvider.playPrevious()
+                              : null,
+                          onShuffle: playerProvider.togglePlayMode,
+                          onPlaylist: _showPlaylist,
+                          onLyrics: _toggleLyrics,
+                          onTimer: _showTimerDialog,
+                          onComment: _showQualityDialog,
+                          onInfo: _showSpeedDialog,
+                          onMore: _showVideoDetail,
+                        );
+                      },
+                    )
+                  : PlayerControls(
+                      isPlaying: false,
+                      isLoading: false,
+                      duration: Duration.zero,
+                      position: Duration.zero,
+                      loopMode: playerProvider.playMode,
+                      onSeek: (v) {},
+                      onPlayPause: () {},
+                      onNext: null,
+                      onPrevious: null,
+                      onShuffle: () {},
+                      onPlaylist: () {},
+                      onLyrics: () {},
+                      onTimer: () {},
+                      onComment: () {},
+                      onInfo: () {},
+                      onMore: () {},
+                    ),
+            ),
           ),
         ],
       ),
@@ -507,10 +518,38 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
   }
 
+  // [New] 构建高斯模糊背景
+  Widget _buildBlurredBackground(String coverUrl) {
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 原始图片
+          Image.network(
+            coverUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: Colors.black),
+          ),
+          // 高斯模糊滤镜层
+          ClipRect( // ClipRect 是应用 BackdropFilter 所必须的
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0), // 模糊程度
+              child: Container(
+                // 叠加一个半透明黑色蒙版，确保文字清晰度，也让整体偏暗色调
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     final playerProvider = Provider.of<PlayerProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final hasNext = playerProvider.hasNext;
     final hasPrevious = playerProvider.hasPrevious;
 
@@ -551,19 +590,18 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onVerticalDragUpdate: (details) {
-            if (details.primaryDelta! > 10) {
-              if (_showLyrics) {
-                _toggleLyrics();
-              }
-              widget.onCollapse();
-            }
-          },
-          child: Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: Column(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. 背景层：封面图 + 高斯模糊
+            if (settingsProvider.enableBlurBackground)
+              _buildBlurredBackground(widget.song.coverUrl),
+            
+            // 如果没有模糊背景，给一个背景色
+            if (!settingsProvider.enableBlurBackground)
+              Container(color: Theme.of(context).scaffoldBackgroundColor),
+
+            Column(
               children: [
                 SizedBox(height: topPadding + 12),
                 SizedBox(
@@ -663,45 +701,39 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   ),
                 ),
                 Expanded(
-                  child: Stack(
-                    children: [
-                      AnimatedSlide(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        offset: _showLyrics ? const Offset(-1, 0) : Offset.zero,
-                        child: SwipeablePlayerCard(
-                          onNext: hasNext
-                              ? () => playerProvider.playNext()
-                              : null,
-                          onPrevious: hasPrevious
-                              ? () => playerProvider.playPrevious()
-                              : null,
-                          previousChild: previousSong != null
-                              ? _buildCardContent(context, previousSong)
-                              : null,
-                          nextChild: nextSong != null
-                              ? _buildCardContent(context, nextSong)
-                              : null,
-                          child: _buildCardContent(
-                            context,
-                            widget.song,
-                            isCurrent: true,
-                          ),
-                        ),
-                      ),
-
-                      AnimatedSlide(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        offset: _showLyrics ? Offset.zero : const Offset(1, 0),
-                        child: LyricsPage(onBack: _toggleLyrics),
-                      ),
-                    ],
+                  child: SwipeablePlayerCard(
+                    onNext: hasNext
+                        ? () => playerProvider.playNext()
+                        : null,
+                    onPrevious: hasPrevious
+                        ? () => playerProvider.playPrevious()
+                        : null,
+                    previousChild: previousSong != null
+                        ? _buildCardContent(context, previousSong)
+                        : null,
+                    nextChild: nextSong != null
+                        ? _buildCardContent(context, nextSong)
+                        : null,
+                    child: _buildCardContent(
+                      context,
+                      widget.song,
+                      isCurrent: true,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
+
+            AnimatedSlide(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              offset: _showLyrics ? Offset.zero : const Offset(0, 1),
+              child: LyricsPage(
+                onBack: _toggleLyrics,
+                onPlaylist: _showPlaylist,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -60,6 +60,8 @@ dependencies:
   privacy_screen: ^0.0.8
   flutter_phoenix: ^1.1.1
   qr_flutter: ^4.1.0
+  scrollable_positioned_list: ^0.3.8
+  canvas_danmaku: ^0.3.1
 
 dev_dependencies:
   flutter_test:

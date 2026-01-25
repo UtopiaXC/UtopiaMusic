@@ -1,37 +1,93 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/connection/subtitles/danmaku_api.dart';
+import 'package:utopia_music/connection/subtitles/subtitle_api.dart';
+import 'package:utopia_music/connection/video/video_detail.dart';
+import 'package:utopia_music/models/danmaku.dart' as model;
+import 'package:utopia_music/models/subtitle.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:canvas_danmaku/canvas_danmaku.dart';
 
 class LyricsPage extends StatefulWidget {
   final VoidCallback onBack;
+  final VoidCallback onPlaylist;
 
   const LyricsPage({
     super.key,
     required this.onBack,
+    required this.onPlaylist,
   });
 
   @override
   State<LyricsPage> createState() => _LyricsPageState();
 }
 
-class _LyricsPageState extends State<LyricsPage> {
+class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   bool _isDragging = false;
   double _dragValue = 0.0;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
+  late TabController _tabController;
+  final SubtitleApi _subtitleApi = SubtitleApi();
+  final DanmakuApi _danmakuApi = DanmakuApi();
+  final VideoDetailApi _videoDetailApi = VideoDetailApi();
+
+  List<SubtitleItem> _subtitles = [];
+  bool _isLoadingSubtitles = false;
+  bool _hasSubtitles = false;
+
+  List<model.DanmakuItem> _rawDanmakus = [];
+  bool _isLoadingDanmaku = false;
+  bool _hasDanmaku = false;
+
+  DanmakuController? _danmakuController;
+
+  int _lastProcessedIndex = 0;
+  double _lastPositionSeconds = 0.0;
+  String? _currentSongId;
+
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  int _currentSubtitleIndex = -1;
+  bool _autoScroll = true;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    
+    _position = playerProvider.player.position;
+    _duration = playerProvider.player.duration ?? Duration.zero;
+
     playerProvider.player.positionStream.listen((position) {
-      if (mounted && !_isDragging) {
-        setState(() {
-          _position = position;
-        });
+      if (mounted) {
+        if (!_isDragging) {
+          setState(() {
+            _position = position;
+          });
+          if (playerProvider.isPlaying) {
+            _syncDanmaku(position);
+          }
+        }
+        _updateSubtitleIndex(position);
+      }
+    });
+
+    playerProvider.player.playerStateStream.listen((state) {
+      if (mounted && _danmakuController != null) {
+        if (state.playing) {
+          _danmakuController!.resume();
+        } else {
+          _danmakuController!.pause();
+        }
       }
     });
 
@@ -44,95 +100,367 @@ class _LyricsPageState extends State<LyricsPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _resetState() {
+    setState(() {
+      _subtitles = [];
+      _isLoadingSubtitles = true;
+      _hasSubtitles = false;
+
+      _rawDanmakus = [];
+      _isLoadingDanmaku = true;
+      _hasDanmaku = false;
+
+      _currentSubtitleIndex = -1;
+      _lastProcessedIndex = 0;
+      _lastPositionSeconds = 0.0;
+    });
+    _danmakuController?.clear();
+  }
+
+  void _syncDanmaku(Duration position) {
+    if (_tabController.index != 1) return;
+    if (_rawDanmakus.isEmpty || _danmakuController == null) return;
+
+    final double currentSeconds = position.inMilliseconds / 1000.0;
+
+    if (currentSeconds < _lastPositionSeconds || (currentSeconds - _lastPositionSeconds).abs() > 1.5) {
+      _resetDanmakuCursor(currentSeconds);
+      return;
+    }
+
+    int i = _lastProcessedIndex;
+    while (i < _rawDanmakus.length) {
+      final item = _rawDanmakus[i];
+      if (item.time > currentSeconds) break;
+
+      if (item.time >= _lastPositionSeconds) {
+        _danmakuController!.addDanmaku(
+          DanmakuContentItem(
+            item.content,
+            color: Color(item.color | 0xFF000000),
+            type: DanmakuItemType.scroll,
+          ),
+        );
+      }
+      i++;
+    }
+
+    _lastProcessedIndex = i;
+    _lastPositionSeconds = currentSeconds;
+  }
+
+  void _resetDanmakuCursor(double targetSeconds) {
+    _danmakuController?.clear();
+    _lastPositionSeconds = targetSeconds;
+
+    int newIndex = 0;
+    for (int i = 0; i < _rawDanmakus.length; i++) {
+      if (_rawDanmakus[i].time >= targetSeconds) {
+        newIndex = i;
+        break;
+      }
+    }
+    _lastProcessedIndex = newIndex;
+  }
+
+  Future<void> _loadData() async {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final song = playerProvider.currentSong;
+    if (song == null) return;
+    final currentId = '${song.bvid}_${song.cid}';
+    if (currentId != _currentSongId) return;
+
+    int realCid = song.cid;
+    if (realCid == 0) {
+      try {
+        final detail = await _videoDetailApi.getVideoDetail(song.bvid);
+        if (detail != null && detail['cid'] != null) {
+          realCid = detail['cid'];
+        }
+      } catch (e) {
+        print('LyricsPage: Failed to fetch CID: $e');
+      }
+    }
+
+    if (realCid == 0) {
+      if (mounted && currentId == _currentSongId) {
+        setState(() {
+          _isLoadingSubtitles = false;
+          _isLoadingDanmaku = false;
+        });
+      }
+      return;
+    }
+
+    final subtitles = await _subtitleApi.getSubtitles(song.bvid, realCid);
+    if (mounted && currentId == _currentSongId) {
+      setState(() {
+        _subtitles = subtitles;
+        _hasSubtitles = subtitles.isNotEmpty;
+        _isLoadingSubtitles = false;
+      });
+    }
+
+    final danmakus = await _danmakuApi.getDanmaku(realCid);
+    if (mounted && currentId == _currentSongId) {
+      setState(() {
+        _rawDanmakus = danmakus;
+        _hasDanmaku = danmakus.isNotEmpty;
+        _isLoadingDanmaku = false;
+      });
+      _resetDanmakuCursor(playerProvider.player.position.inMilliseconds / 1000.0);
+    }
+  }
+
+  void _updateSubtitleIndex(Duration position) {
+    if (_subtitles.isEmpty) return;
+    final seconds = position.inMilliseconds / 1000.0;
+    int index = -1;
+    for (int i = 0; i < _subtitles.length; i++) {
+      if (seconds >= _subtitles[i].from && seconds < _subtitles[i].to) {
+        index = i;
+        break;
+      }
+      if (seconds >= _subtitles[i].from) index = i;
+    }
+    if (index != _currentSubtitleIndex) {
+      setState(() => _currentSubtitleIndex = index);
+      if (_autoScroll && index != -1) {
+        _itemScrollController.scrollTo(
+          index: index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+        );
+      }
+    }
+  }
+
   void _onSeekStart(double value) {
     setState(() {
       _isDragging = true;
       _dragValue = value;
+      _autoScroll = false;
     });
+    _danmakuController?.clear();
   }
 
-  void _onSeekUpdate(double value) {
-    setState(() {
-      _dragValue = value;
-    });
-  }
+  void _onSeekUpdate(double value) => setState(() => _dragValue = value);
 
   void _onSeekEnd(double value) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final position = Duration(seconds: value.toInt());
     playerProvider.player.seek(position);
 
-    if (!playerProvider.isPlaying || 
-        playerProvider.player.processingState == ProcessingState.completed) {
+    if (!playerProvider.isPlaying || playerProvider.player.processingState == ProcessingState.completed) {
       playerProvider.player.play();
     }
 
     setState(() {
       _isDragging = false;
       _position = position;
+      _autoScroll = true;
     });
+    _resetDanmakuCursor(value);
   }
 
   @override
   Widget build(BuildContext context) {
     final playerProvider = Provider.of<PlayerProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final song = playerProvider.currentSong;
-
     if (song == null) return const SizedBox();
 
-    return GestureDetector(
-      onHorizontalDragUpdate: (details) {
-        if (details.primaryDelta! > 10) {
-          widget.onBack();
+    final newSongId = '${song.bvid}_${song.cid}';
+    if (newSongId != _currentSongId) {
+      _currentSongId = newSongId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _resetState();
+          _loadData();
         }
-      },
-      child: Container(
-        color: Colors.transparent,
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
-                    song.lyrics.isEmpty ? '暂无歌词' : song.lyrics,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      height: 1.8,
-                      fontSize: 18,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+      });
+    }
+
+    final topPadding = MediaQuery.of(context).padding.top;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (settingsProvider.enableBlurBackground)
+          _buildBlurredBackground(song.coverUrl),
+        if (!settingsProvider.enableBlurBackground)
+          Container(color: Colors.black.withValues(alpha: 0.9)),
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          body: GestureDetector(
+            onHorizontalDragUpdate: (details) {
+              if (details.primaryDelta! > 10) widget.onBack();
+            },
+            onVerticalDragUpdate: (details) {
+              if (details.primaryDelta! > 10) {
+                widget.onBack();
+              }
+            },
+            child: Column(
+              children: [
+                SizedBox(height: topPadding + 16),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  width: 200, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.2), // 加深一点背景以便在亮色封面上看清
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(18),
                     ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Theme.of(context).colorScheme.onPrimary,
+                    unselectedLabelColor: Colors.white.withValues(alpha: 0.9),
+                    dividerColor: Colors.transparent,
+                    tabs: const [Tab(text: 'AI/字幕'), Tab(text: '弹幕')],
                   ),
                 ),
-              ),
-            ),
 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-              child: PlayerControls(
-                isPlaying: playerProvider.isPlaying,
-                isLoading: playerProvider.player.processingState == ProcessingState.buffering ||
-                    playerProvider.player.processingState == ProcessingState.loading,
-                duration: _duration,
-                position: _isDragging
-                    ? Duration(seconds: _dragValue.toInt())
-                    : _position,
-                loopMode: playerProvider.playMode,
-                onSeek: _onSeekEnd,
-                onSeekStart: _onSeekStart,
-                onSeekUpdate: _onSeekUpdate,
-                onPlayPause: playerProvider.togglePlayPause,
-                onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
-                onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
-                onShuffle: playerProvider.togglePlayMode,
-                onPlaylist: () {},
-                onLyrics: widget.onBack,
-                hideExtraControls: false,
-                showLyricsButtonOnly: true,
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [_buildLyricsView(song), _buildDanmakuView()],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+                  child: PlayerControls(
+                    isPlaying: playerProvider.isPlaying,
+                    isLoading: playerProvider.player.processingState == ProcessingState.buffering,
+                    duration: _duration,
+                    position: _isDragging ? Duration(seconds: _dragValue.toInt()) : _position,
+                    loopMode: playerProvider.playMode,
+                    onSeek: _onSeekEnd,
+                    onSeekStart: _onSeekStart,
+                    onSeekUpdate: _onSeekUpdate,
+                    onPlayPause: playerProvider.togglePlayPause,
+                    onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
+                    onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+                    onShuffle: playerProvider.togglePlayMode,
+                    onPlaylist: widget.onPlaylist,
+                    onLyrics: widget.onBack,
+                    hideExtraControls: false,
+                    showLyricsButtonOnly: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // [New] 构建高斯模糊背景
+  Widget _buildBlurredBackground(String coverUrl) {
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            coverUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: Colors.black),
+          ),
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.5),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLyricsView(song) {
+    if (_isLoadingSubtitles) return const Center(child: CircularProgressIndicator(color: Colors.white));
+    final baseTextStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white.withValues(alpha: 0.9));
+    final highlightColor = Theme.of(context).colorScheme.primary;
+    final normalColor = Colors.white.withValues(alpha: 0.6);
+
+    if (!_hasSubtitles) {
+      if (song.lyrics.isNotEmpty) {
+        return Center(
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.all(32),
+            child: Text(
+                song.lyrics,
+                textAlign: TextAlign.center,
+                style: baseTextStyle?.copyWith(height: 1.8, fontSize: 18)
+            ),
+          ),
+        );
+      }
+      return Center(child: Text('暂无字幕', style: baseTextStyle));
+    }
+    return ScrollablePositionedList.builder(
+      itemCount: _subtitles.length + 2,
+      itemScrollController: _itemScrollController,
+      itemPositionsListener: _itemPositionsListener,
+      physics: const ClampingScrollPhysics(),
+      itemBuilder: (context, index) {
+        if (index == 0 || index == _subtitles.length + 1) return SizedBox(height: MediaQuery.of(context).size.height * 0.4);
+        final subtitleIndex = index - 1;
+        final subtitle = _subtitles[subtitleIndex];
+        final isActive = subtitleIndex == _currentSubtitleIndex;
+        return GestureDetector(
+          onTap: () {
+            Provider.of<PlayerProvider>(context, listen: false).player.seek(Duration(milliseconds: (subtitle.from * 1000).toInt()));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+            alignment: Alignment.center,
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: isActive ? 24 : 18,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isActive ? highlightColor : normalColor,
+                height: 1.5,
+              ),
+              child: Text(subtitle.content, textAlign: TextAlign.center),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDanmakuView() {
+    if (_isLoadingDanmaku) return const Center(child: Text('弹幕装载中...', style: TextStyle(color: Colors.white)));
+    if (!_hasDanmaku) return const Center(child: Text('该视频暂无弹幕', style: TextStyle(color: Colors.white)));
+
+    return DanmakuScreen(
+      key: ValueKey(_rawDanmakus.hashCode),
+      createdController: (controller) {
+        _danmakuController = controller;
+      },
+      option: DanmakuOption(
+        opacity: 0.9,
+        fontSize: 16,
+        area: 0.6,
+        hideScroll: false,
+        hideTop: false,
+        hideBottom: false,
       ),
     );
   }

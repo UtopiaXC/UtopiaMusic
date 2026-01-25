@@ -56,6 +56,5 @@ class Api {
   static const String urlFavFolderDel = '/x/v3/fav/folder/del';
   static const String urlHistoryCursor = '/x/web-interface/history/cursor';
   static const String urlBatchDel = '/x/v3/fav/resource/batch-del';
-
-
+  static const String urlAiSubtitle = '/x/web-interface/view/conclusion/get';
 }
