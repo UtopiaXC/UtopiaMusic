@@ -193,7 +193,7 @@ class UserApi {
   Future<List<dynamic>> getFollowings(int mid, int page) async {
     try {
       final data = await Request().get(
-        '/x/relation/followings',
+        Api.urlUserFollowings,
         baseUrl: Api.urlBase,
         params: {
           'vmid': mid,
@@ -215,7 +215,7 @@ class UserApi {
   Future<Map<String, dynamic>?> getHistory(int max, int viewAt) async {
     try {
       final data = await Request().get(
-        '/x/web-interface/history/cursor',
+        Api.urlHistoryCursor,
         baseUrl: Api.urlBase,
         params: {
           'ps': 20,
@@ -306,5 +306,26 @@ class UserApi {
       print('Error deleting fav folder: $e');
     }
     return false;
+  }
+
+  Future<List<dynamic>> searchUsers(String keyword, int page) async {
+    try {
+      final data = await Request().get(
+        Api.urlSearch,
+        baseUrl: Api.urlBase,
+        params: {
+          'search_type': 'bili_user',
+          'keyword': keyword,
+          'page': page,
+        },
+      );
+
+      if (data != null && data is Map && data['code'] == 0) {
+        return data['data']['result'] ?? [];
+      }
+    } catch (e) {
+      print('Error searching users: $e');
+    }
+    return [];
   }
 }

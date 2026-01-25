@@ -76,12 +76,17 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       }
     });
 
+    await _fetchFeedRecursively();
+    
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _fetchFeedRecursively() async {
     final result = await _videoApi.getFeed(context, _offset);
 
     if (result['code'] == -101) {
-      setState(() {
-        _isLoading = false;
-      });
       return;
     }
 
@@ -93,7 +98,6 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       if (newOffset == _offset && newSongs.isEmpty) {
          setState(() {
            _hasMore = false;
-           _isLoading = false;
          });
          return;
       }
@@ -101,21 +105,17 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       _offset = newOffset;
       _hasMore = hasMoreData;
       
-      if (newSongs.isEmpty) {
-        _hasMore = false;
-      } else if (newSongs.length < 15) {
-         _hasMore = false;
-      }
-
       setState(() {
         _songs.addAll(newSongs);
-        _isLoading = false;
       });
-      
-    } else {
-      setState(() {
-        _isLoading = false;
-      });
+
+      if (newSongs.length < 10 && _hasMore) {
+        await _fetchFeedRecursively();
+      } else if (newSongs.isEmpty && !_hasMore) {
+        setState(() {
+          _hasMore = false;
+        });
+      }
     }
   }
 

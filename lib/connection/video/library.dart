@@ -256,7 +256,7 @@ class LibraryApi {
   Future<bool> editFolder(int mediaId, String title, String intro, bool isPublic) async {
     try {
       final data = await Request().post(
-        '/x/v3/fav/folder/edit',
+        Api.urlFavFolderEdit,
         baseUrl: Api.urlBase,
         data: {
           'media_id': mediaId,
@@ -299,7 +299,7 @@ class LibraryApi {
   Future<bool> removeResource(int mediaId, int aid) async {
     try {
       final data = await Request().post(
-        '/x/v3/fav/resource/batch-del',
+        Api.urlBatchDel,
         baseUrl: Api.urlBase,
         data: {
           'media_id': mediaId,

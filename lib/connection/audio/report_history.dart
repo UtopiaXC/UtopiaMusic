@@ -10,7 +10,7 @@ class ReportHistoryApi {
   }) async {
     try {
       final data = await Request().post(
-        '/x/click-interface/web/heartbeat',
+        Api.urlPlayHistoryHeartbeat,
         baseUrl: Api.urlBase,
         data: {
           'bvid': bvid,

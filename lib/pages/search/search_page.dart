@@ -7,7 +7,6 @@ import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/player/full_player_card.dart';
 import 'package:utopia_music/widgets/player/mini_player.dart';
-import 'package:utopia_music/pages/search/fragment/search_collection_fragment.dart';
 import 'package:utopia_music/widgets/search/search_history.dart';
 import 'package:utopia_music/widgets/search/search_suggest.dart';
 import 'package:utopia_music/pages/search/fragment/search_live_fragment.dart';
@@ -379,7 +378,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                     tabs: [
                       Tab(text: S.of(context).pages_search_tag_live),
                       Tab(text: S.of(context).pages_search_tag_video),
-                      Tab(text: S.of(context).pages_search_tag_collection),
                       Tab(text: S.of(context).pages_search_tag_user),
                     ],
                     indicatorSize: TabBarIndicatorSize.label,
@@ -407,10 +405,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                               onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
                               searchTimestamp: _searchTimestamp,
-                            ),
-                            SearchCollectionFragment(
-                              onSongSelected: _handleSongSelected,
-                              keyword: _currentKeyword,
                             ),
                             SearchUserFragment(
                               onSongSelected: _handleSongSelected,

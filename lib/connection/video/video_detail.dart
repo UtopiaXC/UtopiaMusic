@@ -44,7 +44,7 @@ class VideoDetailApi {
       }
 
       final data = await Request().get(
-        '/x/web-interface/archive/related',
+        Api.urlArchiveRelated,
         baseUrl: Api.urlBase,
         params: {'bvid': bvid},
       );
@@ -87,6 +87,56 @@ class VideoDetailApi {
     return [];
   }
   
+  Future<List<Song>> getVideoParts(BuildContext context, String bvid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
+      if (delay > 0) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+
+      final detail = await getVideoDetail(bvid);
+      if (detail != null) {
+        final int videos = detail['videos'] ?? 0;
+        if (videos > 1) {
+          final pages = detail['pages'];
+          if (pages is List) {
+            String title = detail['title'] ?? '';
+            title = _unescape.convert(title);
+            String cover = detail['pic'] ?? '';
+            if (cover.startsWith('http://')) {
+              cover = cover.replaceFirst('http://', 'https://');
+            }
+            String artist = '';
+            if (detail['owner'] != null) {
+              artist = detail['owner']['name'] ?? '';
+            }
+            artist = _unescape.convert(artist);
+
+            return pages.map((page) {
+              String partTitle = page['part'] ?? '';
+              partTitle = _unescape.convert(partTitle);
+              int pageNum = page['page'] ?? 1;
+              
+              return Song(
+                title: '$title - ${pageNum}P $partTitle',
+                artist: artist,
+                coverUrl: cover,
+                lyrics: '',
+                colorValue: 0xFF2196F3,
+                bvid: bvid,
+                cid: page['cid'] ?? 0,
+              );
+            }).toList();
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching video parts: $e');
+    }
+    return [];
+  }
+  
   Future<List<Map<String, dynamic>>> getVideoReplies(String bvid, {int page = 1}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -104,7 +154,7 @@ class VideoDetailApi {
       if (aid == 0) return [];
 
       final data = await Request().get(
-        '/x/v2/reply',
+        Api.urlVideoReply,
         baseUrl: Api.urlBase,
         params: {
           'type': 1,
@@ -136,7 +186,7 @@ class VideoDetailApi {
       }
 
       final data = await Request().get(
-        '/x/v2/reply/reply',
+        Api.urlVideoReplyReply,
         baseUrl: Api.urlBase,
         params: {
           'type': 1,

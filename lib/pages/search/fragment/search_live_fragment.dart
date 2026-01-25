@@ -11,7 +11,7 @@ class SearchLiveFragment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (keyword.isEmpty) {
-      return const Center(child: Text('请输入关键词搜索直播'));
+      return const Center(child: Text('直播搜索功能开发中'));
     }
     return const Center(child: Text('直播搜索功能开发中'));
   }

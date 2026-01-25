@@ -51,6 +51,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
   List<Song> _collectionVideos = [];
   bool _isLoadingCollection = false;
   bool _hasCollection = false;
+  bool _isParts = false;
   List<Map<String, dynamic>> _comments = [];
   bool _isLoadingComments = false;
   int _commentPage = 1;
@@ -107,7 +108,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
           if (!widget.simplified) {
             _loadRelatedVideos();
-            _loadCollection(detail['aid'] ?? 0);
+            _loadCollectionOrParts(detail);
             final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
             if (settingsProvider.enableComments) {
               _loadComments();
@@ -162,15 +163,32 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     }
   }
 
-  Future<void> _loadCollection(int aid) async {
+  Future<void> _loadCollectionOrParts(Map<String, dynamic> detail) async {
     setState(() => _isLoadingCollection = true);
-    final videos = await _videoDetailApi.getVideoCollection(context, widget.bvid, aid);
-    if (mounted) {
-      setState(() {
-        _collectionVideos = videos;
-        _hasCollection = videos.isNotEmpty;
-        _isLoadingCollection = false;
-      });
+    
+    // Check for parts first
+    final int videos = detail['videos'] ?? 0;
+    if (videos > 1) {
+      final parts = await _videoDetailApi.getVideoParts(context, widget.bvid);
+      if (mounted) {
+        setState(() {
+          _collectionVideos = parts;
+          _hasCollection = parts.isNotEmpty;
+          _isParts = true;
+          _isLoadingCollection = false;
+        });
+      }
+    } else {
+      // If not parts, check for collection
+      final videos = await _videoDetailApi.getVideoCollection(context, widget.bvid, detail['aid'] ?? 0);
+      if (mounted) {
+        setState(() {
+          _collectionVideos = videos;
+          _hasCollection = videos.isNotEmpty;
+          _isParts = false;
+          _isLoadingCollection = false;
+        });
+      }
     }
   }
 
@@ -288,12 +306,26 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     if (confirm == true) {
       if (_collectionVideos.isNotEmpty) {
         Song? targetSong;
-        for (var s in _collectionVideos) {
-          if (s.bvid == widget.bvid) {
-            targetSong = s;
-            break;
+        // If it's parts, we need to match by cid as well because bvid is same
+        if (_isParts) {
+           final currentSong = playerProvider.currentSong;
+           if (currentSong != null && currentSong.bvid == widget.bvid) {
+             for (var s in _collectionVideos) {
+               if (s.cid == currentSong.cid) {
+                 targetSong = s;
+                 break;
+               }
+             }
+           }
+        } else {
+          for (var s in _collectionVideos) {
+            if (s.bvid == widget.bvid) {
+              targetSong = s;
+              break;
+            }
           }
         }
+        
         targetSong ??= _collectionVideos.first;
 
         await playerProvider.setPlaylistAndPlay(_collectionVideos, targetSong);
@@ -416,7 +448,18 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
     bool showPlayButton = true;
     if (playerProvider.currentSong != null && playerProvider.currentSong!.bvid == widget.bvid) {
-      showPlayButton = false;
+      if (_isParts) {
+        showPlayButton = false;
+      } else {
+        showPlayButton = false;
+      }
+    }
+
+    String collectionTabTitle = '合集与分P';
+    if (_isParts) {
+      collectionTabTitle = '分P';
+    } else if (_hasCollection) {
+      collectionTabTitle = '合集';
     }
 
     return NotificationListener<ScrollUpdateNotification>(
@@ -494,7 +537,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                     controller: _tabController,
                     tabs: [
                       const Tab(text: '推荐'),
-                      const Tab(text: '合集与分P'),
+                      Tab(text: collectionTabTitle),
                       if (settingsProvider.enableComments) const Tab(text: '评论'),
                     ],
                   ),
@@ -574,7 +617,18 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
             itemCount: _collectionVideos.length,
             itemBuilder: (context, index) {
               final song = _collectionVideos[index];
-              final isCurrent = song.bvid == widget.bvid;
+              bool isCurrent = false;
+              if (_isParts) {
+                 final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+                 if (playerProvider.currentSong != null && 
+                     playerProvider.currentSong!.bvid == widget.bvid &&
+                     playerProvider.currentSong!.cid == song.cid) {
+                   isCurrent = true;
+                 }
+              } else {
+                 isCurrent = song.bvid == widget.bvid;
+              }
+              
               return Container(
                 color: isCurrent ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) : null,
                 child: SongListItem(
