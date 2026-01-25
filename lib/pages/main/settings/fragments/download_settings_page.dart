@@ -7,15 +7,15 @@ import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 
-class PerformanceSettingsPage extends StatefulWidget {
-  const PerformanceSettingsPage({super.key});
+class DownloadSettingsPage extends StatefulWidget {
+  const DownloadSettingsPage({super.key});
 
   @override
-  State<PerformanceSettingsPage> createState() =>
-      _PerformanceSettingsPageState();
+  State<DownloadSettingsPage> createState() =>
+      _DownloadSettingsPageState();
 }
 
-class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
+class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
   int _currentCacheSize = 200;
   String _usedCacheSizeStr = '计算中...';
   int _maxConcurrentDownloads = 3;
@@ -34,7 +34,6 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
     final usedBytes = await _audioPlayerService.getUsedCacheSize();
     final maxConcurrent = await _downloadManager.getMaxConcurrentDownloads();
 
-    int downloadBytes = 0;
     if (mounted) {
       setState(() {
         _currentCacheSize = maxLimit;
@@ -158,6 +157,7 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: const InputDecoration(suffixText: 'MB'),
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -185,12 +185,16 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('性能与下载')),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          ListTile(
-            title: const Text('音乐缓存上限'),
-            subtitle: const Text('缓存可减少重复播放曲目的流量消耗'),
-            trailing: DropdownButton<int>(
-              value:
+          _SettingsGroup(
+            title: '缓存',
+            children: [
+              ListTile(
+                title: const Text('音乐缓存上限'),
+                subtitle: const Text('缓存可减少流量消耗'),
+                trailing: DropdownButton<int>(
+                  value:
                   [
                     0,
                     10,
@@ -201,77 +205,137 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
                     1000,
                     4096,
                   ].contains(_currentCacheSize)
-                  ? _currentCacheSize
-                  : -1,
-              underline: const SizedBox(),
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('禁用缓存')),
-                DropdownMenuItem(value: 10, child: Text('10 MB')),
-                DropdownMenuItem(value: 50, child: Text('50 MB')),
-                DropdownMenuItem(value: 100, child: Text('100 MB')),
-                DropdownMenuItem(value: 200, child: Text('200 MB')),
-                DropdownMenuItem(value: 500, child: Text('500 MB')),
-                DropdownMenuItem(value: 1000, child: Text('1 GB')),
-                DropdownMenuItem(value: 4096, child: Text('4 GB')),
-                DropdownMenuItem(value: -1, child: Text('自定义')),
-              ],
-              onChanged: (value) {
-                if (value == -1) {
-                  _showCustomSizeDialog();
-                } else if (value != null) {
-                  _updateCacheSize(value);
-                }
-              },
+                      ? _currentCacheSize
+                      : -1,
+                  underline: const SizedBox(),
+                  alignment: Alignment.centerRight,
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('禁用缓存')),
+                    DropdownMenuItem(value: 10, child: Text('10 MB')),
+                    DropdownMenuItem(value: 50, child: Text('50 MB')),
+                    DropdownMenuItem(value: 100, child: Text('100 MB')),
+                    DropdownMenuItem(value: 200, child: Text('200 MB')),
+                    DropdownMenuItem(value: 500, child: Text('500 MB')),
+                    DropdownMenuItem(value: 1000, child: Text('1 GB')),
+                    DropdownMenuItem(value: 4096, child: Text('4 GB')),
+                    DropdownMenuItem(value: -1, child: Text('自定义')),
+                  ],
+                  onChanged: (value) {
+                    if (value == -1) {
+                      _showCustomSizeDialog();
+                    } else if (value != null) {
+                      _updateCacheSize(value);
+                    }
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('清空音乐缓存'),
+                subtitle: Text('当前占用：$_usedCacheSizeStr'),
+                trailing: const Icon(Icons.delete_outline, size: 20),
+                onTap: _handleClearCache,
+              ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '下载',
+            children: [
+              ListTile(
+                title: const Text('最大同时下载数量'),
+                trailing: DropdownButton<int>(
+                  value: _maxConcurrentDownloads,
+                  underline: const SizedBox(),
+                  alignment: Alignment.centerRight,
+                  items:
+                  List.generate(5, (index) => index + 1).map((count) {
+                    return DropdownMenuItem<int>(
+                      value: count,
+                      child: Text('$count'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      _updateMaxConcurrent(value);
+                    }
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('默认下载音质'),
+                trailing: DropdownButton<int>(
+                  value: settingsProvider.defaultDownloadQuality,
+                  underline: const SizedBox(),
+                  alignment: Alignment.centerRight,
+                  items:
+                  QualityUtils.supportQualities.map((quality) {
+                    return DropdownMenuItem<int>(
+                      value: quality,
+                      child: Text(
+                        QualityUtils.getQualityLabel(
+                          quality,
+                          detailed: true,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (int? newValue) {
+                    if (newValue != null) {
+                      settingsProvider.setDefaultDownloadQuality(newValue);
+                    }
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('清空全部下载'),
+                subtitle: Text('当前占用：$_downloadSizeStr'),
+                trailing: const Icon(Icons.delete_forever_outlined, size: 20),
+                onTap: _handleClearDownloads,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _SettingsGroup({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
           ),
-          ListTile(
-            title: const Text('清空音乐缓存'),
-            subtitle: Text('当前音乐缓存大小：$_usedCacheSizeStr'),
-            onTap: _handleClearCache,
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('最大同时下载数量'),
-            trailing: DropdownButton<int>(
-              value: _maxConcurrentDownloads,
-              underline: const SizedBox(),
-              items: List.generate(5, (index) => index + 1).map((count) {
-                return DropdownMenuItem<int>(
-                  value: count,
-                  child: Text('$count'),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  _updateMaxConcurrent(value);
-                }
-              },
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(
+                  alpha: 0.3,
+                ),
+              ),
             ),
-          ),
-          ListTile(
-            title: const Text('清空全部下载'),
-            subtitle: Text('当前下载内容占用：$_downloadSizeStr'),
-            onTap: _handleClearDownloads,
-          ),
-          ListTile(
-            title: const Text('默认下载音质'),
-            trailing: DropdownButton<int>(
-              value: settingsProvider.defaultDownloadQuality,
-              underline: const SizedBox(),
-              items: QualityUtils.supportQualities.map((quality) {
-                return DropdownMenuItem<int>(
-                  value: quality,
-                  child: Text(
-                    QualityUtils.getQualityLabel(quality, detailed: true),
-                  ),
-                );
-              }).toList(),
-              onChanged: (int? newValue) {
-                if (newValue != null) {
-                  settingsProvider.setDefaultDownloadQuality(newValue);
-                }
-              },
-            ),
+            child: Column(children: children),
           ),
         ],
       ),

@@ -42,6 +42,9 @@ class FullPlayerPage extends StatefulWidget {
 }
 
 class _FullPlayerPageState extends State<FullPlayerPage> {
+  // 添加 GlobalKey 用于控制 SwipeablePlayerCard
+  final GlobalKey<SwipeablePlayerCardState> _swipeKey = GlobalKey();
+
   bool _isDragging = false;
   double _dragValue = 0.0;
   Duration _duration = Duration.zero;
@@ -49,6 +52,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   Timer? _timer;
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
   bool _isDownloaded = false;
+  double _dragAccumulator = 0.0;
 
   @override
   void initState() {
@@ -68,7 +72,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         setState(() {});
       }
     });
-    
+
     _checkDownloadStatus();
   }
 
@@ -95,6 +99,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     super.dispose();
   }
 
+  // ... 保持原有的 _onSeekStart, _onSeekUpdate, _onSeekEnd, _showPlaylist 等辅助方法不变 ...
   void _onSeekStart(double value) {
     setState(() {
       _isDragging = true;
@@ -261,7 +266,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       );
       return;
     }
-
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -279,7 +283,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         ],
       ),
     );
-
     if (confirm == true) {
       await DownloadManager().startDownload(widget.song);
       if (mounted) {
@@ -309,7 +312,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       );
       return;
     }
-
     try {
       final detail = await _videoDetailApi.getVideoDetail(widget.song.bvid);
       if (detail != null && detail['aid'] != null) {
@@ -394,92 +396,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     );
   }
 
-  Widget _buildCardContent(
-    BuildContext context,
-    Song song, {
-    bool isCurrent = false,
-  }) {
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-
-    return Container(
-      key: ValueKey('${song.bvid}_${song.cid}'),
-      color: Colors.transparent,
-      child: Column(
-        children: [
-          Expanded(child: PlayerContent(song: song)),
-          GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onVerticalDragUpdate: (details) {
-              if (details.primaryDelta! > 10) {
-                widget.onCollapse();
-              } else if (details.primaryDelta! < -10) {
-                _toggleLyrics();
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-              child: isCurrent
-                  ? StreamBuilder<Duration>(
-                      stream: playerProvider.player.positionStream,
-                      builder: (context, snapshot) {
-                        final position = snapshot.data ?? Duration.zero;
-                        return PlayerControls(
-                          isPlaying: playerProvider.isPlaying,
-                          isLoading:
-                              (playerProvider.player.processingState ==
-                                  ProcessingState.buffering ||
-                              playerProvider.player.processingState ==
-                                  ProcessingState.loading),
-                          duration: _duration,
-                          position: _isDragging
-                              ? Duration(seconds: _dragValue.toInt())
-                              : position,
-                          loopMode: playerProvider.playMode,
-                          onSeek: _onSeekEnd,
-                          onSeekStart: _onSeekStart,
-                          onSeekUpdate: _onSeekUpdate,
-                          onPlayPause: playerProvider.togglePlayPause,
-                          onNext: playerProvider.hasNext
-                              ? () => playerProvider.playNext()
-                              : null,
-                          onPrevious: playerProvider.hasPrevious
-                              ? () => playerProvider.playPrevious()
-                              : null,
-                          onShuffle: playerProvider.togglePlayMode,
-                          onPlaylist: _showPlaylist,
-                          onLyrics: _toggleLyrics,
-                          onTimer: _showTimerDialog,
-                          onComment: _showQualityDialog,
-                          onInfo: _showSpeedDialog,
-                          onMore: _showVideoDetail,
-                        );
-                      },
-                    )
-                  : PlayerControls(
-                      isPlaying: false,
-                      isLoading: false,
-                      duration: Duration.zero,
-                      position: Duration.zero,
-                      loopMode: playerProvider.playMode,
-                      onSeek: (v) {},
-                      onPlayPause: () {},
-                      onNext: null,
-                      onPrevious: null,
-                      onShuffle: () {},
-                      onPlaylist: () {},
-                      onLyrics: () {},
-                      onTimer: () {},
-                      onComment: () {},
-                      onInfo: () {},
-                      onMore: () {},
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _showArtistSpace(BuildContext context) async {
     if (widget.song.bvid.isEmpty) return;
     showDialog(
@@ -518,24 +434,21 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
   }
 
-  // [New] 构建高斯模糊背景
   Widget _buildBlurredBackground(String coverUrl) {
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 原始图片
           Image.network(
             coverUrl,
             fit: BoxFit.cover,
+            cacheWidth: 100,
             errorBuilder: (_, __, ___) => Container(color: Colors.black),
           ),
-          // 高斯模糊滤镜层
-          ClipRect( // ClipRect 是应用 BackdropFilter 所必须的
+          ClipRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0), // 模糊程度
+              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
               child: Container(
-                // 叠加一个半透明黑色蒙版，确保文字清晰度，也让整体偏暗色调
                 color: Colors.black.withValues(alpha: 0.5),
               ),
             ),
@@ -558,7 +471,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
     final playlist = playerProvider.playlist;
     final currentIndex = playlist.indexWhere(
-      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
+          (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
     );
 
     if (currentIndex != -1 && playlist.isNotEmpty) {
@@ -593,11 +506,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. 背景层：封面图 + 高斯模糊
             if (settingsProvider.enableBlurBackground)
               _buildBlurredBackground(widget.song.coverUrl),
-            
-            // 如果没有模糊背景，给一个背景色
+
             if (!settingsProvider.enableBlurBackground)
               Container(color: Theme.of(context).scaffoldBackgroundColor),
 
@@ -683,8 +594,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               widget.song.artist,
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    decoration: TextDecoration.underline,
-                                  ),
+                                decoration: TextDecoration.underline,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -700,24 +611,102 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     centerMiddle: true,
                   ),
                 ),
+
+                // 1. 上半部分：使用 SwipeablePlayerCard，只包裹 PlayerContent
                 Expanded(
                   child: SwipeablePlayerCard(
-                    onNext: hasNext
-                        ? () => playerProvider.playNext()
-                        : null,
-                    onPrevious: hasPrevious
-                        ? () => playerProvider.playPrevious()
-                        : null,
+                    key: _swipeKey, // 【核心】绑定 GlobalKey
+                    onNext: hasNext ? () => playerProvider.playNext() : null,
+                    onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                    // 传递 previousChild 和 nextChild 时，只传递它们的 Content 部分
                     previousChild: previousSong != null
-                        ? _buildCardContent(context, previousSong)
+                        ? GestureDetector(
+                      onHorizontalDragUpdate: (details) {}, // 拦截，防止穿透
+                      child: PlayerContent(song: previousSong),
+                    )
                         : null,
                     nextChild: nextSong != null
-                        ? _buildCardContent(context, nextSong)
+                        ? GestureDetector(
+                      onHorizontalDragUpdate: (details) {}, // 拦截
+                      child: PlayerContent(song: nextSong),
+                    )
                         : null,
-                    child: _buildCardContent(
-                      context,
-                      widget.song,
-                      isCurrent: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      // 拦截横向滑动，防止触发外层（如果有的话），虽然现在是最外层了，但保持习惯
+                      onHorizontalDragUpdate: (details) {},
+                      onVerticalDragStart: (_) {
+                        _dragAccumulator = 0.0;
+                      },
+                      onVerticalDragUpdate: (details) {
+                        _dragAccumulator += details.delta.dy;
+                        if (_dragAccumulator > 20) {
+                          widget.onCollapse();
+                          _dragAccumulator = 0.0;
+                        } else if (_dragAccumulator < -20) {
+                          _toggleLyrics();
+                          _dragAccumulator = 0.0;
+                        }
+                      },
+                      child: PlayerContent(song: widget.song),
+                    ),
+                  ),
+                ),
+
+                // 2. 下半部分：控制栏，不包裹在 SwipeablePlayerCard 中
+                GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  // 【核心】在这里捕获横向拖拽，并转发给 SwipeablePlayerCard
+                  onHorizontalDragStart: (details) {
+                    _swipeKey.currentState?.handleDragStart(details);
+                  },
+                  onHorizontalDragUpdate: (details) {
+                    _swipeKey.currentState?.handleDragUpdate(details);
+                  },
+                  onHorizontalDragEnd: (details) {
+                    _swipeKey.currentState?.handleDragEnd(details);
+                  },
+                  onVerticalDragStart: (_) {
+                    _dragAccumulator = 0.0;
+                  },
+                  onVerticalDragUpdate: (details) {
+                    _dragAccumulator += details.delta.dy;
+                    if (_dragAccumulator > 20) {
+                      widget.onCollapse();
+                      _dragAccumulator = 0.0;
+                    } else if (_dragAccumulator < -20) {
+                      _toggleLyrics();
+                      _dragAccumulator = 0.0;
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+                    child: StreamBuilder<Duration>(
+                      stream: playerProvider.player.positionStream,
+                      builder: (context, snapshot) {
+                        final position = snapshot.data ?? Duration.zero;
+                        return PlayerControls(
+                          isPlaying: playerProvider.isPlaying,
+                          isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
+                              playerProvider.player.processingState == ProcessingState.loading),
+                          duration: _duration,
+                          position: _isDragging ? Duration(seconds: _dragValue.toInt()) : position,
+                          loopMode: playerProvider.playMode,
+                          onSeek: _onSeekEnd,
+                          onSeekStart: _onSeekStart,
+                          onSeekUpdate: _onSeekUpdate,
+                          onPlayPause: playerProvider.togglePlayPause,
+                          onNext: hasNext ? () => playerProvider.playNext() : null,
+                          onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                          onShuffle: playerProvider.togglePlayMode,
+                          onPlaylist: _showPlaylist,
+                          onLyrics: _toggleLyrics,
+                          onTimer: _showTimerDialog,
+                          onComment: _showQualityDialog,
+                          onInfo: _showSpeedDialog,
+                          onMore: _showVideoDetail,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -740,6 +729,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 }
 
+// ... 后面的 _TimerDialog 和 _QualityDialog 保持不变 ...
 class _TimerDialog extends StatefulWidget {
   const _TimerDialog();
 
@@ -1041,7 +1031,7 @@ class _QualityDialogState extends State<_QualityDialog>
     }
     final available = _streamInfo!.availableQualities;
     final current = context.select<PlayerProvider, int>(
-      (p) => p.currentPlayingQuality,
+          (p) => p.currentPlayingQuality,
     );
     return Column(
       children: [
@@ -1066,18 +1056,18 @@ class _QualityDialogState extends State<_QualityDialog>
                 ),
                 subtitle: isCurrent
                     ? Text(
-                        '当前使用',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: 12,
-                        ),
-                      )
+                  '当前使用',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontSize: 12,
+                  ),
+                )
                     : null,
                 trailing: isCurrent
                     ? Icon(
-                        Icons.volume_up,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
+                  Icons.volume_up,
+                  color: Theme.of(context).colorScheme.primary,
+                )
                     : null,
                 enabled: false,
               );

@@ -15,48 +15,69 @@ class SecuritySettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('安全')),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          SwitchListTile(
-            title: const Text('启用生物识别'),
-            subtitle: isWindows ? const Text('Windows平台不适用') : null,
-            value: securityProvider.biometricEnabled,
-            onChanged: isWindows ? null : (value) {
-              securityProvider.setBiometricEnabled(value);
-            },
-          ),
-          SwitchListTile(
-            title: const Text('后台模糊'),
-            subtitle: const Text('在应用切换到后台时模糊显示内容并禁止截图'),
-            value: securityProvider.privacyScreenEnabled,
-            onChanged: securityProvider.biometricEnabled 
-                ? null
-                : (value) {
-                    securityProvider.setPrivacyScreenEnabled(value);
-                  },
-          ),
-          if (securityProvider.biometricEnabled)
-            ListTile(
-              title: const Text('锁定延迟'),
-              subtitle: Text(_getLockDelayText(securityProvider.lockDelayOption, securityProvider.customLockDelayMinutes)),
-              trailing: DropdownButton<LockDelayOption>(
-                value: securityProvider.lockDelayOption,
-                onChanged: (LockDelayOption? newValue) {
-                  if (newValue != null) {
-                    if (newValue == LockDelayOption.custom) {
-                      _showCustomDelayDialog(context, securityProvider);
-                    } else {
-                      securityProvider.setLockDelayOption(newValue);
-                    }
-                  }
+          _SettingsGroup(
+            title: '锁定',
+            children: [
+              SwitchListTile(
+                title: const Text('启用生物识别'),
+                subtitle: isWindows ? const Text('Windows平台不适用') : null,
+                value: securityProvider.biometricEnabled,
+                onChanged: isWindows
+                    ? null
+                    : (value) {
+                  securityProvider.setBiometricEnabled(value);
                 },
-                items: LockDelayOption.values.map<DropdownMenuItem<LockDelayOption>>((LockDelayOption value) {
-                  return DropdownMenuItem<LockDelayOption>(
-                    value: value,
-                    child: Text(_getLockDelayText(value, securityProvider.customLockDelayMinutes)),
-                  );
-                }).toList(),
               ),
-            ),
+              SwitchListTile(
+                title: const Text('多任务中模糊'),
+                value: securityProvider.privacyScreenEnabled,
+                onChanged: securityProvider.biometricEnabled
+                    ? null
+                    : (value) {
+                  securityProvider.setPrivacyScreenEnabled(value);
+                },
+              ),
+              if (securityProvider.biometricEnabled)
+                ListTile(
+                  title: const Text('锁定延迟'),
+                  subtitle: Text(
+                    _getLockDelayText(
+                      securityProvider.lockDelayOption,
+                      securityProvider.customLockDelayMinutes,
+                    ),
+                  ),
+                  trailing: DropdownButton<LockDelayOption>(
+                    value: securityProvider.lockDelayOption,
+                    underline: const SizedBox(),
+                    alignment: Alignment.centerRight,
+                    onChanged: (LockDelayOption? newValue) {
+                      if (newValue != null) {
+                        if (newValue == LockDelayOption.custom) {
+                          _showCustomDelayDialog(context, securityProvider);
+                        } else {
+                          securityProvider.setLockDelayOption(newValue);
+                        }
+                      }
+                    },
+                    items: LockDelayOption.values.map<
+                        DropdownMenuItem<LockDelayOption>
+                    >((LockDelayOption value) {
+                      return DropdownMenuItem<LockDelayOption>(
+                        value: value,
+                        child: Text(
+                          _getLockDelayText(
+                            value,
+                            securityProvider.customLockDelayMinutes,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -82,7 +103,9 @@ class SecuritySettingsPage extends StatelessWidget {
   }
 
   void _showCustomDelayDialog(BuildContext context, SecurityProvider provider) {
-    final TextEditingController controller = TextEditingController(text: provider.customLockDelayMinutes.toString());
+    final TextEditingController controller = TextEditingController(
+      text: provider.customLockDelayMinutes.toString(),
+    );
     showDialog(
       context: context,
       builder: (context) {
@@ -91,7 +114,12 @@ class SecuritySettingsPage extends StatelessWidget {
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: '输入分钟数'),
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '输入分钟数',
+              border: OutlineInputBorder(),
+              suffixText: '分钟',
+            ),
           ),
           actions: [
             TextButton(
@@ -112,6 +140,50 @@ class SecuritySettingsPage extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _SettingsGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _SettingsGroup({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(
+                  alpha: 0.3,
+                ),
+              ),
+            ),
+            child: Column(children: children),
+          ),
+        ],
+      ),
     );
   }
 }

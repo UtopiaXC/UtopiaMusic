@@ -179,7 +179,7 @@ class SettingsPage extends StatelessWidget {
         _buildSettingItem(context, '外观', Icons.palette_outlined, const AppearanceSettingsPage()),
         _buildSettingItem(context, '搜索', Icons.search, const SearchSettingsPage()),
         _buildSettingItem(context, '播放', Icons.play_circle_outline, const PlaySettingsPage()),
-        _buildSettingItem(context, '下载', Icons.download_outlined, const PerformanceSettingsPage()),
+        _buildSettingItem(context, '下载', Icons.download_outlined, const DownloadSettingsPage()),
         _buildSettingItem(context, '网络', Icons.wifi, const NetworkSettingsPage()),
         _buildSettingItem(context, '安全', Icons.security, const SecuritySettingsPage()),
         _buildSettingItem(context, '通用', Icons.settings_outlined, const GeneralSettingsPage()),

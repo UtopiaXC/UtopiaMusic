@@ -21,55 +21,76 @@ class GeneralSettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('通用')),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          ListTile(
-            title: const Text('语言设置'),
-            trailing: DropdownButton<Locale?>(
-              value: settingsProvider.locale,
-              onChanged: (Locale? newLocale) {
-                settingsProvider.setLocale(newLocale);
-              },
-              items: [
-                const DropdownMenuItem<Locale?>(
-                  value: null,
-                  child: Text('跟随系统'),
+          _SettingsGroup(
+            title: '全局',
+            children: [
+              ListTile(
+                title: const Text('语言设置'),
+                trailing: DropdownButton<Locale?>(
+                  value: settingsProvider.locale,
+                  underline: const SizedBox(),
+                  alignment: Alignment.centerRight,
+                  onChanged: (Locale? newLocale) {
+                    settingsProvider.setLocale(newLocale);
+                  },
+                  items: [
+                    const DropdownMenuItem<Locale?>(
+                      value: null,
+                      child: Text('跟随系统'),
+                    ),
+                    ...S.delegate.supportedLocales.map<DropdownMenuItem<Locale>>((Locale locale) {
+                      String label = locale.languageCode;
+                      if (locale.languageCode == 'zh') label = '中文';
+                      if (locale.languageCode == 'en') label = 'English';
+                      return DropdownMenuItem<Locale>(
+                        value: locale,
+                        child: Text(label),
+                      );
+                    }),
+                  ],
                 ),
-                ...S.delegate.supportedLocales.map<DropdownMenuItem<Locale>>((Locale locale) {
-                  String label = locale.languageCode;
-                  if (locale.languageCode == 'zh') label = '中文';
-                  if (locale.languageCode == 'en') label = 'English';
-                  return DropdownMenuItem<Locale>(
-                    value: locale,
-                    child: Text(label),
-                  );
-                }),
-              ],
-            ),
+              ),
+            ],
           ),
-          SwitchListTile(
-            title: const Text('自动检查更新'),
-            value: settingsProvider.autoCheckUpdate,
-            onChanged: (bool value) {
-              settingsProvider.setAutoCheckUpdate(value);
-              if (value) {
-                _checkUpdate(context, settingsProvider, silent: true);
-              }
-            },
+          _SettingsGroup(
+            title: '更新',
+            children: [
+              SwitchListTile(
+                title: const Text('自动检查更新'),
+                value: settingsProvider.autoCheckUpdate,
+                onChanged: (bool value) {
+                  settingsProvider.setAutoCheckUpdate(value);
+                  if (value) {
+                    _checkUpdate(context, settingsProvider, silent: true);
+                  }
+                },
+              ),
+              SwitchListTile(
+                title: const Text('检查测试版更新'),
+                value: settingsProvider.checkPreRelease,
+                onChanged: (bool value) {
+                  settingsProvider.setCheckPreRelease(value);
+                },
+              ),
+            ],
           ),
-          SwitchListTile(
-            title: const Text('检查测试版更新'),
-            value: settingsProvider.checkPreRelease,
-            onChanged: (bool value) {
-              settingsProvider.setCheckPreRelease(value);
-            },
-          ),
-          ListTile(
-            title: const Text('重置为默认设置'),
-            onTap: () => _showResetDefaultsDialog(context, settingsProvider, playerProvider, securityProvider),
-          ),
-          ListTile(
-            title: const Text('重置软件'),
-            onTap: () => _showResetAppDialog(context, settingsProvider, playerProvider, securityProvider),
+          _SettingsGroup(
+            title: '初始化',
+            children: [
+              ListTile(
+                title: const Text('重置为默认设置'),
+                trailing: const Icon(Icons.restore, size: 20),
+                onTap: () => _showResetDefaultsDialog(context, settingsProvider, playerProvider, securityProvider),
+              ),
+              ListTile(
+                title: const Text('重置软件'),
+                subtitle: const Text('暂未实现'),
+                trailing: const Icon(Icons.delete_forever, size: 20),
+                onTap: () => _showResetAppDialog(context, settingsProvider, playerProvider, securityProvider),
+              ),
+            ],
           ),
         ],
       ),
@@ -77,23 +98,10 @@ class GeneralSettingsPage extends StatelessWidget {
   }
 
   Future<void> _checkUpdate(BuildContext context, SettingsProvider settingsProvider, {required bool silent}) async {
-    if (!silent) {
-       // Manual check logic is handled in AboutSettingsPage, but if we wanted to reuse logic we could extract it.
-       // However, the requirement says "When opening auto update settings... silently check".
-       // So here we just trigger the silent check.
-    }
-    
-    // Silent check implementation
-    // We should probably move the check logic to a service or utility to avoid duplication
-    // But for now, let's implement the silent check here as requested for the "toggle on" action.
-    
-    // Actually, the requirement says: "When turned on, automatically check... every time app starts AND when clicking auto update setting".
-    // "When clicking auto update setting" likely means when the user toggles the switch to ON.
-    
     try {
       final githubApi = GithubApi();
       Map<String, dynamic>? release;
-      
+
       if (settingsProvider.checkPreRelease) {
         release = await githubApi.getLatestPreRelease();
       } else {
@@ -103,28 +111,19 @@ class GeneralSettingsPage extends StatelessWidget {
       if (release != null && context.mounted) {
         final tagName = release['tag_name'] as String;
         final packageInfo = await PackageInfo.fromPlatform();
-        final currentVersion = 'v${packageInfo.version}'; // Assuming tag starts with v
 
-        // Simple version comparison (string equality for now as per requirement "check if consistent")
-        // Ideally we should parse semantic versioning, but requirement says "check if consistent".
-        // Usually tags are like "v1.0.0", version is "1.0.0".
-        
-        bool hasUpdate = tagName != currentVersion;
-        // If tag doesn't have 'v', add it for comparison or remove 'v' from tag.
-        // Let's try to normalize.
         String normalizedTag = tagName.startsWith('v') ? tagName.substring(1) : tagName;
         String normalizedCurrent = packageInfo.version;
-        
+
         if (normalizedTag != normalizedCurrent) {
-           // Check if ignored
-           if (settingsProvider.ignoredVersion == tagName) {
-             return;
-           }
-           
-           showDialog(
-             context: context,
-             builder: (context) => UpdateDialog(releaseData: release!),
-           );
+          if (settingsProvider.ignoredVersion == tagName) {
+            return;
+          }
+
+          showDialog(
+            context: context,
+            builder: (context) => UpdateDialog(releaseData: release!),
+          );
         }
       }
     } catch (e) {
@@ -174,10 +173,6 @@ class GeneralSettingsPage extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              // Reset other providers first if needed, but resetApp clears SharedPreferences
-              // which affects all providers. However, in-memory state needs to be cleared too.
-              // Since we are restarting the app with Phoenix, in-memory state will be reset.
-              // But we need to make sure persistent storage is cleared.
               await settingsProvider.resetApp();
 
               if (context.mounted) {
@@ -185,6 +180,50 @@ class GeneralSettingsPage extends StatelessWidget {
               }
             },
             child: const Text('确认重置'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _SettingsGroup({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              children: children,
+            ),
           ),
         ],
       ),

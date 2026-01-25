@@ -85,24 +85,24 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
         String normalizedCurrent = _version.split('+')[0];
 
         if (normalizedTag != normalizedCurrent) {
-           showDialog(
-             context: context,
-             builder: (context) => UpdateDialog(releaseData: release!),
-           );
+          showDialog(
+            context: context,
+            builder: (context) => UpdateDialog(releaseData: release!),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('当前已是最新版本')),
           );
         }
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('检查更新失败')),
-          );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('检查更新失败')),
+        );
       }
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      
+
       String errorMessage = e.toString();
       if (errorMessage.startsWith('Exception: ')) {
         errorMessage = errorMessage.substring(11);
@@ -214,8 +214,9 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('关于')),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Center(
             child: Container(
               width: 100,
@@ -251,51 +252,71 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
             ),
           ),
           const SizedBox(height: 32),
-          _buildItem(
-            context,
-            title: '开发者',
-            subtitle: 'UtopiaXC',
-            onTap: () => _launchUrl('https://github.com/UtopiaXC'),
-          ),
-          _buildItem(
-            context,
-            title: 'GitHub',
-            subtitle: 'https://github.com/UtopiaXC/UtopiaMusic',
-            onTap: () => _launchUrl('https://github.com/UtopiaXC/UtopiaMusic'),
-          ),
-          _buildItem(
-            context,
-            title: '检查更新',
-            onTap: _checkUpdate,
-          ),
-          _buildItem(
-            context,
-            title: '用户协议',
-            onTap: () => _showEulaDialog(context),
-          ),
-          _buildItem(
-            context,
-            title: '常见问题',
-            onTap: () => _showFaqDialog(context),
-          ),
-          _buildItem(
-            context,
-            title: '开源许可证',
-            onTap: () {
-              showLicensePage(
-                context: context,
-                applicationName: 'Utopia Music',
-                applicationVersion: _version,
-                applicationIcon: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(
-                    Icons.music_note,
-                    size: 48,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+
+          // 使用统一的 _SettingsGroup 风格（这里虽然不需要标题，但为了卡片样式统一，可以直接用 Padding + Card 结构）
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
-              );
-            },
+              ),
+              child: Column(
+                children: [
+                  _buildItem(
+                    context,
+                    title: '开发者',
+                    subtitle: 'UtopiaXC',
+                    onTap: () => _launchUrl('https://github.com/UtopiaXC'),
+                  ),
+                  _buildItem(
+                    context,
+                    title: 'GitHub',
+                    subtitle: 'https://github.com/UtopiaXC/UtopiaMusic',
+                    onTap: () => _launchUrl('https://github.com/UtopiaXC/UtopiaMusic'),
+                  ),
+                  _buildItem(
+                    context,
+                    title: '检查更新',
+                    onTap: _checkUpdate,
+                  ),
+                  _buildItem(
+                    context,
+                    title: '用户协议',
+                    onTap: () => _showEulaDialog(context),
+                  ),
+                  _buildItem(
+                    context,
+                    title: '常见问题',
+                    onTap: () => _showFaqDialog(context),
+                  ),
+                  _buildItem(
+                    context,
+                    title: '开源许可证',
+                    onTap: () {
+                      showLicensePage(
+                        context: context,
+                        applicationName: 'Utopia Music',
+                        applicationVersion: _version,
+                        applicationIcon: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            Icons.music_note,
+                            size: 48,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -303,15 +324,15 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
   }
 
   Widget _buildItem(
-    BuildContext context, {
-    required String title,
-    String? subtitle,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required String title,
+        String? subtitle,
+        required VoidCallback onTap,
+      }) {
     return ListTile(
       title: Text(title),
       subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: const Icon(Icons.chevron_right),
+      trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: onTap,
     );
   }

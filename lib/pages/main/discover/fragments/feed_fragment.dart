@@ -20,7 +20,8 @@ class FeedFragment extends StatefulWidget {
   State<FeedFragment> createState() => _FeedFragmentState();
 }
 
-class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClientMixin {
+class _FeedFragmentState extends State<FeedFragment>
+    with AutomaticKeepAliveClientMixin {
   final VideoApi _videoApi = VideoApi();
   final List<Song> _songs = [];
   bool _isLoading = false;
@@ -77,7 +78,7 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
     });
 
     await _fetchFeedRecursively();
-    
+
     setState(() {
       _isLoading = false;
     });
@@ -94,17 +95,17 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
       final newSongs = result['songs'] as List<Song>;
       final newOffset = result['offset'];
       final hasMoreData = result['has_more'];
-      
+
       if (newOffset == _offset && newSongs.isEmpty) {
-         setState(() {
-           _hasMore = false;
-         });
-         return;
+        setState(() {
+          _hasMore = false;
+        });
+        return;
       }
 
       _offset = newOffset;
       _hasMore = hasMoreData;
-      
+
       setState(() {
         _songs.addAll(newSongs);
       });
@@ -139,7 +140,7 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         if (!authProvider.isLoggedIn) {
@@ -167,23 +168,26 @@ class _FeedFragmentState extends State<FeedFragment> with AutomaticKeepAliveClie
             controller: widget.scrollController,
             itemCount: _songs.length + 1,
             itemBuilder: (context, index) {
+              // 到达列表底部
               if (index == _songs.length) {
                 if (_hasMore) {
-                   return const Padding(
+                  if (!_isLoading) {
+                    Future.microtask(() => _loadData());
+                  }
+                  return const Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Center(child: CircularProgressIndicator()),
                   );
                 } else {
-                   return const Padding(
+                  return const Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: Center(child: Text('到底了', style: TextStyle(color: Colors.grey))),
+                    child: Center(
+                      child: Text('到底了', style: TextStyle(color: Colors.grey)),
+                    ),
                   );
                 }
               }
-              return SongListItem(
-                song: _songs[index],
-                contextList: _songs,
-              );
+              return SongListItem(song: _songs[index], contextList: _songs);
             },
           ),
         );
