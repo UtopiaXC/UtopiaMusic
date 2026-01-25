@@ -1,0 +1,218 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      buildNumber:
+        description: "Override build number (YYYYMMDDHH)"
+        required: false
+  push:
+    tags:
+      - "v*"
+
+env:
+  BUILD_NAME: "0.1.0"
+  FLUTTER_CHANNEL: "stable"
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NUMBER: ${{ steps.ver.outputs.build_number }}
+      VERSION: ${{ steps.ver.outputs.version }}
+    steps:
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.buildNumber }}" ]; then
+            bn="${{ github.event.inputs.buildNumber }}"
+          else
+            bn=$(date -u +%Y%m%d%H)
+          fi
+          echo "build_number=$bn" >> "$GITHUB_OUTPUT"
+          echo "version=${BUILD_NAME}+$bn" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
+      VERSION: ${{ needs.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle
+            ~/.android
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build split-per-abi APKs
+        run: flutter build apk --release --split-per-abi --build-name $BUILD_NAME --build-number $BUILD_NUMBER
+      - name: Collect APKs
+        run: |
+          mkdir -p out
+          for apk in build/app/outputs/flutter-apk/*-release.apk; do
+            abi=$(basename "$apk" | sed 's/.*-\(.*\)-release\.apk/\1/')
+            cp "$apk" "out/UtopiaMusic_${VERSION}_Android_${abi}.apk"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/*.apk
+
+  linux:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
+      VERSION: ${{ needs.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libglib2.0-dev patchelf ruby-dev rubygems rpm
+          sudo gem install --no-document fpm
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build linux bundle
+        run: flutter build linux --release --build-name $BUILD_NAME --build-number $BUILD_NUMBER
+      - name: Package AppImage / deb / rpm
+        run: |
+          mkdir -p dist/AppDir/usr/bin dist/AppDir/usr/share/applications dist/AppDir/usr/share/icons/hicolor/256x256/apps
+          cp -r build/linux/x64/release/bundle/* dist/AppDir/usr/bin/
+          cat > dist/AppDir/usr/share/applications/utopiamusic.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=UtopiaMusic
+          Exec=UtopiaMusic
+          Icon=utopiamusic
+          Categories=Audio;Music;
+          EOF
+          # use an existing png as icon if available
+          if [ -f assets/images/ic_windows.png ]; then cp assets/images/ic_windows.png dist/AppDir/usr/share/icons/hicolor/256x256/apps/utopiamusic.png; fi
+          (cd dist && ARCH=x86_64 ../appimagetool AppDir "UtopiaMusic_${VERSION}_Linux_x64.AppImage")
+          DEB_VER=${VERSION/+/-}
+          fpm -s dir -t deb -n utopiamusic -v "$DEB_VER" --architecture amd64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
+          mv utopiamusic_${DEB_VER}_amd64.deb "UtopiaMusic_${VERSION}_Linux_x64.deb"
+          fpm -s dir -t rpm -n utopiamusic -v "$VERSION" --architecture x86_64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
+          mv utopiamusic-${VERSION}-1.x86_64.rpm "UtopiaMusic_${VERSION}_Linux_x64.rpm"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            dist/UtopiaMusic_${{ env.VERSION }}_Linux_x64.AppImage
+            dist/UtopiaMusic_${{ env.VERSION }}_Linux_x64.deb
+            dist/UtopiaMusic_${{ env.VERSION }}_Linux_x64.rpm
+
+  apple:
+    needs: version
+    runs-on: macos-latest
+    env:
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
+      VERSION: ${{ needs.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build iOS (no codesign by default)
+        run: flutter build ios --release --no-codesign --build-name $BUILD_NAME --build-number $BUILD_NUMBER
+      - name: Create unsigned IPA
+        run: |
+          mkdir -p out/ios/Payload
+          cp -R build/ios/Release-iphoneos/Runner.app out/ios/Payload/Runner.app
+          (cd out/ios && zip -r "UtopiaMusic_${VERSION}_iOS_universal.ipa" Payload)
+      - name: Build macOS app
+        run: flutter build macos --release --build-name $BUILD_NAME --build-number $BUILD_NUMBER
+      - name: Create DMG
+        run: |
+          mkdir -p out/mac
+          APP_PATH="build/macos/Build/Products/Release/UtopiaMusic.app"
+          hdiutil create -volname "UtopiaMusic" -srcfolder "$APP_PATH" -ov -format UDZO "out/mac/UtopiaMusic_${VERSION}_macOS_universal.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apple
+          path: |
+            out/ios/UtopiaMusic_${{ env.VERSION }}_iOS_universal.ipa
+            out/mac/UtopiaMusic_${{ env.VERSION }}_macOS_universal.dmg
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
+      VERSION: ${{ needs.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build Windows
+        run: flutter build windows --release --build-name $env:BUILD_NAME --build-number $env:BUILD_NUMBER
+      - name: Package portable zip
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "out\UtopiaMusic_${env:VERSION}_Windows_x64_portable.zip"
+      - name: Package setup exe (Inno Setup if windows\\installer.iss exists)
+        run: |
+          if (Test-Path "windows\installer.iss") {
+            choco install innosetup -y
+            iscc "windows\installer.iss" /DAppVersion=${env:VERSION} /O"out" /F"UtopiaMusic_${env:VERSION}_Windows_x64_setup"
+          } else {
+            Write-Host "installer.iss not found, skipping setup exe"
+          }
+      - name: Package MSI (WiX if windows\\installer.wxs exists)
+        run: |
+          if (Test-Path "windows\installer.wxs") {
+            choco install wixtoolset -y
+            & 'C:\Program Files (x86)\WiX Toolset v3.11\bin\candle.exe' windows\installer.wxs -dVersion=${env:VERSION} -out installer.wixobj
+            & 'C:\Program Files (x86)\WiX Toolset v3.11\bin\light.exe' installer.wixobj -o "out\UtopiaMusic_${env:VERSION}_Windows_x64_msi.msi"
+          } else {
+            Write-Host "installer.wxs not found, skipping msi"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+
+  publish:
+    needs: [android, linux, apple, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
