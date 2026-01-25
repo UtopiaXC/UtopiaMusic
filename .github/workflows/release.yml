@@ -29,10 +29,13 @@ jobs:
       - name: Compute version
         id: ver
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           build_name=""
           if [ -d assets/documentations/release_note ]; then
             build_name=$(find assets/documentations/release_note -maxdepth 1 -type f -printf '%f\n' | head -n1)
+            build_name=${build_name%.*}
           fi
           if [ -z "$build_name" ]; then
             build_name="${DEFAULT_BUILD_NAME}"
@@ -41,7 +44,11 @@ jobs:
           if [ -n "${{ github.event.inputs.buildNumber }}" ]; then
             bn="${{ github.event.inputs.buildNumber }}"
           else
-            bn=$(date -u +%Y%m%d%H)
+            TODAY=$(TZ=Asia/Tokyo date +%Y%m%d)
+            releases=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100")
+            today_count=$(echo "$releases" | jq "[.[] | select(.created_at | fromdate | strftime(\"%Y%m%d\") == \"$TODAY\")] | length")
+            seq=$((today_count + 1))
+            bn=$(printf "%s%02d" "$TODAY" "$seq")
           fi
 
           echo "build_name=$build_name" >> "$GITHUB_OUTPUT"
@@ -133,8 +140,9 @@ jobs:
           DEB_VER=${VERSION/+/-}
           fpm -s dir -t deb -n utopiamusic -v "$DEB_VER" --architecture amd64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
           mv utopiamusic_${DEB_VER}_amd64.deb "UtopiaMusic_${VERSION}_Linux_x64.deb"
-          fpm -s dir -t rpm -n utopiamusic -v "$VERSION" --architecture x86_64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
-          mv utopiamusic-${VERSION}-1.x86_64.rpm "UtopiaMusic_${VERSION}_Linux_x64.rpm"
+          RPM_VER=${VERSION/+/.}
+          fpm -s dir -t rpm -n utopiamusic -v "$RPM_VER" --architecture x86_64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
+          mv utopiamusic-${RPM_VER}-1.x86_64.rpm "UtopiaMusic_${VERSION}_Linux_x64.rpm"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -169,7 +177,12 @@ jobs:
       - name: Create DMG
         run: |
           mkdir -p out/mac
-          APP_PATH="build/macos/Build/Products/Release/UtopiaMusic.app"
+          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found under build/macos/Build/Products/Release" >&2
+            ls -la build/macos/Build/Products/Release || true
+            exit 1
+          fi
           hdiutil create -volname "UtopiaMusic" -srcfolder "$APP_PATH" -ov -format UDZO "out/mac/UtopiaMusic_${VERSION}_macOS_universal.dmg"
       - uses: actions/upload-artifact@v4
         with:

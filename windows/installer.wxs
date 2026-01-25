@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="UtopiaMusic" Language="1033" Version="$(var.Version)" Manufacturer="UtopiaXC" UpgradeCode="d47c0f04-de00-4329-98e4-f4dbd0d2b275">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+    <MediaTemplate />
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLDIR" Name="UtopiaMusic">
+          <Component Id="MainExecutable" Guid="5540a8e5-a2e1-48f1-8bad-926d37562b42">
+            <File Source="build\windows\x64\runner\Release\UtopiaMusic.exe" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+    <Feature Id="DefaultFeature" Level="1">
+      <ComponentRef Id="MainExecutable" />
+    </Feature>
+  </Product>
+</Wix>
