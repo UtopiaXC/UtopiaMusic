@@ -1,4 +1,4 @@
-package com.utopiaxc.utopia.bilimusic;
+package com.utopiaxc.utopia.music;
 
 import com.ryanheise.audioservice.AudioServiceFragmentActivity;
 import io.flutter.embedding.engine.FlutterEngine;

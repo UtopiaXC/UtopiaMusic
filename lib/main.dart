@@ -18,7 +18,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Request();
   await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.utopiaxc.utopia.bilimusic',
+    androidNotificationChannelId: 'com.utopiaxc.utopia.music',
     androidNotificationChannelName: 'Audio playback',
     androidNotificationOngoing: false,
     androidShowNotificationBadge: true,

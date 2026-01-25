@@ -8,7 +8,7 @@
 PRODUCT_NAME = Utopia Music
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.utopiaxc.utopia.biliMusic
+PRODUCT_BUNDLE_IDENTIFIER = com.utopiaxc.utopia.music
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 UtopiaXC. All rights reserved.
