@@ -242,10 +242,12 @@ jobs:
             }
             
             # Harvest all files from the release directory
-            heat dir build\windows\x64\runner\Release -dr INSTALLDIR -cg MainComponents -gg -g1 -sf -srd -var "var.SourceDir" -out dependencies.wxs
+            # -sreg: Suppress self-registration harvesting (fixes HEAT5150 warnings)
+            heat dir build\windows\x64\runner\Release -dr INSTALLDIR -cg MainComponents -gg -g1 -sf -srd -sreg -var "var.SourceDir" -out dependencies.wxs
             
             # Compile both the main installer and the harvested dependencies
-            candle windows\installer.wxs dependencies.wxs -dVersion=${env:VERSION} -dSourceDir=build\windows\x64\runner\Release -out .
+            # Removed -out . because it caused PowerShell parsing error
+            candle windows\installer.wxs dependencies.wxs -dVersion=${env:VERSION} -dSourceDir=build\windows\x64\runner\Release -arch x64
             
             # Link them together
             light installer.wixobj dependencies.wixobj -o "out\UtopiaMusic_${env:VERSION}_Windows_x64_msi.msi" -spdb
