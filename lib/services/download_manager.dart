@@ -7,6 +7,7 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
+import 'package:utopia_music/utils/quality_utils.dart';
 
 class DownloadUpdate {
   final String id;
@@ -42,7 +43,8 @@ class DownloadManager {
   String? _downloadDir;
 
   static const String _maxCacheSizeKey = 'max_cache_size_mb';
-  static const String _concurrentDownloadsKey = 'max_concurrent_downloads'; // [New]
+  static const String _concurrentDownloadsKey = 'max_concurrent_downloads';
+  static const String _defaultDownloadQualityKey = 'default_download_quality';
 
   int _maxCacheSize = 500 * 1024 * 1024;
   int _maxConcurrentDownloads = 3;
@@ -51,6 +53,8 @@ class DownloadManager {
   final StreamController<DownloadUpdate> _progressController = StreamController.broadcast();
   Stream<DownloadUpdate> get downloadUpdateStream => _progressController.stream;
 
+  final Map<String, bool> _activeTaskIds = {};
+
   Future<void> init() async {
     await _initDirs();
     final prefs = await SharedPreferences.getInstance();
@@ -58,6 +62,29 @@ class DownloadManager {
     _maxCacheSize = mb * 1024 * 1024;
     _maxConcurrentDownloads = prefs.getInt(_concurrentDownloadsKey) ?? 3;
     _performSmartCleanup();
+    _resumePendingDownloads();
+  }
+
+  Future<void> _resumePendingDownloads() async {
+    final downloads = await _dbService.getAllDownloads();
+    for (var d in downloads) {
+      if (d['status'] == 0 || d['status'] == 1) {
+        final song = Song(
+          title: d['title'],
+          artist: d['artist'],
+          coverUrl: d['cover_url'],
+          lyrics: '',
+          colorValue: 0,
+          bvid: d['bvid'],
+          cid: d['cid'],
+        );
+        final quality = d['quality'] as int;
+        if (d['status'] == 1) {
+          await _dbService.updateDownloadStatus(song.bvid, song.cid, 0);
+        }
+        startDownload(song, quality: quality);
+      }
+    }
   }
 
   Future<void> setMaxCacheSize(int mb) async {
@@ -73,11 +100,29 @@ class DownloadManager {
   }
 
   Future<void> setMaxConcurrentDownloads(int count) async {
-    if (count < 1) count = 1;
+    if (count < 0) count = 0;
     _maxConcurrentDownloads = count;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_concurrentDownloadsKey, count);
-    _processQueue();
+    
+    if (count == 0) {
+      final activeIds = List<String>.from(_activeTaskIds.keys);
+      for (var id in activeIds) {
+        _activeTaskIds.remove(id);
+      }
+      for (var id in activeIds) {
+        final parts = id.split('_');
+        if (parts.length >= 2) {
+          final bvid = parts[0];
+          final cid = int.tryParse(parts[1]) ?? 0;
+          await _dbService.updateDownloadStatus(bvid, cid, 0);
+          _progressController.add(DownloadUpdate(id, 0.0, 0));
+        }
+      }
+      _activeDownloads = 0;
+    } else {
+      _processQueue();
+    }
   }
 
   Future<int> getMaxConcurrentDownloads() async {
@@ -138,30 +183,203 @@ class DownloadManager {
     return null;
   }
 
-  Future<void> startDownload(Song song, {int quality = 30280}) async {
+  Future<void> startDownload(Song song, {int? quality}) async {
     await _initDirs();
-    if (await isDownloaded(song.bvid, song.cid)) {
+    
+    int cid = song.cid;
+    if (cid == 0) {
+      try {
+        cid = await _searchApi.fetchCid(song.bvid);
+      } catch (e) {
+        print("Failed to fetch CID for download: $e");
+        return;
+      }
+    }
+    
+    final songWithCid = song.copyWith(cid: cid);
+
+    if (await isDownloaded(songWithCid.bvid, songWithCid.cid)) {
       return;
     }
 
-    final id = '${song.bvid}_${song.cid}';
+    final id = '${songWithCid.bvid}_${songWithCid.cid}';
     if (_queue.any((task) => '${task.song.bvid}_${task.song.cid}' == id)) {
       return;
     }
-    final fileName = '${song.bvid}_${song.cid}_$quality.audio';
+
+    if (_activeTaskIds.containsKey(id)) {
+      return;
+    }
+
+    int targetQuality = quality ?? 30280;
+    if (quality == null) {
+      final prefs = await SharedPreferences.getInstance();
+      targetQuality = prefs.getInt(_defaultDownloadQualityKey) ?? 30280;
+
+      try {
+        final available = await _audioStreamApi.fetchAvailableQualities(songWithCid.bvid, songWithCid.cid);
+        if (available.isNotEmpty) {
+          available.sort((a, b) => QualityUtils.getScore(b).compareTo(QualityUtils.getScore(a)));
+          
+          int preferredScore = QualityUtils.getScore(targetQuality);
+
+          int? bestMatch;
+          for (var q in available) {
+            if (QualityUtils.getScore(q) <= preferredScore) {
+              bestMatch = q;
+              break;
+            }
+          }
+
+          bestMatch ??= available.last;
+          
+          targetQuality = bestMatch;
+        }
+      } catch (e) {
+        print("Failed to fetch available qualities for download: $e");
+      }
+    }
+
+    final fileName = '${songWithCid.bvid}_${songWithCid.cid}_$targetQuality.audio';
     final savePath = '$_downloadDir/$fileName';
-    await _dbService.insertDownload(song, savePath, quality);
+
+    await _dbService.insertDownload(songWithCid, savePath, targetQuality);
     _progressController.add(DownloadUpdate(id, 0.0, 0));
-    _queue.add(_DownloadTask(song: song, savePath: savePath, quality: quality));
+    
+    _queue.add(_DownloadTask(song: songWithCid, savePath: savePath, quality: targetQuality));
     _processQueue();
   }
 
+  Future<void> pauseDownload(String bvid, int cid) async {
+    final id = '${bvid}_${cid}';
+    if (_activeTaskIds.containsKey(id)) {
+      _activeTaskIds.remove(id);
+      await _dbService.updateDownloadStatus(bvid, cid, 0);
+      _progressController.add(DownloadUpdate(id, 0.0, 0));
+      _activeDownloads--;
+      _processQueue();
+    }
+  }
+
+  Future<void> prioritizeDownload(String bvid, int cid) async {
+    final id = '${bvid}_${cid}';
+    if (_activeTaskIds.containsKey(id)) return;
+    final index = _queue.indexWhere((t) => '${t.song.bvid}_${t.song.cid}' == id);
+    _DownloadTask? task;
+    if (index != -1) {
+      task = _queue.removeAt(index);
+    } else {
+      final record = await _dbService.getDownload(bvid, cid);
+      if (record != null) {
+        final song = Song(
+          title: record['title'],
+          artist: record['artist'],
+          coverUrl: record['cover_url'],
+          lyrics: '',
+          colorValue: 0,
+          bvid: bvid,
+          cid: cid,
+        );
+        final quality = record['quality'] as int;
+        final savePath = record['save_path'] as String;
+        task = _DownloadTask(song: song, savePath: savePath, quality: quality);
+      }
+    }
+
+    if (task != null) {
+      _queue.insert(0, task);
+      if (_activeDownloads >= _maxConcurrentDownloads && _maxConcurrentDownloads > 0) {
+        if (_activeTaskIds.isNotEmpty) {
+          final idToPause = _activeTaskIds.keys.last;
+          final parts = idToPause.split('_');
+          if (parts.length >= 2) {
+             await pauseDownload(parts[0], int.parse(parts[1]));
+          }
+        }
+      }
+      _processQueue();
+    }
+  }
+
+  Future<void> retryDownload(String bvid, int cid) async {
+    final record = await _dbService.getDownload(bvid, cid);
+    if (record != null) {
+      final song = Song(
+        title: record['title'],
+        artist: record['artist'],
+        coverUrl: record['cover_url'],
+        lyrics: '',
+        colorValue: 0,
+        bvid: bvid,
+        cid: cid,
+      );
+      final quality = record['quality'] as int;
+      await _dbService.updateDownloadStatus(bvid, cid, 0);
+      _progressController.add(DownloadUpdate('${bvid}_${cid}', 0.0, 0));
+      startDownload(song, quality: quality);
+    }
+  }
+
+  Future<void> deleteDownload(String bvid, int cid) async {
+    final id = '${bvid}_${cid}';
+    _activeTaskIds.remove(id);
+    
+    await _dbService.deleteDownload(bvid, cid);
+    
+    if (_downloadDir == null) await _initDirs();
+    final dir = Directory(_downloadDir!);
+    if (await dir.exists()) {
+      try {
+        await for (var file in dir.list()) {
+          if (file is File) {
+            final name = file.uri.pathSegments.last;
+            if (name.startsWith('${bvid}_${cid}_')) {
+              await file.delete();
+            }
+          }
+        }
+      } catch (e) {
+        print("Error deleting download file: $e");
+      }
+    }
+    
+    _queue.removeWhere((task) => task.song.bvid == bvid && task.song.cid == cid);
+  }
+
+  Future<void> deleteAllDownloads() async {
+    final downloads = await _dbService.getAllDownloads();
+    for (var d in downloads) {
+      final bvid = d['bvid'] as String;
+      final cid = d['cid'] as int;
+      await deleteDownload(bvid, cid);
+    }
+  }
+
+  Future<int> getUsedDownloadSize() async {
+    if (_downloadDir == null) await _initDirs();
+    final dir = Directory(_downloadDir!);
+    if (!await dir.exists()) return 0;
+    int size = 0;
+    try {
+      await for (var file in dir.list(recursive: true, followLinks: false)) {
+        if (file is File) size += await file.length();
+      }
+    } catch (_) {}
+    return size;
+  }
+
   void _processQueue() {
+    if (_maxConcurrentDownloads == 0) return;
+
     while (_activeDownloads < _maxConcurrentDownloads && _queue.isNotEmpty) {
       _activeDownloads++;
       final task = _queue.removeAt(0);
+      final id = '${task.song.bvid}_${task.song.cid}';
+      _activeTaskIds[id] = true;
+      
       _executeDownload(task).whenComplete(() {
         _activeDownloads--;
+        _activeTaskIds.remove(id);
         _processQueue();
       });
     }
@@ -171,55 +389,101 @@ class DownloadManager {
     final id = '${task.song.bvid}_${task.song.cid}';
 
     try {
+      if (!_activeTaskIds.containsKey(id)) return;
+      
+      final record = await _dbService.getDownload(task.song.bvid, task.song.cid);
+      if (record == null) return;
+      final file = File(task.savePath);
+      int downloadedBytes = 0;
+      if (await file.exists()) {
+        downloadedBytes = await file.length();
+      }
+
       await _dbService.updateDownloadStatus(task.song.bvid, task.song.cid, 1);
       _progressController.add(DownloadUpdate(id, 0.0, 1));
+      
       int cid = task.song.cid;
       if (cid == 0) {
         cid = await _searchApi.fetchCid(task.song.bvid);
       }
+      
       final info = await _audioStreamApi.getAudioStream(task.song.bvid, cid, preferredQuality: task.quality);
       if (info == null) throw Exception("Failed to get audio stream");
+      
       final client = HttpClient();
       final request = await client.getUrl(Uri.parse(info.url));
       request.headers.set('User-Agent', HttpConstants.userAgent);
       request.headers.set('Referer', HttpConstants.referer);
-
-      final response = await request.close();
-      final totalBytes = response.contentLength;
-
-      final file = File(task.savePath);
-      final sink = file.openWrite();
-
-      int receivedBytes = 0;
-      int lastProgressUpdate = 0;
-
-      await for (var chunk in response) {
-        sink.add(chunk);
-        receivedBytes += chunk.length;
-        if (totalBytes > 0) {
-          final progress = receivedBytes / totalBytes;
-          final percent = (progress * 100).toInt();
-          if (percent > lastProgressUpdate) {
-            lastProgressUpdate = percent;
-            _progressController.add(DownloadUpdate(id, progress, 1));
-          }
-        }
+      
+      if (downloadedBytes > 0) {
+        request.headers.set('Range', 'bytes=$downloadedBytes-');
       }
 
-      await sink.flush();
-      await sink.close();
+      final response = await request.close();
+      
+      if (response.statusCode == HttpStatus.partialContent || response.statusCode == HttpStatus.ok) {
+         final totalBytes = response.contentLength + downloadedBytes;
+         final isPartial = response.statusCode == HttpStatus.partialContent;
+         
+         final sink = file.openWrite(mode: isPartial ? FileMode.append : FileMode.write);
+         
+         int receivedBytes = isPartial ? downloadedBytes : 0;
+         int lastProgressUpdate = 0;
+
+         await for (var chunk in response) {
+           if (!_activeTaskIds.containsKey(id)) {
+             await sink.flush();
+             await sink.close();
+             client.close();
+             return;
+           }
+           
+           sink.add(chunk);
+           receivedBytes += chunk.length;
+           
+           if (totalBytes > 0) {
+             final progress = receivedBytes / totalBytes;
+             final percent = (progress * 100).toInt();
+             if (percent > lastProgressUpdate) {
+               lastProgressUpdate = percent;
+               _progressController.add(DownloadUpdate(id, progress, 1));
+             }
+           }
+         }
+         
+         await sink.flush();
+         await sink.close();
+      } else {
+        if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable) {
+           await file.delete();
+           throw Exception("Range not satisfiable, restarting...");
+        }
+        throw Exception("HTTP Error: ${response.statusCode}");
+      }
+      
       client.close();
+
+      if (!_activeTaskIds.containsKey(id)) return;
+      
+      final check = await _dbService.getDownload(task.song.bvid, task.song.cid);
+      if (check == null) {
+        if (await file.exists()) await file.delete();
+        return;
+      }
+
       await _dbService.updateDownloadStatus(task.song.bvid, cid, 3, progress: 1.0);
       _progressController.add(DownloadUpdate(id, 1.0, 3));
       print("Download completed: ${task.song.title}");
 
     } catch (e) {
       print("Download failed: $e");
-      await _dbService.updateDownloadStatus(task.song.bvid, task.song.cid, 4);
-      _progressController.add(DownloadUpdate(id, 0.0, 4));
-
-      final file = File(task.savePath);
-      if (await file.exists()) await file.delete();
+      if (_activeTaskIds.containsKey(id)) {
+        final check = await _dbService.getDownload(task.song.bvid, task.song.cid);
+        if (check != null) {
+          await _dbService.updateDownloadStatus(task.song.bvid, task.song.cid, 4);
+          _progressController.add(DownloadUpdate(id, 0.0, 4));
+        }
+      }
     }
   }
   String _getCacheFileName(String bvid, int cid, int quality) {

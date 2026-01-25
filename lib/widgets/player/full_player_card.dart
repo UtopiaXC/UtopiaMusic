@@ -16,9 +16,9 @@ import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
-import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 import 'package:utopia_music/connection/video/search.dart';
+import 'package:utopia_music/services/download_manager.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -43,6 +43,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   bool _showLyrics = false;
   Timer? _timer;
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
+  bool _isDownloaded = false;
 
   @override
   void initState() {
@@ -62,6 +63,25 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         setState(() {});
       }
     });
+    
+    _checkDownloadStatus();
+  }
+
+  @override
+  void didUpdateWidget(FullPlayerPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.song.bvid != widget.song.bvid || oldWidget.song.cid != widget.song.cid) {
+      _checkDownloadStatus();
+    }
+  }
+
+  Future<void> _checkDownloadStatus() async {
+    final isDownloaded = await DownloadManager().isDownloaded(widget.song.bvid, widget.song.cid);
+    if (mounted) {
+      setState(() {
+        _isDownloaded = isDownloaded;
+      });
+    }
   }
 
   @override
@@ -152,32 +172,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
   }
 
-  void _showMoreDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.speed),
-                title: const Text('倍速播放'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showSpeedDialog();
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showSpeedDialog() {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final currentSpeed = playerProvider.player.speed;
@@ -253,6 +247,42 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         },
       ),
     );
+  }
+
+  Future<void> _handleDownload() async {
+    if (_isDownloaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已下载')),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('下载确认'),
+        content: const Text('是否下载该曲目？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('下载'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DownloadManager().startDownload(widget.song);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已加入下载队列')),
+        );
+      }
+    }
   }
 
   Widget _buildCardContent(
@@ -517,11 +547,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                       ],
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.open_in_new),
-                      onPressed: () {
-                        SchemeLauncher.launchVideo(context, widget.song.bvid);
-                      },
-                      tooltip: '在Bilibili中打开',
+                      icon: Icon(
+                        Icons.download,
+                        color: _isDownloaded ? Colors.green : null,
+                      ),
+                      onPressed: _handleDownload,
+                      tooltip: '下载',
                     ),
                     centerMiddle: true,
                   ),

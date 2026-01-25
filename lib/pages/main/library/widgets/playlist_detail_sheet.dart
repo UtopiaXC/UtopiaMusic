@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
@@ -89,6 +90,39 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
         ],
       ),
     );
+  }
+
+  Future<void> _handleDownload() async {
+    if (_songs.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('下载确认'),
+        content: const Text('是否下载该列表？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('下载'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      for (var song in _songs) {
+        await DownloadManager().startDownload(song);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已全部加入下载队列')),
+        );
+      }
+    }
   }
 
   Future<void> _handlePlay() async {
@@ -247,7 +281,6 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                   ),
                 ],
               ),
-              // Actions
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
@@ -266,6 +299,11 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                       tooltip: '编辑信息',
                     ),
                     IconButton(
+                      onPressed: _handleDownload,
+                      icon: const Icon(Icons.download),
+                      tooltip: '下载全部',
+                    ),
+                    IconButton(
                       onPressed: _handleDelete,
                       icon: const Icon(Icons.delete),
                       tooltip: '删除歌单',
@@ -274,7 +312,6 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                 ),
               ),
               const Divider(),
-              // Song List
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())

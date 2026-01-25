@@ -5,6 +5,7 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/connection/video/library.dart';
@@ -103,7 +104,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.pop(context); // Close the sheet
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已克隆到本地歌单')),
         );
@@ -114,6 +115,39 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('克隆失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDownload() async {
+    if (_songs.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('下载确认'),
+        content: const Text('是否下载该列表？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('下载'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      for (var song in _songs) {
+        await DownloadManager().startDownload(song);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已全部加入下载队列')),
         );
       }
     }
@@ -274,6 +308,12 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                         icon: const Icon(Icons.save_alt),
                         label: const Text('克隆到本地'),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      onPressed: _handleDownload,
+                      icon: const Icon(Icons.download),
+                      tooltip: '下载全部',
                     ),
                   ],
                 ),

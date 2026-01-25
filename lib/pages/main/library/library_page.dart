@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/pages/main/library/downloaded_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
@@ -54,6 +55,15 @@ class _MusicPageState extends State<MusicPage> {
     );
   }
 
+  void _showDownloads() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const DownloadedSheet(),
+    );
+  }
+
   Future<void> _handleRefresh() async {
     Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
     await Future.delayed(const Duration(milliseconds: 500));
@@ -76,6 +86,10 @@ class _MusicPageState extends State<MusicPage> {
         centerTitle: true,
         title: const Text('曲库'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _showDownloads,
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
@@ -111,7 +125,7 @@ class _MusicPageState extends State<MusicPage> {
             return ReorderableListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 120),
               itemCount: visibleCategories.length,
-              buildDefaultDragHandles: false, // Disable default drag handles
+              buildDefaultDragHandles: false,
               onReorder: (oldIndex, newIndex) {
                  final oldType = visibleCategories[oldIndex];
                  final fullOldIndex = fullList.indexOf(oldType);
@@ -119,15 +133,10 @@ class _MusicPageState extends State<MusicPage> {
                  int fullNewIndex;
                  
                  if (oldIndex < newIndex) {
-                   // Moving down
-                   // newIndex includes the item itself, so the target is at newIndex - 1 in the visible list
                    final targetType = visibleCategories[newIndex - 1];
                    final fullTargetIndex = fullList.indexOf(targetType);
-                   // We want to insert after the target
                    fullNewIndex = fullTargetIndex + 1;
                  } else {
-                   // Moving up
-                   // The target is at newIndex in the visible list
                    final targetType = visibleCategories[newIndex];
                    fullNewIndex = fullList.indexOf(targetType);
                  }

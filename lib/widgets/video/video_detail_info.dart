@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:utopia_music/services/download_manager.dart';
+import 'package:utopia_music/models/song.dart';
 
 class VideoDetailInfo extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -23,6 +25,35 @@ class VideoDetailInfo extends StatefulWidget {
 class _VideoDetailInfoState extends State<VideoDetailInfo> {
   bool _isTitleExpanded = false;
   bool _isDescExpanded = false;
+  bool _isDownloaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDownloadStatus();
+  }
+
+  @override
+  void didUpdateWidget(VideoDetailInfo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data['bvid'] != widget.data['bvid'] ||
+        oldWidget.data['cid'] != widget.data['cid']) {
+      _checkDownloadStatus();
+    }
+  }
+
+  Future<void> _checkDownloadStatus() async {
+    final bvid = widget.data['bvid'] as String? ?? '';
+    final cid = widget.data['cid'] as int? ?? 0;
+    if (bvid.isNotEmpty) {
+      final isDownloaded = await DownloadManager().isDownloaded(bvid, cid);
+      if (mounted) {
+        setState(() {
+          _isDownloaded = isDownloaded;
+        });
+      }
+    }
+  }
 
   String _formatNumber(int num) {
     if (num >= 10000) {
@@ -34,6 +65,53 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
   String _formatDate(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
     return '${date.year}-${date.month}-${date.day} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _handleDownload() async {
+    if (_isDownloaded) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已下载')));
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('下载确认'),
+        content: const Text('是否下载该曲目？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('下载'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final data = widget.data;
+      final song = Song(
+        title: data['title'] ?? '',
+        artist: data['owner']?['name'] ?? '',
+        coverUrl: data['pic'] ?? '',
+        lyrics: '',
+        colorValue: 0,
+        bvid: data['bvid'] ?? '',
+        cid: data['cid'] ?? 0,
+      );
+
+      await DownloadManager().startDownload(song);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已加入下载队列')));
+      }
+    }
   }
 
   @override
@@ -63,7 +141,6 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cover
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
@@ -84,32 +161,41 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _isTitleExpanded = !_isTitleExpanded),
+                            onTap: () => setState(
+                              () => _isTitleExpanded = !_isTitleExpanded,
+                            ),
                             child: Text(
                               title,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                               maxLines: _isTitleExpanded ? null : 1,
-                              overflow: _isTitleExpanded ? null : TextOverflow.ellipsis,
+                              overflow: _isTitleExpanded
+                                  ? null
+                                  : TextOverflow.ellipsis,
                             ),
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => setState(() => _isTitleExpanded = !_isTitleExpanded),
+                          onTap: () => setState(
+                            () => _isTitleExpanded = !_isTitleExpanded,
+                          ),
                           child: Icon(
-                            _isTitleExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            _isTitleExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
                             size: 20,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Author
                     GestureDetector(
                       onTap: () => widget.onOpenSpace?.call(ownerMid),
                       behavior: HitTestBehavior.translucent,
@@ -125,25 +211,32 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Description
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _isDescExpanded = !_isDescExpanded),
+                            onTap: () => setState(
+                              () => _isDescExpanded = !_isDescExpanded,
+                            ),
                             child: Text(
                               '简介：${desc.isEmpty ? "暂无" : desc}',
                               style: Theme.of(context).textTheme.bodySmall,
                               maxLines: _isDescExpanded ? null : 1,
-                              overflow: _isDescExpanded ? null : TextOverflow.ellipsis,
+                              overflow: _isDescExpanded
+                                  ? null
+                                  : TextOverflow.ellipsis,
                             ),
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => setState(() => _isDescExpanded = !_isDescExpanded),
+                          onTap: () => setState(
+                            () => _isDescExpanded = !_isDescExpanded,
+                          ),
                           child: Icon(
-                            _isDescExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            _isDescExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
                             size: 16,
                             color: Theme.of(context).disabledColor,
                           ),
@@ -153,12 +246,23 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: widget.onFav,
-                icon: Icon(
-                  isFav ? Icons.star : Icons.star_border,
-                  color: isFav ? Colors.amber : null,
-                ),
+              Column(
+                children: [
+                  IconButton(
+                    onPressed: widget.onFav,
+                    icon: Icon(
+                      isFav ? Icons.star : Icons.star_border,
+                      color: isFav ? Colors.amber : null,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _handleDownload,
+                    icon: Icon(
+                      Icons.download,
+                      color: _isDownloaded ? Colors.green : null,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -172,15 +276,35 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text('播放: ${_formatNumber(view)}', style: Theme.of(context).textTheme.bodySmall)),
-                        Expanded(child: Text('时间: ${_formatDate(pubdate)}', style: Theme.of(context).textTheme.bodySmall)),
+                        Expanded(
+                          child: Text(
+                            '播放: ${_formatNumber(view)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            '时间: ${_formatDate(pubdate)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Expanded(child: Text('弹幕: ${_formatNumber(danmaku)}', style: Theme.of(context).textTheme.bodySmall)),
-                        Expanded(child: Text(bvid, style: Theme.of(context).textTheme.bodySmall)),
+                        Expanded(
+                          child: Text(
+                            '弹幕: ${_formatNumber(danmaku)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            bvid,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
                       ],
                     ),
                   ],

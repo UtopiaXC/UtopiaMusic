@@ -126,6 +126,65 @@ class AudioStreamApi {
     }
   }
 
+  Future<List<int>> fetchAvailableQualities(String bvid, int cid) async {
+    final params = {
+      'bvid': bvid,
+      'cid': cid,
+      'qn': 16,
+      'fnval': 4048,
+      'fnver': 0,
+      'fourk': 0,
+    };
+
+    try {
+      final data = await Request().get(
+        Api.urlPlayUrlWbi,
+        params: params,
+        useWbi: true,
+        suppressErrorDialog: true,
+      );
+
+      if (data != null && data['code'] == 0) {
+        final dash = data['data']['dash'];
+        if (dash != null) {
+          List<dynamic> allAudio = [];
+
+          if (dash['audio'] != null && dash['audio'] is List) {
+            allAudio.addAll(dash['audio']);
+          }
+
+          if (dash['dolby'] != null &&
+              dash['dolby']['audio'] != null &&
+              dash['dolby']['audio'] is List) {
+            allAudio.addAll(dash['dolby']['audio']);
+          }
+
+          if (dash['flac'] != null && dash['flac']['audio'] != null) {
+            if (dash['flac']['audio'] is List) {
+              allAudio.addAll(dash['flac']['audio']);
+            } else if (dash['flac']['audio'] is Map) {
+              allAudio.add(dash['flac']['audio']);
+            }
+          }
+
+          if (allAudio.isNotEmpty) {
+            List<int> availableQualities = [];
+            for (var a in allAudio) {
+              if (a['id'] != null) {
+                availableQualities.add(a['id'] as int);
+              }
+            }
+            return availableQualities.toSet().toList();
+          }
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching available qualities: $e');
+      return [];
+    }
+  }
+
   int getScore(int id) {
     return QualityUtils.getScore(id);
   }

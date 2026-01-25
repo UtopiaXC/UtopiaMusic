@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
+import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 
 class PerformanceSettingsPage extends StatefulWidget {
@@ -17,7 +18,10 @@ class PerformanceSettingsPage extends StatefulWidget {
 class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
   int _currentCacheSize = 200;
   String _usedCacheSizeStr = '计算中...';
+  int _maxConcurrentDownloads = 3;
+  String _downloadSizeStr = '计算中...';
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
+  final DownloadManager _downloadManager = DownloadManager();
 
   @override
   void initState() {
@@ -28,11 +32,24 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
   Future<void> _loadSettings() async {
     final maxLimit = await _audioPlayerService.getMaxCacheSize();
     final usedBytes = await _audioPlayerService.getUsedCacheSize();
+    final maxConcurrent = await _downloadManager.getMaxConcurrentDownloads();
 
+    int downloadBytes = 0;
     if (mounted) {
       setState(() {
         _currentCacheSize = maxLimit;
         _usedCacheSizeStr = _formatSize(usedBytes);
+        _maxConcurrentDownloads = maxConcurrent;
+      });
+      _updateDownloadSize();
+    }
+  }
+
+  Future<void> _updateDownloadSize() async {
+    final size = await _downloadManager.getUsedDownloadSize();
+    if (mounted) {
+      setState(() {
+        _downloadSizeStr = _formatSize(size);
       });
     }
   }
@@ -54,6 +71,15 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
     if (mounted) {
       setState(() {
         _currentCacheSize = size;
+      });
+    }
+  }
+
+  Future<void> _updateMaxConcurrent(int count) async {
+    await _downloadManager.setMaxConcurrentDownloads(count);
+    if (mounted) {
+      setState(() {
+        _maxConcurrentDownloads = count;
       });
     }
   }
@@ -84,6 +110,36 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('缓存已清空')));
+        await _loadSettings();
+      }
+    }
+  }
+
+  Future<void> _handleClearDownloads() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清空全部下载'),
+        content: const Text('确定要删除所有已下载的歌曲文件吗？此操作不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _downloadManager.deleteAllDownloads();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('下载已清空')));
         await _loadSettings();
       }
     }
@@ -127,7 +183,7 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('性能')),
+      appBar: AppBar(title: const Text('性能与下载')),
       body: ListView(
         children: [
           ListTile(
@@ -173,6 +229,31 @@ class _PerformanceSettingsPageState extends State<PerformanceSettingsPage> {
             subtitle: Text('当前音乐缓存大小：$_usedCacheSizeStr'),
             onTap: _handleClearCache,
           ),
+          const Divider(),
+          ListTile(
+            title: const Text('最大同时下载数量'),
+            trailing: DropdownButton<int>(
+              value: _maxConcurrentDownloads,
+              underline: const SizedBox(),
+              items: List.generate(5, (index) => index + 1).map((count) {
+                return DropdownMenuItem<int>(
+                  value: count,
+                  child: Text('$count'),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  _updateMaxConcurrent(value);
+                }
+              },
+            ),
+          ),
+          ListTile(
+            title: const Text('清空全部下载'),
+            subtitle: Text('当前下载内容占用：$_downloadSizeStr'),
+            onTap: _handleClearDownloads,
+          ),
+          const Divider(),
           ListTile(
             title: const Text('默认下载音质'),
             trailing: DropdownButton<int>(

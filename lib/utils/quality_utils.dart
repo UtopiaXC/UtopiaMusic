@@ -18,9 +18,9 @@ class QualityUtils {
   static String getQualityLabel(int quality, {bool detailed = false}) {
     switch (quality) {
       case qualityHiRes:
-        return detailed ? 'Hi-Res无损 (大会员)' : 'Hi-Res (大会员)';
+        return detailed ? 'Hi-Res无损 (大会员)' : 'Hi-Res';
       case qualityDolby:
-        return detailed ? '杜比全景声 (大会员)' : '杜比全景声 (大会员)';
+        return detailed ? '杜比全景声 (大会员)' : '杜比全景声';
       case quality192k:
         return detailed ? '高音质 (192k)' : '高音质';
       case quality132k:
