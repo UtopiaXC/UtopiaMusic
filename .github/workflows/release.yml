@@ -13,6 +13,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 env:
   DEFAULT_BUILD_NAME: "0.0.0"
   FLUTTER_CHANNEL: "stable"
@@ -281,7 +284,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.BUILD_NAME }}
+          tag_name: ${{ env.BUILD_NAME }}
           files: artifacts/**/*
           draft: false
           prerelease: false
