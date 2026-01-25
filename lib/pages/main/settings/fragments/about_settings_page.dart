@@ -5,7 +5,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:utopia_music/services/audio_player_service.dart';
+import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/connection/update/github_api.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/update/update_dialog.dart';

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:marquee/marquee.dart';
@@ -14,10 +15,10 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
-import 'package:utopia_music/services/audio_proxy_service.dart';
+// [Fix] 移除 AudioProxyService 引用
+// import 'package:utopia_music/services/audio_proxy_service.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
-import 'dart:async';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -47,7 +48,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   void initState() {
     super.initState();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    
+
     playerProvider.player.durationStream.listen((duration) {
       if (mounted && duration != null) {
         setState(() {
@@ -55,14 +56,14 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         });
       }
     });
-    
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {});
       }
     });
   }
-  
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -87,7 +88,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     final position = Duration(seconds: value.toInt());
     playerProvider.player.seek(position);
 
-    if (!playerProvider.isPlaying || 
+    if (!playerProvider.isPlaying ||
         playerProvider.player.processingState == ProcessingState.completed) {
       playerProvider.player.play();
     }
@@ -174,11 +175,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       ),
     );
   }
-  
+
   void _showSpeedDialog() {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final currentSpeed = playerProvider.player.speed;
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -204,7 +205,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       ),
     );
   }
-  
+
   Widget _buildSpeedOption(double speed, double currentSpeed) {
     return ListTile(
       title: Text('${speed}x'),
@@ -255,54 +256,54 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           Expanded(child: PlayerContent(song: song)),
           Padding(
             padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-            child: isCurrent 
-              ? StreamBuilder<Duration>(
-                  stream: playerProvider.player.positionStream,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    return PlayerControls(
-                      isPlaying: playerProvider.isPlaying,
-                      isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
-                          playerProvider.player.processingState == ProcessingState.loading),
-                      duration: _duration,
-                      position: _isDragging
-                          ? Duration(seconds: _dragValue.toInt())
-                          : position,
-                      loopMode: playerProvider.playMode,
-                      onSeek: _onSeekEnd,
-                      onSeekStart: _onSeekStart,
-                      onSeekUpdate: _onSeekUpdate,
-                      onPlayPause: playerProvider.togglePlayPause,
-                      onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
-                      onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
-                      onShuffle: playerProvider.togglePlayMode,
-                      onPlaylist: _showPlaylist,
-                      onLyrics: _toggleLyrics,
-                      onTimer: _showTimerDialog,
-                      onComment: _showQualityDialog,
-                      onInfo: _showSpeedDialog,
-                      onMore: _showVideoDetail,
-                    );
-                  }
-                )
-              : PlayerControls(
-                  isPlaying: false,
-                  isLoading: false,
-                  duration: Duration.zero,
-                  position: Duration.zero,
-                  loopMode: playerProvider.playMode,
-                  onSeek: (v){},
-                  onPlayPause: (){},
-                  onNext: null,
-                  onPrevious: null,
-                  onShuffle: (){},
-                  onPlaylist: (){},
-                  onLyrics: (){},
-                  onTimer: (){},
-                  onComment: (){}, 
-                  onInfo: (){}, 
-                  onMore: (){},
-                ),
+            child: isCurrent
+                ? StreamBuilder<Duration>(
+                stream: playerProvider.player.positionStream,
+                builder: (context, snapshot) {
+                  final position = snapshot.data ?? Duration.zero;
+                  return PlayerControls(
+                    isPlaying: playerProvider.isPlaying,
+                    isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
+                        playerProvider.player.processingState == ProcessingState.loading),
+                    duration: _duration,
+                    position: _isDragging
+                        ? Duration(seconds: _dragValue.toInt())
+                        : position,
+                    loopMode: playerProvider.playMode,
+                    onSeek: _onSeekEnd,
+                    onSeekStart: _onSeekStart,
+                    onSeekUpdate: _onSeekUpdate,
+                    onPlayPause: playerProvider.togglePlayPause,
+                    onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
+                    onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+                    onShuffle: playerProvider.togglePlayMode,
+                    onPlaylist: _showPlaylist,
+                    onLyrics: _toggleLyrics,
+                    onTimer: _showTimerDialog,
+                    onComment: _showQualityDialog,
+                    onInfo: _showSpeedDialog,
+                    onMore: _showVideoDetail,
+                  );
+                }
+            )
+                : PlayerControls(
+              isPlaying: false,
+              isLoading: false,
+              duration: Duration.zero,
+              position: Duration.zero,
+              loopMode: playerProvider.playMode,
+              onSeek: (v){},
+              onPlayPause: (){},
+              onNext: null,
+              onPrevious: null,
+              onShuffle: (){},
+              onPlaylist: (){},
+              onLyrics: (){},
+              onTimer: (){},
+              onComment: (){},
+              onInfo: (){},
+              onMore: (){},
+            ),
           ),
         ],
       ),
@@ -356,21 +357,21 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
     Song? previousSong;
     Song? nextSong;
-    
+
     final playlist = playerProvider.playlist;
     final currentIndex = playlist.indexWhere((s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid);
-    
+
     if (currentIndex != -1 && playlist.isNotEmpty) {
-       if (hasPrevious) {
-         int prevIndex = currentIndex - 1;
-         if (prevIndex < 0) prevIndex = playlist.length - 1;
-         previousSong = playlist[prevIndex];
-       }
-       if (hasNext) {
-         int nextIndex = currentIndex + 1;
-         if (nextIndex >= playlist.length) nextIndex = 0;
-         nextSong = playlist[nextIndex];
-       }
+      if (hasPrevious) {
+        int prevIndex = currentIndex - 1;
+        if (prevIndex < 0) prevIndex = playlist.length - 1;
+        previousSong = playlist[prevIndex];
+      }
+      if (hasNext) {
+        int nextIndex = currentIndex + 1;
+        if (nextIndex >= playlist.length) nextIndex = 0;
+        nextSong = playlist[nextIndex];
+      }
     }
     if (hasPrevious && previousSong == null) previousSong = widget.song;
     if (hasNext && nextSong == null) nextSong = widget.song;
@@ -436,7 +437,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                 maxLines: 1,
                               );
                               textPainter.layout();
-                              
+
                               if (textPainter.width > constraints.maxWidth) {
                                 return Marquee(
                                   text: widget.song.title,
@@ -506,7 +507,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           child: _buildCardContent(context, widget.song, isCurrent: true),
                         ),
                       ),
-                      
+
                       AnimatedSlide(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -661,7 +662,7 @@ class _TimerDialogState extends State<_TimerDialog> with SingleTickerProviderSta
             if (selectedDateTime.isBefore(nowDateTime)) {
               selectedDateTime = selectedDateTime.add(const Duration(days: 1));
             }
-            
+
             if (mounted) {
               final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
               playerProvider.setStopTime(selectedDateTime, stopAfterCurrent: _stopAfterCurrent);
@@ -686,31 +687,31 @@ class _QualityDialog extends StatefulWidget {
 class _QualityDialogState extends State<_QualityDialog> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   AudioStreamInfo? _streamInfo;
-  StreamSubscription? _subscription;
+  final AudioStreamApi _audioApi = AudioStreamApi();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadStreamInfo();
-    _subscription = AudioProxyService().onStreamInfoUpdated.listen((_) {
-      if (mounted) {
-        _loadStreamInfo();
-      }
-    });
   }
-
-  void _loadStreamInfo() {
-    final info = AudioProxyService().getStreamInfo(widget.song.bvid, widget.song.cid);
-    setState(() {
-      _streamInfo = info;
-    });
+  Future<void> _loadStreamInfo() async {
+    try {
+      final info = await _audioApi.getAudioStream(widget.song.bvid, widget.song.cid);
+      if (mounted) {
+        setState(() {
+          _streamInfo = info;
+        });
+      }
+    } catch (e) {
+      print("Failed to load stream info: $e");
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _subscription?.cancel();
+    // _subscription?.cancel();
     super.dispose();
   }
 
@@ -781,7 +782,7 @@ class _QualityDialogState extends State<_QualityDialog> with SingleTickerProvide
 
   Widget _buildAvailableQualityTab() {
     if (_streamInfo == null) {
-      return const Center(child: Text('暂无信息'));
+      return const Center(child: Text('加载中...'));
     }
 
     final available = _streamInfo!.availableQualities;

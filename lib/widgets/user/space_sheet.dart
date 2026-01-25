@@ -29,21 +29,18 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
   bool _isFollowing = false;
   bool _isSelf = false;
 
-  // Tab 1: Videos
   List<Song> _videos = [];
   bool _isLoadingVideos = false;
   int _videoPage = 1;
-  String _videoOrder = 'pubdate'; // pubdate, click
+  String _videoOrder = 'pubdate';
   bool _hasMoreVideos = true;
   static const int _pageSize = 20;
 
-  // Tab 2: Created Playlists
   List<PlaylistInfo> _createdPlaylists = [];
   bool _isLoadingCreated = false;
   int _createdPage = 1;
   bool _hasMoreCreated = true;
 
-  // Tab 3: Collected Playlists
   List<PlaylistInfo> _collectedPlaylists = [];
   bool _isLoadingCollected = false;
   int _collectedPage = 1;
@@ -174,7 +171,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
       lyrics: '',
       colorValue: 0xFF2196F3,
       bvid: item['bvid'] ?? '',
-      cid: 0, // CID needs to be fetched separately if not provided
+      cid: 0,
     );
   }
 
@@ -192,7 +189,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
   Future<void> _handleFollow() async {
     final act = _isFollowing ? 2 : 1; // 1: follow, 2: unfollow
     final actionName = _isFollowing ? '取消关注' : '关注';
-    
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -320,7 +317,7 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
     final level = card?['level_info']?['current_level'] ?? 0;
     final vipType = card?['vip']?['type'] ?? 0;
     final vipStatus = card?['vip']?['status'] ?? 0;
-    
+
     String vipLabel = '';
     if (vipStatus == 1) {
       if (vipType == 2) vipLabel = '年度大会员';
@@ -453,53 +450,55 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
           child: _videos.isEmpty && !_isLoadingVideos
               ? const Center(child: Text('当前用户没有投稿'))
               : NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
-                      _loadVideos();
-                    }
-                    return false;
-                  },
-                  child: ListView.separated(
-                    controller: scrollController,
-                    itemCount: _videos.length + 1,
-                    separatorBuilder: (context, index) => const Divider(height: 1, indent: 72),
-                    itemBuilder: (context, index) {
-                      if (index == _videos.length) {
-                        if (_isLoadingVideos) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (!_hasMoreVideos) {
-                          return Container(
-                            height: 60,
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '到底了',
-                                  style: TextStyle(
-                                    color: Theme.of(context).disabledColor,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+            onNotification: (notification) {
+              if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+                _loadVideos();
+              }
+              return false;
+            },
+            child: ListView.separated(
+              controller: scrollController,
+              itemCount: _videos.length + 1,
+              separatorBuilder: (context, index) => const Divider(height: 1, indent: 72),
+              itemBuilder: (context, index) {
+                if (index == _videos.length) {
+                  if (_isLoadingVideos) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  } else if (!_hasMoreVideos) {
+                    return Container(
+                      height: 60,
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '到底了',
+                            style: TextStyle(
+                              color: Theme.of(context).disabledColor,
+                              fontSize: 12,
                             ),
-                          );
-                        } else {
-                          return const SizedBox(height: 60);
-                        }
-                      }
-                      final song = _videos[index];
-                      return SongListItem(
-                        song: song,
-                        contextList: _videos,
-                        onPlayAction: () {}, // Optional: close sheet?
-                      );
-                    },
-                  ),
-                ),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    return const SizedBox(height: 60);
+                  }
+                }
+                final song = _videos[index];
+                return SongListItem(
+                  song: song,
+                  contextList: _videos,
+                  onPlayAction: () {
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
         ),
       ],
     );
@@ -508,83 +507,83 @@ class _SpaceSheetState extends State<SpaceSheet> with SingleTickerProviderStateM
   Widget _buildPlaylistList(ScrollController scrollController, List<PlaylistInfo> playlists, bool isLoading, bool hasMore, String emptyText, {bool isCollection = false}) {
     return Column(
       children: [
-        const SizedBox(height: 8), 
+        const SizedBox(height: 8),
         Expanded(
           child: playlists.isEmpty && !isLoading
               ? Center(child: Text(emptyText))
               : NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
-                      if (isCollection) {
-                        _loadCollectedPlaylists();
-                      } else {
-                        _loadCreatedPlaylists();
-                      }
-                    }
-                    return false;
-                  },
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: playlists.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == playlists.length) {
-                        if (isLoading) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (!hasMore) {
-                          return Container(
-                            height: 60,
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '到底了',
-                                  style: TextStyle(
-                                    color: Theme.of(context).disabledColor,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+            onNotification: (notification) {
+              if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+                if (isCollection) {
+                  _loadCollectedPlaylists();
+                } else {
+                  _loadCreatedPlaylists();
+                }
+              }
+              return false;
+            },
+            child: ListView.builder(
+              controller: scrollController,
+              itemCount: playlists.length + 1,
+              itemBuilder: (context, index) {
+                if (index == playlists.length) {
+                  if (isLoading) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  } else if (!hasMore) {
+                    return Container(
+                      height: 60,
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '到底了',
+                            style: TextStyle(
+                              color: Theme.of(context).disabledColor,
+                              fontSize: 12,
                             ),
-                          );
-                        } else {
-                          return const SizedBox(height: 60);
-                        }
-                      }
-                      final playlist = playlists[index];
-                      return ListTile(
-                        leading: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            image: playlist.coverUrl.isNotEmpty
-                                ? DecorationImage(image: NetworkImage(playlist.coverUrl), fit: BoxFit.cover)
-                                : null,
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                           ),
-                          child: playlist.coverUrl.isEmpty ? const Icon(Icons.music_note) : null,
-                        ),
-                        title: Text(playlist.title),
-                        subtitle: Text('${playlist.count}首'),
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => OnlinePlaylistDetailSheet(
-                              playlistInfo: playlist,
-                              isCollection: isCollection, // Pass isCollection flag
-                            ),
-                          );
-                        },
-                      );
-                    },
+                        ],
+                      ),
+                    );
+                  } else {
+                    return const SizedBox(height: 60);
+                  }
+                }
+                final playlist = playlists[index];
+                return ListTile(
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      image: playlist.coverUrl.isNotEmpty
+                          ? DecorationImage(image: NetworkImage(playlist.coverUrl), fit: BoxFit.cover)
+                          : null,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                    child: playlist.coverUrl.isEmpty ? const Icon(Icons.music_note) : null,
                   ),
-                ),
+                  title: Text(playlist.title),
+                  subtitle: Text('${playlist.count}首'),
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => OnlinePlaylistDetailSheet(
+                        playlistInfo: playlist,
+                        isCollection: isCollection,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ),
       ],
     );

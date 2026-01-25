@@ -163,8 +163,6 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
             ],
           ),
         ),
-
-        // Metadata and Play Button
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(

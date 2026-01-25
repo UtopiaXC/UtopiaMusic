@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
-import 'package:utopia_music/services/audio_proxy_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
@@ -34,7 +34,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _isSettingsLoaded = false;
   bool _autoSkipInvalid = true;
   bool _enableComments = true;
-  int _defaultAudioQuality = 30280; // Default to 192K
+  int _defaultAudioQuality = 30280;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -84,7 +84,7 @@ class SettingsProvider extends ChangeNotifier {
     _ignoredVersion = prefs.getString(_ignoredVersionKey);
     _enableComments = prefs.getBool(_enableCommentsKey) ?? true;
     _defaultAudioQuality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
-    AudioProxyService().setPreferredQuality(_defaultAudioQuality);
+    AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     _isSettingsLoaded = true;
 
     notifyListeners();
@@ -191,7 +191,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setDefaultAudioQuality(int quality) async {
     _defaultAudioQuality = quality;
-    AudioProxyService().setPreferredQuality(quality);
+    AudioPlayerService().setPreferredQuality(quality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_defaultAudioQualityKey, quality);
@@ -213,7 +213,7 @@ class SettingsProvider extends ChangeNotifier {
     _autoSkipInvalid = true;
     _enableComments = true;
     _defaultAudioQuality = 30280;
-    AudioProxyService().setPreferredQuality(_defaultAudioQuality);
+    AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_themeModeKey);

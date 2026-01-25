@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/services/audio_player_service.dart';
+import 'package:utopia_music/services/audio/audio_player_service.dart';
 
 class PerformanceSettingsPage extends StatefulWidget {
   const PerformanceSettingsPage({super.key});
