@@ -41,14 +41,45 @@ class NetworkSettingsPage extends StatelessWidget {
                   settingsProvider.setRequestDelay(newValue);
                 }
               },
-              items: [0, 10, 50, 100, 200, 300, 400, 500].map<DropdownMenuItem<int>>((int value) {
-                return DropdownMenuItem<int>(
-                  value: value,
-                  child: Text('$value ms'),
-                );
-              }).toList(),
+              items: [0, 10, 50, 100, 200, 300, 400, 500]
+                  .map<DropdownMenuItem<int>>((int value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text('$value ms'),
+                    );
+                  })
+                  .toList(),
             ),
           ),
+          SwitchListTile(
+            title: const Text('上报播放记录'),
+            subtitle: const Text('将播放历史同步到B站'),
+            value: settingsProvider.enableHistoryReport,
+            onChanged: (bool value) {
+              settingsProvider.setEnableHistoryReport(value);
+            },
+          ),
+          if (settingsProvider.enableHistoryReport)
+            ListTile(
+              title: const Text('上报延迟'),
+              subtitle: Text(
+                '为防止出现大量无效请求，在播放开始后的${settingsProvider.historyReportDelay}秒才会开始上报记录',
+              ),
+              trailing: DropdownButton<int>(
+                value: settingsProvider.historyReportDelay,
+                onChanged: (int? newValue) {
+                  if (newValue != null) {
+                    settingsProvider.setHistoryReportDelay(newValue);
+                  }
+                },
+                items: [0, 1, 3, 5, 10].map<DropdownMenuItem<int>>((int value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text(value == 0 ? '禁用' : '$value 秒'),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
     );

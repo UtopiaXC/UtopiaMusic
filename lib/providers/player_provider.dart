@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:utopia_music/connection/audio/report_history.dart';
 import 'package:utopia_music/main.dart';
 import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/models/song.dart';
+import 'package:utopia_music/providers/auth_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
@@ -14,7 +18,7 @@ class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
-
+  final ReportHistoryApi _reportHistoryApi = ReportHistoryApi();
 
   List<Song> _playlist = [];
   Song? _currentSong;
@@ -51,6 +55,7 @@ class PlayerProvider extends ChangeNotifier {
   static const String _autoSkipInvalidKey = 'auto_skip_invalid';
   static const String _recommendationAutoPlayKey = 'recommendation_auto_play';
   static const String _defaultAudioQualityKey = 'default_audio_quality';
+  int _historyReportCounter = 12;
 
   Song? get currentSong => _currentSong;
   List<Song> get playlist => _playlist;
@@ -157,6 +162,14 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> _onSongChanged(Song newSong) async {
     _currentSong = newSong;
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+      _historyReportCounter = 15 - settings.historyReportDelay;
+    } else {
+      _historyReportCounter = 12;
+    }
+    
     notifyListeners();
     _databaseService.recordCacheAccess(newSong.bvid, newSong.cid, 30280);
 
@@ -384,6 +397,15 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> _startPlay(int index) async {
     _currentSong = _playlist[index];
+
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+      _historyReportCounter = 15 - settings.historyReportDelay;
+    } else {
+      _historyReportCounter = 12;
+    }
+    
     await _audioPlayerService.playWithQueue(_playlist, index, autoPlay: true);
     await _setPlayerLoopMode();
   }
@@ -452,10 +474,31 @@ class PlayerProvider extends ChangeNotifier {
 
   void _startProgressTimer() {
     _stopProgressTimer();
-    if (!_saveProgress) return;
-    _progressSaveTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    
+    _progressSaveTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_isPlaying) {
-        _saveCurrentProgress();
+        if (_saveProgress) {
+          _saveCurrentProgress();
+        }
+
+        final context = navigatorKey.currentContext;
+        if (context != null && _currentSong != null) {
+           final settings = Provider.of<SettingsProvider>(context, listen: false);
+           final auth = Provider.of<AuthProvider>(context, listen: false);
+           
+           if (settings.enableHistoryReport && auth.isLoggedIn) {
+             _historyReportCounter++;
+             
+             if (_historyReportCounter >= 15) {
+               _reportHistoryApi.reportHistory(
+                 bvid: _currentSong!.bvid,
+                 cid: _currentSong!.cid,
+                 playedTime: player.position.inSeconds,
+               );
+               _historyReportCounter = 0;
+             }
+           }
+        }
       }
     });
   }
@@ -470,7 +513,7 @@ class PlayerProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_saveProgressKey, value);
     notifyListeners();
-    if (value && _isPlaying) {
+    if (_isPlaying) {
       _startProgressTimer();
     } else {
       _stopProgressTimer();
