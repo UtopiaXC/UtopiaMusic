@@ -12,6 +12,8 @@ import 'package:utopia_music/connection/update/github_api.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:utopia_music/widgets/update/update_dialog.dart';
 
+import '../utils/update_util.dart';
+
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
 
@@ -34,55 +36,15 @@ class _MainLayoutState extends State<MainLayout> {
       const MusicPage(),
       const SettingsPage(),
     ];
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkUpdate();
-    });
-  }
-
-  Future<void> _checkUpdate() async {
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    if (!settingsProvider.isSettingsLoaded) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-    }
-
-    if (!settingsProvider.autoCheckUpdate) return;
-
-    try {
-      final checkPreRelease = settingsProvider.checkPreRelease;
-      final ignoredVersion = settingsProvider.ignoredVersion;
-      
-      final release = await _fetchRelease(checkPreRelease);
-
-      if (release != null && mounted) {
-        final tagName = release['tag_name'] as String;
-        final packageInfo = await PackageInfo.fromPlatform();
-        
-        String normalizedTag = tagName.startsWith('v') ? tagName.substring(1) : tagName;
-        String normalizedCurrent = packageInfo.version.split('+')[0];
-        
-        if (normalizedTag != normalizedCurrent) {
-           if (ignoredVersion == tagName) {
-             return;
-           }
-           
-           showDialog(
-             context: context,
-             builder: (context) => UpdateDialog(releaseData: release),
-           );
-        }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      if (!settingsProvider.isSettingsLoaded) {
+        await Future.delayed(const Duration(milliseconds: 500));
       }
-    } catch (e) {}
-  }
-  
-  Future<Map<String, dynamic>?> _fetchRelease(bool checkPreRelease) async {
-    final githubApi = GithubApi();
-    if (checkPreRelease) {
-      return await githubApi.getLatestPreRelease();
-    } else {
-      return await githubApi.getLatestRelease();
-    }
+      if (mounted) {
+        UpdateUtil.checkAndShow(context, isManualCheck: false);
+      }
+    });
   }
 
   @override

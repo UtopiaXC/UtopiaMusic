@@ -9,6 +9,8 @@ import 'package:utopia_music/connection/update/github_api.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:utopia_music/widgets/update/update_dialog.dart';
 
+import '../../../../utils/update_util.dart';
+
 class GeneralSettingsPage extends StatelessWidget {
   const GeneralSettingsPage({super.key});
 
@@ -63,7 +65,7 @@ class GeneralSettingsPage extends StatelessWidget {
                 onChanged: (bool value) {
                   settingsProvider.setAutoCheckUpdate(value);
                   if (value) {
-                    _checkUpdate(context, settingsProvider, silent: true);
+                    UpdateUtil.checkAndShow(context, isManualCheck: false);
                   }
                 },
               ),
@@ -95,40 +97,6 @@ class GeneralSettingsPage extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _checkUpdate(BuildContext context, SettingsProvider settingsProvider, {required bool silent}) async {
-    try {
-      final githubApi = GithubApi();
-      Map<String, dynamic>? release;
-
-      if (settingsProvider.checkPreRelease) {
-        release = await githubApi.getLatestPreRelease();
-      } else {
-        release = await githubApi.getLatestRelease();
-      }
-
-      if (release != null && context.mounted) {
-        final tagName = release['tag_name'] as String;
-        final packageInfo = await PackageInfo.fromPlatform();
-
-        String normalizedTag = tagName.startsWith('v') ? tagName.substring(1) : tagName;
-        String normalizedCurrent = packageInfo.version;
-
-        if (normalizedTag != normalizedCurrent) {
-          if (settingsProvider.ignoredVersion == tagName) {
-            return;
-          }
-
-          showDialog(
-            context: context,
-            builder: (context) => UpdateDialog(releaseData: release!),
-          );
-        }
-      }
-    } catch (e) {
-      // Silent error
-    }
   }
 
   void _showResetDefaultsDialog(BuildContext context, SettingsProvider settingsProvider, PlayerProvider playerProvider, SecurityProvider securityProvider) {

@@ -5,6 +5,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:utopia_music/models/song.dart';
+import 'package:path_provider/path_provider.dart';
 
 class LocalPlaylist {
   final int id;
@@ -45,6 +46,15 @@ class DatabaseService {
     }
 
     String path = join(await getDatabasesPath(), 'utopia_music.db');
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      final Directory appSupportDir = await getApplicationSupportDirectory();
+      if (!await appSupportDir.exists()) {
+        await appSupportDir.create(recursive: true);
+      }
+      path = join(appSupportDir.path, 'utopia_music.db');
+    } else {
+      path = join(await getDatabasesPath(), 'utopia_music.db');
+    }
     return await openDatabase(
       path,
       version: 6,

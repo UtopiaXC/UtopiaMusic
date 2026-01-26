@@ -1,0 +1,58 @@
+name: pr_check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check_and_build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            cmd: flutter build linux --debug
+          - os: ubuntu-latest
+            target: android
+            cmd: flutter build apk --debug
+          - os: windows-latest
+            target: windows
+            cmd: flutter build windows --debug
+          - os: macos-latest
+            target: macos
+            cmd: flutter build macos --debug --no-codesign
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Linux Dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libglib2.0-dev
+
+      - name: Flutter Pub Get
+        run: flutter pub get
+
+      - name: Dart Format Check
+        if: matrix.target == 'linux'
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Flutter Analyze
+        if: matrix.target == 'linux'
+        run: flutter analyze
+
+      - name: Verify Build
+        run: ${{ matrix.cmd }}

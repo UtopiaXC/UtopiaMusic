@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 
+import '../../utils/update_util.dart';
+
 class UpdateDialog extends StatelessWidget {
   final Map<String, dynamic> releaseData;
 
@@ -67,7 +69,7 @@ class UpdateDialog extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: () => _launchUrl(context, htmlUrl),
+              onPressed: () => UpdateUtil.performSmartDownload(context, releaseData),
               child: const Text('下载'),
             ),
           ],
