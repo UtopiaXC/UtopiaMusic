@@ -88,6 +88,7 @@ jobs:
         with:
           name: android
           path: out/*.apk
+          if-no-files-found: error
 
   linux:
     needs: version
@@ -155,6 +156,7 @@ jobs:
             dist/UtopiaMusic-${{ env.VERSION_NAME }}-Linux-x64.AppImage
             dist/UtopiaMusic-${{ env.VERSION_NAME }}-Linux-x64.deb
             dist/UtopiaMusic-${{ env.VERSION_NAME }}-Linux-x64.rpm
+          if-no-files-found: error
 
   apple:
     needs: version
@@ -173,25 +175,26 @@ jobs:
         run: flutter build ios --release --no-codesign --build-name $VERSION_NAME --build-number $BUILD_NUMBER
       - name: Create unsigned IPA
         run: |
-          mkdir -p out/ios/Payload
-          cp -R build/ios/Release-iphoneos/Runner.app out/ios/Payload/Runner.app
-          (cd out/ios && zip -r "UtopiaMusic-${VERSION_NAME}-iOS-universal.ipa" Payload)
+          mkdir -p dist/ios/Payload
+          cp -R build/ios/Release-iphoneos/Runner.app dist/ios/Payload/Runner.app
+          (cd dist/ios && zip -r "UtopiaMusic-${VERSION_NAME}-iOS-universal.ipa" Payload)
       - name: Build macOS app
         run: flutter build macos --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER
       - name: Create DMG
         run: |
-          mkdir -p out/mac
+          mkdir -p dist/mac
           applicationPath=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n1)
           if [ -z "$applicationPath" ]; then
             exit 1
           fi
-          hdiutil create -volname "UtopiaMusic" -srcfolder "$applicationPath" -ov -format UDZO "out/mac/UtopiaMusic-${VERSION_NAME}-macOS-universal.dmg"
+          hdiutil create -volname "UtopiaMusic" -srcfolder "$applicationPath" -ov -format UDZO "dist/mac/UtopiaMusic-${VERSION_NAME}-macOS-universal.dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: apple
           path: |
-            out/ios/UtopiaMusic-${{ env.VERSION_NAME }}-iOS-universal.ipa
-            out/mac/UtopiaMusic-${{ env.VERSION_NAME }}-macOS-universal.dmg
+            dist/ios/UtopiaMusic-${{ env.VERSION_NAME }}-iOS-universal.ipa
+            dist/mac/UtopiaMusic-${{ env.VERSION_NAME }}-macOS-universal.dmg
+          if-no-files-found: error
 
   windows:
     needs: version
@@ -222,6 +225,7 @@ jobs:
         with:
           name: windows
           path: out/*
+          if-no-files-found: error
 
   publish:
     needs: [version, android, linux, apple, windows]
@@ -234,6 +238,8 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
+      - run: ls -R artifacts
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
