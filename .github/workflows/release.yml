@@ -144,11 +144,10 @@ jobs:
           
           debVersion=${VERSION_NAME/+/-}
           fpm -s dir -t deb -n utopiamusic -v "$debVersion" --architecture amd64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
-          mv utopiamusic_${debVersion}_amd64.deb "UtopiaMusic-${VERSION_NAME}-Linux-x64.deb"
-          
+          mv utopiamusic_${debVersion}_amd64.deb "dist/UtopiaMusic-${VERSION_NAME}-Linux-x64.deb"
           rpmVersion=${VERSION_NAME/+/.}
           fpm -s dir -t rpm -n utopiamusic -v "$rpmVersion" --architecture x86_64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
-          mv utopiamusic-${rpmVersion}-1.x86_64.rpm "UtopiaMusic-${VERSION_NAME}-Linux-x64.rpm"
+          mv utopiamusic-${rpmVersion}-1.x86_64.rpm "dist/UtopiaMusic-${VERSION_NAME}-Linux-x64.rpm"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -228,7 +227,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [version, android, linux, apple, windows]
+    needs: [ version, android, linux, apple, windows ]
     runs-on: ubuntu-latest
     env:
       VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
