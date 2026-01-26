@@ -3,10 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
-import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/services/download_manager.dart';
 
 class BiliAudioSource extends StreamAudioSource {
@@ -17,20 +14,12 @@ class BiliAudioSource extends StreamAudioSource {
   final String coverUrl;
   final int quality;
 
-  AudioStreamInfo? _cachedStreamInfo;
-  String _mimeType = 'audio/mp4';
-  File? _tempCacheFile;
-  StreamSubscription<List<int>>? _downloadSubscription;
-  IOSink? _fileSink;
-  bool _isDownloading = false;
+  String? _currentSessionId;
+
+  final DownloadManager _downloadManager = DownloadManager();
+
   bool _isDisposed = false;
-  bool _isCommittedToManager = false;
-
-  final StreamController<void> _dataWriteController = StreamController.broadcast();
-
-  final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString() + Random().nextInt(1000).toString();
-
-  static const String _bufferDirName = 'utopia_stream_buffer';
+  File? _readingFile;
 
   BiliAudioSource({
     required this.bvid,
@@ -48,224 +37,176 @@ class BiliAudioSource extends StreamAudioSource {
     ),
   );
 
-  static Future<void> clearBufferCache() async {
-    try {
-      final tempDir = await getTemporaryDirectory();
-      final dir = Directory('${tempDir.path}/$_bufferDirName');
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
-        print("🧹 Cleaned up orphaned stream buffers.");
-      }
-    } catch (e) {
-      print("Failed to clean buffer cache: $e");
-    }
-  }
-
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
-    int startOffset = start ?? 0;
-
     try {
-      if (_isDisposed) throw Exception("Source disposed");
+      _isDisposed = false;
+      final newSessionId = DateTime.now().millisecondsSinceEpoch.toString() + Random().nextInt(1000).toString();
+      _currentSessionId = newSessionId;
 
-      if (_cachedStreamInfo == null) {
-        await _resolveStreamInfo();
-      }
-      if (_cachedStreamInfo == null) {
-        throw Exception("Failed to resolve audio stream info");
-      }
+      final response = await _downloadManager.requestResource(bvid, initCid, quality, newSessionId);
+      final int? expectedLength = response.totalSize;
 
-      final playable = await DownloadManager().getPlayableFile(bvid, initCid, quality);
-      if (playable != null && await playable.file.exists()) {
-        print("BiliAudioSource: Hit local file for $bvid ($_mimeType)");
-        return _streamFromFile(playable.file, startOffset, end);
+      if (response.directUrl != null) {
+        return await _streamFromNetwork(response.directUrl!, start, end, expectedLength: expectedLength);
       }
 
+      if (response.file != null) {
+        _readingFile = response.file;
 
-      if (_isCommittedToManager) {
-        _isCommittedToManager = false;
-        _isDownloading = false;
-      }
+        if (!await _readingFile!.exists()) {
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
 
-      if (!_isDownloading) {
-        if (_tempCacheFile == null || !(await _tempCacheFile!.exists())) {
-          await _startDynamicCaching();
+        final fileLen = await _readingFile!.length();
+        final int? sourceLength = response.isComplete
+            ? fileLen
+            : (expectedLength ?? fileLen);
+
+        int startOffset = start ?? 0;
+        if (response.isComplete && startOffset > fileLen) {
+          startOffset = fileLen;
+        }
+
+        int? contentLength;
+        if (end != null) {
+          contentLength = end - startOffset;
+        } else if (response.isComplete) {
+          contentLength = fileLen - startOffset;
+        } else if (sourceLength != null) {
+          contentLength = sourceLength - startOffset;
+        }
+        if (contentLength != null && contentLength < 0) contentLength = 0;
+
+        if (response.isComplete && startOffset >= fileLen) {
+          return StreamAudioResponse(
+            sourceLength: sourceLength ?? fileLen,
+            contentLength: 0,
+            offset: startOffset,
+            stream: Stream.value(List<int>.empty()),
+            contentType: response.mimeType,
+          );
+        }
+
+        if (response.isComplete) {
+          return StreamAudioResponse(
+            sourceLength: sourceLength ?? fileLen,
+            contentLength: contentLength,
+            offset: startOffset,
+            stream: _readingFile!.openRead(startOffset, end),
+            contentType: response.mimeType,
+          );
+        } else {
+          return StreamAudioResponse(
+            sourceLength: sourceLength ?? startOffset,
+            contentLength: contentLength,
+            offset: startOffset,
+            stream: _createTailingStream(startOffset, end, newSessionId, sourceLength),
+            contentType: response.mimeType,
+          );
         }
       }
 
-      await _waitForFirstByte();
-
-      if (_tempCacheFile == null || !await _tempCacheFile!.exists()) {
-        if (_isDisposed) throw Exception("Disposed during wait");
-        throw Exception("Temp file missing after wait");
-      }
-
-      return _streamFromTempFile(startOffset, end);
+      throw Exception("No file or url provided");
 
     } catch (e) {
-      print("Audio request failed: $e");
-      throw Exception("Audio request failed: $e");
+      print("Audio Request Failed: $e");
+      throw Exception("Audio Request Failed: $e");
     }
   }
 
-  Future<void> _startDynamicCaching() async {
-    if (_isDownloading) return;
-    _isDownloading = true;
-
+  Future<StreamAudioResponse> _streamFromNetwork(String url, int? start, int? end, {int? expectedLength}) async {
     try {
-      final bufferDir = await _getBufferDir();
-      _tempCacheFile = File('${bufferDir.path}/${bvid}_${initCid}_$_sessionId.tmp');
-
-      if (await _tempCacheFile!.exists()) {
-        await _tempCacheFile!.delete();
-      }
-
       final client = HttpClient();
-      final request = await client.getUrl(Uri.parse(_cachedStreamInfo!.url));
+      final request = await client.getUrl(Uri.parse(url));
       request.headers.set('User-Agent', HttpConstants.userAgent);
       request.headers.set('Referer', HttpConstants.referer);
 
+      int startOffset = start ?? 0;
+      if (startOffset > 0 || end != null) {
+        String rangeHeader = 'bytes=$startOffset-';
+        if (end != null) rangeHeader += '${end - 1}';
+        request.headers.set('Range', rangeHeader);
+      }
+
       final response = await request.close();
 
-      _fileSink = _tempCacheFile!.openWrite(mode: FileMode.append);
-
-      _downloadSubscription = response.listen(
-            (chunk) {
-          if (_isDisposed) return;
-          _fileSink?.add(chunk);
-          _dataWriteController.add(null);
-        },
-        onDone: () async {
-          await _onDownloadComplete();
-        },
-        onError: (e) {
-          print("Dynamic caching error: $e");
-          _cleanupTempResources();
-        },
-        cancelOnError: true,
-      );
-    } catch (e) {
-      print("Start dynamic caching failed: $e");
-      _cleanupTempResources();
-    }
-  }
-
-  Future<Directory> _getBufferDir() async {
-    final tempDir = await getTemporaryDirectory();
-    final dir = Directory('${tempDir.path}/$_bufferDirName');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return dir;
-  }
-
-  Future<void> _onDownloadComplete() async {
-    _isDownloading = false;
-    try {
-      await _fileSink?.flush();
-      await _fileSink?.close();
-      _fileSink = null;
-    } catch (_) {}
-
-    _dataWriteController.add(null);
-
-    if (_isDisposed) {
-      _deleteTempFile();
-      return;
-    }
-
-    await _commitToManager();
-  }
-
-  Future<void> _commitToManager() async {
-    try {
-      if (_tempCacheFile == null || !(await _tempCacheFile!.exists())) return;
-      if (await _tempCacheFile!.length() < 1024) {
-        _deleteTempFile();
-        return;
-      }
-
-      print("Committing cache to DownloadManager...");
-      final committed = await DownloadManager().commitCacheFile(
-          _tempCacheFile!,
-          bvid,
-          initCid,
-          quality
-      );
-
-      if (committed != null) {
-        print("Cache committed successfully");
-        _isCommittedToManager = true;
-        _tempCacheFile = null;
+      int? totalLength = response.contentLength > 0 ? response.contentLength : expectedLength;
+      int? contentLength;
+      if (end != null) {
+        contentLength = end - startOffset;
       } else {
-        _deleteTempFile();
+        contentLength = totalLength;
       }
+      if (contentLength != null && contentLength < 0) contentLength = 0;
+
+      final int safeSourceLength = (totalLength ?? end ?? startOffset);
+
+      return StreamAudioResponse(
+        sourceLength: safeSourceLength,
+        contentLength: contentLength,
+        offset: startOffset,
+        stream: response,
+        contentType: response.headers.contentType?.mimeType ?? 'audio/mp4',
+      );
     } catch (e) {
-      print("Commit failed: $e");
-      _deleteTempFile();
+      print("Network Stream Failed: $e");
+      throw Exception("Network Stream Failed: $e");
     }
   }
 
-  StreamAudioResponse _streamFromTempFile(int start, int? end) {
-    return StreamAudioResponse(
-      sourceLength: null,
-      contentLength: null,
-      offset: start,
-      stream: _createTailingStream(start, end),
-      contentType: _mimeType,
-    );
-  }
-
-  Stream<List<int>> _createTailingStream(int start, int? end) async* {
-    int currentOffset = start;
-    if (_tempCacheFile == null) { yield []; return; }
+  Stream<List<int>> _createTailingStream(int start, int? end, String sessionId, int? totalSize) async* {
+    if (_readingFile == null) return;
 
     RandomAccessFile? raf;
     try {
-      if (await _tempCacheFile!.exists()) {
-        raf = await _tempCacheFile!.open();
-      } else {
-        yield [];
-        return;
-      }
+      raf = await _readingFile!.open();
+      int currentOffset = start;
+      Stream<void>? notifier = _downloadManager.getBufferNotifier(sessionId);
 
-      while (!_isDisposed) {
-        int fileLen = 0;
-        try {
-          fileLen = await raf.length();
-        } catch (e) {
-          break;
+      while (!_isDisposed && _currentSessionId == sessionId) {
+        int fileLen = await raf.length();
+
+        final bool sessionActive = _downloadManager.isSessionActive(sessionId);
+        final bool reachedExpectedEnd = totalSize != null && currentOffset >= totalSize;
+        if (currentOffset >= fileLen) {
+          if (!sessionActive || reachedExpectedEnd) {
+            int finalLen = await raf.length();
+            if (currentOffset >= finalLen && (totalSize == null || currentOffset >= (totalSize))) {
+              break;
+            }
+          }
+          if (notifier != null) {
+            await Future.any([
+              notifier.first,
+              Future.delayed(const Duration(milliseconds: 200))
+            ]);
+          } else {
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+          continue;
         }
 
-        if (currentOffset < fileLen) {
-          int readLen = fileLen - currentOffset;
-          if (readLen > 64 * 1024) readLen = 64 * 1024;
+        int readLen = fileLen - currentOffset;
+        if (readLen > 64 * 1024) readLen = 64 * 1024;
+        if (end != null && currentOffset + readLen > end) {
+          readLen = end - currentOffset;
+        }
 
-          try {
-            await raf.setPosition(currentOffset);
-            final chunk = await raf.read(readLen);
-            if (chunk.isNotEmpty) {
-              yield chunk;
-              currentOffset += chunk.length;
-            }
-          } catch (e) {
-            break;
+        if (readLen > 0) {
+          await raf.setPosition(currentOffset);
+          final chunk = await raf.read(readLen);
+
+          if (chunk.isNotEmpty) {
+            yield chunk;
+            currentOffset += chunk.length;
           }
         }
-        else if (_isDownloading) {
-          await Future.any([
-            _dataWriteController.stream.first,
-            Future.delayed(const Duration(milliseconds: 200))
-          ]);
-        }
-        else {
-          break;
-        }
 
-        if (end != null && currentOffset >= end) break;
+        if ((end != null && currentOffset >= end) || (totalSize != null && currentOffset >= totalSize)) break;
       }
     } catch (e) {
-      print("Tailing stream error: $e");
+      print("Stream error: $e");
     } finally {
       try { await raf?.close(); } catch (_) {}
     }
@@ -273,84 +214,10 @@ class BiliAudioSource extends StreamAudioSource {
 
   @override
   Future<void> dispose() async {
-    if (_isDisposed) return;
     _isDisposed = true;
-
-    _dataWriteController.close();
-    await _downloadSubscription?.cancel();
-    _isDownloading = false;
-    try { await _fileSink?.close(); } catch (_) {}
-
-    if (!_isCommittedToManager) {
-      _deleteTempFile();
-    }
-  }
-
-  void _cleanupTempResources() {
-    _isDownloading = false;
-    _downloadSubscription?.cancel();
-    try { _fileSink?.close(); } catch (_) {}
-    _deleteTempFile();
-  }
-
-  Future<void> _deleteTempFile() async {
-    try {
-      if (_tempCacheFile != null && await _tempCacheFile!.exists()) {
-        await _tempCacheFile!.delete();
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _waitForFirstByte() async {
-    int retries = 0;
-    while (retries < 50) {
-      if (_tempCacheFile != null && await _tempCacheFile!.exists()) {
-        try {
-          final len = await _tempCacheFile!.length();
-          if (len > 0) return;
-        } catch (_) {}
-      }
-      if (!_isDownloading && (_tempCacheFile == null || !(await _tempCacheFile!.exists()))) {
-        return;
-      }
-      await Future.delayed(const Duration(milliseconds: 100));
-      retries++;
-    }
-  }
-
-  Future<StreamAudioResponse> _streamFromFile(File file, int start, int? end) async {
-    final fileLen = await file.length();
-    int endOffset = end ?? fileLen;
-    int contentLength = endOffset - start;
-    if (contentLength < 0) contentLength = 0;
-
-    return StreamAudioResponse(
-      sourceLength: fileLen,
-      contentLength: contentLength,
-      offset: start,
-      stream: file.openRead(start, end),
-      contentType: _mimeType,
-    );
-  }
-
-  Future<void> _resolveStreamInfo() async {
-    int cid = initCid;
-    if (cid == 0) {
-      cid = await SearchApi().fetchCid(bvid);
-    }
-    _cachedStreamInfo = await AudioStreamApi().getAudioStream(
-        bvid, cid, preferredQuality: quality
-    );
-
-    if (_cachedStreamInfo != null) {
-      final url = _cachedStreamInfo!.url.toLowerCase();
-      final path = url.split('?').first;
-
-      if (path.endsWith('.flac')) {
-        _mimeType = 'audio/flac';
-      } else {
-        _mimeType = 'audio/mp4';
-      }
+    if (_currentSessionId != null) {
+      _downloadManager.cancelSession(_currentSessionId!);
+      _currentSessionId = null;
     }
   }
 }

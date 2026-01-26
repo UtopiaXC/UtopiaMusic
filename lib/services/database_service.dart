@@ -47,7 +47,7 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), 'utopia_music.db');
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -111,14 +111,19 @@ class DatabaseService {
     if (oldVersion < 4) {
       try {
         await db.execute('ALTER TABLE cache_meta ADD COLUMN file_size INTEGER DEFAULT 0');
-        await db.execute('ALTER TABLE cache_meta ADD COLUMN status TEXT DEFAULT "completed"');
-      } catch (e) {
-        print("Upgrade to v4 error (columns might exist): $e");
-      }
+        await db.execute('ALTER TABLE cache_meta ADD COLUMN status INTEGER DEFAULT 1');
+      } catch (_) {}
     }
-
     if (oldVersion < 5) {
       await _createDownloadsTable(db);
+    }
+    if (oldVersion < 6) {
+      try {
+        await db.execute('ALTER TABLE cache_meta ADD COLUMN total_size INTEGER DEFAULT 0');
+        await db.execute('ALTER TABLE cache_meta ADD COLUMN session_id TEXT');
+
+        await db.execute('DELETE FROM cache_meta');
+      } catch (_) {}
     }
   }
 
@@ -132,7 +137,9 @@ class DatabaseService {
         hit_count INTEGER DEFAULT 1,
         last_access_time INTEGER,
         file_size INTEGER DEFAULT 0,
-        status TEXT DEFAULT 'completed'
+        total_size INTEGER DEFAULT 0,
+        status INTEGER DEFAULT 1,
+        session_id TEXT
       )
     ''');
   }
@@ -270,7 +277,7 @@ class DatabaseService {
     await db.delete('playlist');
   }
 
-  Future<void> recordCacheAccess(String bvid, int cid, int quality, {int fileSize = 0, String? status}) async {
+  Future<void> recordCacheAccess(String bvid, int cid, int quality, {int fileSize = 0, int totalSize = 0, int? status, String? sessionId}) async {
     final db = await database;
     final key = '${bvid}_${cid}_$quality';
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -292,7 +299,9 @@ class DatabaseService {
           'hit_count': 1,
           'last_access_time': now,
           'file_size': fileSize,
-          'status': status ?? 'caching',
+          'total_size': totalSize,
+          'status': status ?? 2,
+          'session_id': sessionId,
         });
       } else {
         String sql = 'UPDATE cache_meta SET hit_count = hit_count + 1, last_access_time = ?';
@@ -302,9 +311,17 @@ class DatabaseService {
           sql += ', file_size = ?';
           args.add(fileSize);
         }
+        if (totalSize > 0) {
+          sql += ', total_size = ?';
+          args.add(totalSize);
+        }
         if (status != null) {
           sql += ', status = ?';
           args.add(status);
+        }
+        if (sessionId != null) {
+          sql += ', session_id = ?';
+          args.add(sessionId);
         }
 
         sql += ' WHERE key = ?';
@@ -315,9 +332,11 @@ class DatabaseService {
     });
   }
 
-  Future<List<Map<String, dynamic>>> getAllCacheMeta() async {
+  Future<Map<String, dynamic>?> getCacheMeta(String bvid, int cid, int quality) async {
     final db = await database;
-    return await db.query('cache_meta');
+    final key = '${bvid}_${cid}_$quality';
+    final res = await db.query('cache_meta', where: 'key = ?', whereArgs: [key]);
+    return res.isNotEmpty ? res.first : null;
   }
 
   Future<List<Map<String, dynamic>>> getCompletedCacheMeta() async {
@@ -325,7 +344,7 @@ class DatabaseService {
     return await db.query(
       'cache_meta',
       where: 'status = ?',
-      whereArgs: ['completed'],
+      whereArgs: [1],
     );
   }
 
@@ -337,6 +356,11 @@ class DatabaseService {
   Future<void> clearCacheMetaTable() async {
     final db = await database;
     await db.delete('cache_meta');
+  }
+
+  Future<void> clearBufferingCacheMeta() async {
+    final db = await database;
+    await db.delete('cache_meta', where: 'status = ?', whereArgs: [2]);
   }
 
   Future<int> createLocalPlaylist(String title, String description) async {
@@ -423,7 +447,6 @@ class DatabaseService {
       }
     });
   }
-
 
   Future<void> updateLocalPlaylistSongTitle(int playlistId, String bvid, int cid, String newTitle) async {
     final db = await database;
@@ -516,5 +539,10 @@ class DatabaseService {
       whereArgs: [id],
     );
     return res.isNotEmpty ? res.first : null;
+  }
+
+  Future<void> clearStaticCacheMeta() async {
+    final db = await database;
+    await db.delete('cache_meta', where: 'status = ?', whereArgs: [1]);
   }
 }
