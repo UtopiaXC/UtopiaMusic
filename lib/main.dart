@@ -11,6 +11,8 @@ import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:utopia_music/services/audio/bili_audio_source.dart';
+import 'package:utopia_music/services/download_manager.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -32,6 +34,8 @@ void main() async {
     iOS: false,
     macOS: false,
   );
+  await BiliAudioSource.clearBufferCache();
+  await DownloadManager().init();
   runApp(
     Phoenix(
       child: MultiProvider(

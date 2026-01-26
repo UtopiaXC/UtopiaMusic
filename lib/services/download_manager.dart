@@ -9,6 +9,8 @@ import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 
+import 'audio/bili_audio_source.dart';
+
 class DownloadUpdate {
   final String id;
   final double progress;
@@ -573,6 +575,7 @@ class DownloadManager {
       } catch (e) {}
     }
     await _dbService.clearCacheMetaTable();
+    await BiliAudioSource.clearBufferCache();
   }
 
   Future<int> getUsedCacheSize() async {
