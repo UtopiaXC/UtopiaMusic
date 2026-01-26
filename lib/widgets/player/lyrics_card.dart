@@ -124,8 +124,6 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   void _syncDanmaku(Duration position) {
-    // [修改] 移除 index 判断，让弹幕在后台也能持续同步数据
-    // if (_tabController.index != 1) return;
     if (_rawDanmakus.isEmpty || _danmakuController == null) return;
 
     final double currentSeconds = position.inMilliseconds / 1000.0;
@@ -290,105 +288,117 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     }
 
     final topPadding = MediaQuery.of(context).padding.top;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (settingsProvider.enableBlurBackground)
-          _buildBlurredBackground(song.coverUrl),
-        if (!settingsProvider.enableBlurBackground)
-          Container(color: Colors.black.withValues(alpha: 0.9)),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          body: GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              if (details.primaryDelta! > 10) widget.onBack();
-            },
-            onVerticalDragUpdate: (details) {
-              if (details.primaryDelta! > 10) {
-                widget.onBack();
-              }
-            },
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    SizedBox(height: topPadding + 16),
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      width: 200, height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        indicator: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
+    final backgroundMode = settingsProvider.playerBackgroundMode;
+    final isBlurMode = backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
+    final isNoneMode = backgroundMode == 'none';
+    final themeData = isNoneMode ? ThemeData.light() : Theme.of(context);
+    
+    return Theme(
+      data: themeData,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (isBlurMode)
+            _buildBlurredBackground(song.coverUrl, backgroundMode == 'gaussian_blur' ? 20.0 : 10.0)
+          else if (isNoneMode)
+             Container(color: Colors.white.withValues(alpha: 0.95))
+          else
+             Container(color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95)),
+             
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            body: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                if (details.primaryDelta! > 10) widget.onBack();
+              },
+              onVerticalDragUpdate: (details) {
+                if (details.primaryDelta! > 10) {
+                  widget.onBack();
+                }
+              },
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      SizedBox(height: topPadding + 16),
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        width: 200, height: 36,
+                        decoration: BoxDecoration(
+                          color: isNoneMode ? Colors.black.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        labelColor: Theme.of(context).colorScheme.onPrimary,
-                        unselectedLabelColor: Colors.white.withValues(alpha: 0.9),
-                        dividerColor: Colors.transparent,
-                        tabs: const [Tab(text: 'AI/字幕'), Tab(text: '弹幕')],
-                      ),
-                    ),
-
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildLyricsView(song),
-                          _DanmakuPage(
-                            isLoading: _isLoadingDanmaku,
-                            hasDanmaku: _hasDanmaku,
-                            rawDanmakus: _rawDanmakus,
-                            onControllerCreated: (controller) => _danmakuController = controller,
+                        child: TabBar(
+                          controller: _tabController,
+                          indicator: BoxDecoration(
+                            color: themeData.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(18),
                           ),
-                        ],
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelColor: themeData.colorScheme.onPrimary,
+                          unselectedLabelColor: isNoneMode ? Colors.black54 : Colors.white.withValues(alpha: 0.9),
+                          dividerColor: Colors.transparent,
+                          tabs: const [Tab(text: 'AI/字幕'), Tab(text: '弹幕')],
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                      child: PlayerControls(
-                        isPlaying: playerProvider.isPlaying,
-                        isLoading: playerProvider.player.processingState == ProcessingState.buffering,
-                        duration: _duration,
-                        position: _isDragging ? Duration(seconds: _dragValue.toInt()) : _position,
-                        loopMode: playerProvider.playMode,
-                        onSeek: _onSeekEnd,
-                        onSeekStart: _onSeekStart,
-                        onSeekUpdate: _onSeekUpdate,
-                        onPlayPause: playerProvider.togglePlayPause,
-                        onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
-                        onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
-                        onShuffle: playerProvider.togglePlayMode,
-                        onPlaylist: widget.onPlaylist,
-                        onLyrics: widget.onBack,
-                        hideExtraControls: false,
-                        showLyricsButtonOnly: true,
+  
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildLyricsView(song, themeData),
+                            _DanmakuPage(
+                              isLoading: _isLoadingDanmaku,
+                              hasDanmaku: _hasDanmaku,
+                              rawDanmakus: _rawDanmakus,
+                              onControllerCreated: (controller) => _danmakuController = controller,
+                              textColor: isNoneMode ? Colors.black : Colors.white,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                Positioned(
-                  top: topPadding + 12,
-                  left: 16,
-                  child: IconButton(
-                    onPressed: widget.onBack,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 28),
-                    tooltip: '收起',
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+                        child: PlayerControls(
+                          isPlaying: playerProvider.isPlaying,
+                          isLoading: playerProvider.player.processingState == ProcessingState.buffering,
+                          duration: _duration,
+                          position: _isDragging ? Duration(seconds: _dragValue.toInt()) : _position,
+                          loopMode: playerProvider.playMode,
+                          onSeek: _onSeekEnd,
+                          onSeekStart: _onSeekStart,
+                          onSeekUpdate: _onSeekUpdate,
+                          onPlayPause: playerProvider.togglePlayPause,
+                          onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
+                          onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+                          onShuffle: playerProvider.togglePlayMode,
+                          onPlaylist: widget.onPlaylist,
+                          onLyrics: widget.onBack,
+                          hideExtraControls: false,
+                          showLyricsButtonOnly: true,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  Positioned(
+                    top: topPadding + 12,
+                    left: 16,
+                    child: IconButton(
+                      onPressed: widget.onBack,
+                      icon: Icon(Icons.keyboard_arrow_down, color: themeData.iconTheme.color, size: 28),
+                      tooltip: '收起',
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildBlurredBackground(String coverUrl) {
+  Widget _buildBlurredBackground(String coverUrl, double sigma) {
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,
@@ -401,7 +411,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
           ),
           ClipRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+              filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
               child: Container(
                 color: Colors.black.withValues(alpha: 0.5),
               ),
@@ -412,11 +422,11 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildLyricsView(song) {
-    if (_isLoadingSubtitles) return const Center(child: CircularProgressIndicator(color: Colors.white));
-    final baseTextStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white.withValues(alpha: 0.9));
-    final highlightColor = Theme.of(context).colorScheme.primary;
-    final normalColor = Colors.white.withValues(alpha: 0.6);
+  Widget _buildLyricsView(song, ThemeData theme) {
+    if (_isLoadingSubtitles) return Center(child: CircularProgressIndicator(color: theme.colorScheme.primary));
+    final baseTextStyle = theme.textTheme.bodyLarge?.copyWith(color: theme.textTheme.bodyLarge?.color?.withOpacity(0.9));
+    final highlightColor = theme.colorScheme.primary;
+    final normalColor = theme.textTheme.bodyLarge?.color?.withOpacity(0.6);
 
     if (!_hasSubtitles) {
       if (song.lyrics.isNotEmpty) {
@@ -473,12 +483,14 @@ class _DanmakuPage extends StatefulWidget {
   final bool hasDanmaku;
   final List<model.DanmakuItem> rawDanmakus;
   final Function(DanmakuController) onControllerCreated;
+  final Color textColor;
 
   const _DanmakuPage({
     required this.isLoading,
     required this.hasDanmaku,
     required this.rawDanmakus,
     required this.onControllerCreated,
+    required this.textColor,
   });
 
   @override
@@ -491,8 +503,8 @@ class _DanmakuPageState extends State<_DanmakuPage> with AutomaticKeepAliveClien
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (widget.isLoading) return const Center(child: Text('弹幕装载中...', style: TextStyle(color: Colors.white)));
-    if (!widget.hasDanmaku) return const Center(child: Text('该视频暂无弹幕', style: TextStyle(color: Colors.white)));
+    if (widget.isLoading) return Center(child: Text('弹幕装载中...', style: TextStyle(color: widget.textColor)));
+    if (!widget.hasDanmaku) return Center(child: Text('该视频暂无弹幕', style: TextStyle(color: widget.textColor)));
     return Padding(
       padding: const EdgeInsets.only(top: 72.0),
       child: DanmakuScreen(

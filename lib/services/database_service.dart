@@ -555,4 +555,21 @@ class DatabaseService {
     final db = await database;
     await db.delete('cache_meta', where: 'status = ?', whereArgs: [1]);
   }
+
+  Future<void> deleteDatabaseFile() async {
+    try {
+      if (_database != null && _database!.isOpen) {
+        await _database!.close();
+        _database = null;
+      }
+      String path = join(await getDatabasesPath(), 'utopia_music.db');
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+      print('Database file deleted.');
+    } catch (e) {
+      print('Error deleting database: $e');
+    }
+  }
 }

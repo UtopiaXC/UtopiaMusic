@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/services/download_manager.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
@@ -22,7 +27,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _showSearchSuggestKey = 'show_search_suggest';
   static const String _enableHistoryReportKey = 'enable_history_report';
   static const String _historyReportDelayKey = 'history_report_delay';
-  static const String _enableBlurBackgroundKey = 'enable_blur_background';
+  static const String _playerBackgroundModeKey = 'player_background_mode_v2';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -44,29 +49,49 @@ class SettingsProvider extends ChangeNotifier {
   bool _showSearchSuggest = true;
   bool _enableHistoryReport = false;
   int _historyReportDelay = 3;
-  bool _enableBlurBackground = true;
+  String _playerBackgroundMode = 'gradient';
 
   ThemeMode get themeMode => _themeMode;
+
   Color get seedColor => _seedColor;
+
   int get startPageIndex => _startPageIndex;
+
   bool get saveSearchHistory => _saveSearchHistory;
+
   int get searchHistoryLimit => _searchHistoryLimit;
+
   int get maxRetries => _maxRetries;
+
   int get requestDelay => _requestDelay;
+
   Locale? get locale => _locale;
+
   int get cacheLimit => _cacheLimit;
+
   bool get autoCheckUpdate => _autoCheckUpdate;
+
   bool get checkPreRelease => _checkPreRelease;
+
   String? get ignoredVersion => _ignoredVersion;
+
   bool get isSettingsLoaded => _isSettingsLoaded;
+
   bool get autoSkipInvalid => _autoSkipInvalid;
+
   bool get enableComments => _enableComments;
+
   int get defaultAudioQuality => _defaultAudioQuality;
+
   int get defaultDownloadQuality => _defaultDownloadQuality;
+
   bool get showSearchSuggest => _showSearchSuggest;
+
   bool get enableHistoryReport => _enableHistoryReport;
+
   int get historyReportDelay => _historyReportDelay;
-  bool get enableBlurBackground => _enableBlurBackground;
+
+  String get playerBackgroundMode => _playerBackgroundMode;
 
   SettingsProvider() {
     _loadSettings();
@@ -74,7 +99,8 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final themeModeIndex = prefs.getInt(_themeModeKey) ?? ThemeMode.system.index;
+    final themeModeIndex =
+        prefs.getInt(_themeModeKey) ?? ThemeMode.system.index;
     _themeMode = ThemeMode.values[themeModeIndex];
 
     final colorValue = prefs.getInt(_seedColorKey);
@@ -105,7 +131,13 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = prefs.getBool(_showSearchSuggestKey) ?? true;
     _enableHistoryReport = prefs.getBool(_enableHistoryReportKey) ?? false;
     _historyReportDelay = prefs.getInt(_historyReportDelayKey) ?? 3;
-    _enableBlurBackground = prefs.getBool(_enableBlurBackgroundKey) ?? true;
+    String? mode = prefs.getString(_playerBackgroundModeKey);
+    if (mode == null) {
+      _playerBackgroundMode = 'gradient';
+    } else {
+      _playerBackgroundMode = mode;
+    }
+
     notifyListeners();
   }
 
@@ -244,11 +276,11 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt(_historyReportDelayKey, value);
   }
 
-  Future<void> setEnableBlurBackground(bool value) async {
-    _enableBlurBackground = value;
+  Future<void> setPlayerBackgroundMode(String value) async {
+    _playerBackgroundMode = value;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_enableBlurBackgroundKey, value);
+    await prefs.setString(_playerBackgroundModeKey, value);
   }
 
   Future<void> resetToDefaults() async {
@@ -271,7 +303,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = true;
     _enableHistoryReport = false;
     _historyReportDelay = 3;
-    _enableBlurBackground = true;
+    _playerBackgroundMode = 'gradient';
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -293,7 +325,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_showSearchSuggestKey);
     await prefs.remove(_enableHistoryReportKey);
     await prefs.remove(_historyReportDelayKey);
-    await prefs.remove(_enableBlurBackgroundKey);
+    await prefs.remove(_playerBackgroundModeKey);
   }
 
   Future<void> resetApp() async {
@@ -316,11 +348,71 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = true;
     _enableHistoryReport = false;
     _historyReportDelay = 3;
-    _enableBlurBackground = true;
+    _playerBackgroundMode = 'gradient';
     notifyListeners();
+    try {
+      final audioService = AudioPlayerService();
+      await audioService.resetState();
+    } catch (e) {
+      print("Error stopping player: $e");
+    }
+    try {
+      final downloadManager = DownloadManager();
+      await downloadManager.setMaxConcurrentDownloads(0);
+      await Future.delayed(const Duration(milliseconds: 200));
+      await downloadManager.clearAllCache();
+      await downloadManager.deleteAllDownloads();
+    } catch (e) {
+      print("Error clearing download manager: $e");
+    }
+    try {
+      await DatabaseService().deleteDatabaseFile();
+    } catch (e) {
+      print("Error deleting DB: $e");
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    final dbService = DatabaseService();
-    await dbService.clearPlaylist();
+    await _nukeFileSystem();
+  }
+
+  Future<void> _nukeFileSystem() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      if (await tempDir.exists()) {
+        await _deleteDirectoryContents(tempDir);
+      }
+      final appDocDir = await getApplicationDocumentsDirectory();
+      if (await appDocDir.exists()) {
+        final musicDlDir = Directory('${appDocDir.path}/MusicDownload');
+        if (await musicDlDir.exists()) {
+          await musicDlDir.delete(recursive: true);
+        }
+      }
+      final supportDir = await getApplicationSupportDirectory();
+      if (await supportDir.exists()) {
+        await _deleteDirectoryContents(supportDir);
+      }
+    } catch (e) {
+      print("Error nuking file system: $e");
+    }
+  }
+
+  Future<void> _deleteDirectoryContents(Directory dir) async {
+    try {
+      final List<FileSystemEntity> entities = await dir.list().toList();
+      for (final entity in entities) {
+        try {
+          if (entity is File) {
+            await entity.delete();
+          } else if (entity is Directory) {
+            await entity.delete(recursive: true);
+          }
+        } catch (e) {
+          print("Skipping file ${entity.path}: $e");
+        }
+      }
+    } catch (e) {
+      print("Error listing directory ${dir.path}: $e");
+    }
   }
 }

@@ -9,7 +9,6 @@ import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/services/download_manager.dart';
 
@@ -35,18 +34,16 @@ void main() async {
   );
   await DownloadManager().init();
   runApp(
-    Phoenix(
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => PlayerProvider()),
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => SettingsProvider()),
-          ChangeNotifierProvider(create: (_) => SecurityProvider()),
-          ChangeNotifierProvider(create: (_) => LibraryProvider()),
-          ChangeNotifierProvider(create: (_) => DiscoverProvider()),
-        ],
-        child: const UtopiaMusicApp(),
-      ),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PlayerProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => SecurityProvider()),
+        ChangeNotifierProvider(create: (_) => LibraryProvider()),
+        ChangeNotifierProvider(create: (_) => DiscoverProvider()),
+      ],
+      child: const UtopiaMusicApp(),
     ),
   );
 }

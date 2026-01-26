@@ -2,8 +2,6 @@
 
 ## WIP
 
-> 目前仍在验证开发阶段，请等待测试版发布
-
 开发初衷：最近用了 [Biu](https://github.com/wood3n/biu) 和 [BBPlayer](https://github.com/bbplayer-app/BBPlayer)
 ，发现两个应用都很优秀。可惜Biu用的 Electron 只支持桌面端，BBPlayer虽然是React Native
 Expo开发的，但是我尝试打包成iOS的ipa的时候发现作者在播放引擎上针对安卓做了优化，在iOS上用不了，我尝试替换了一下播放库，结果还是不行，遂作罢。查了半天，发现好多人都做过flutter版的bili
@@ -13,7 +11,7 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 <br>
 目前，我将会把主要精力放在移动端样式适配上，希望使用桌面端的可以尝试[Biu](https://github.com/wood3n/biu)，完成度真的很高。  
 <br>
-本项目适用平台：iOS，Android，macOS，Windows，Linux。Web端由于CORS限制暂不考虑。  
+本项目适用平台：iOS，Android，macOS，Windows，Linux。  
 <br>
 警告：本项目大量使用Gemini等生成式AI。开发工具：idea + Gemini Code Assist插件  
 <br>
@@ -21,9 +19,7 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 <br>
 
 ## 下载
-
-目前仍处于开发阶段，请不要提交关于稳定性和功能不可用相关的issue，如果您有UI/UX的建议欢迎提交issue。  
-[开发测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
+[测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
 
 ## UI/UX Demo
 

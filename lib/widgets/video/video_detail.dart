@@ -165,8 +165,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
   Future<void> _loadCollectionOrParts(Map<String, dynamic> detail) async {
     setState(() => _isLoadingCollection = true);
-    
-    // Check for parts first
+
     final int videos = detail['videos'] ?? 0;
     if (videos > 1) {
       final parts = await _videoDetailApi.getVideoParts(context, widget.bvid);
@@ -179,7 +178,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         });
       }
     } else {
-      // If not parts, check for collection
       final videos = await _videoDetailApi.getVideoCollection(context, widget.bvid, detail['aid'] ?? 0);
       if (mounted) {
         setState(() {
@@ -306,7 +304,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     if (confirm == true) {
       if (_collectionVideos.isNotEmpty) {
         Song? targetSong;
-        // If it's parts, we need to match by cid as well because bvid is same
         if (_isParts) {
            final currentSong = playerProvider.currentSong;
            if (currentSong != null && currentSong.bvid == widget.bvid) {

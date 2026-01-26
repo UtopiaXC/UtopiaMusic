@@ -3,8 +3,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
-
-import '../../utils/update_util.dart';
+import 'package:utopia_music/utils/update_util.dart';
 
 class UpdateDialog extends StatelessWidget {
   final Map<String, dynamic> releaseData;

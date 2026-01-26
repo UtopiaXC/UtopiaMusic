@@ -20,23 +20,23 @@ class PlaySettingsPage extends StatelessWidget {
           _SettingsGroup(
             title: '解码',
             children: [
-              ListTile(
-                title: const Text('解码器选择'),
-                trailing: DropdownButton<int>(
-                  value: playerProvider.decoderType,
-                  underline: const SizedBox(),
-                  alignment: Alignment.centerRight,
-                  onChanged: (int? newValue) {
-                    if (newValue != null) {
-                      playerProvider.setDecoderType(newValue);
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('软解 (兼容性好，性能差)')),
-                    DropdownMenuItem(value: 1, child: Text('硬解 (性能更好，更省电)')),
-                  ],
-                ),
-              ),
+              // ListTile(
+              //   title: const Text('解码器选择'),
+              //   trailing: DropdownButton<int>(
+              //     value: playerProvider.decoderType,
+              //     underline: const SizedBox(),
+              //     alignment: Alignment.centerRight,
+              //     onChanged: (int? newValue) {
+              //       if (newValue != null) {
+              //         playerProvider.setDecoderType(newValue);
+              //       }
+              //     },
+              //     items: const [
+              //       DropdownMenuItem(value: 0, child: Text('软解 (兼容性好，性能差)')),
+              //       DropdownMenuItem(value: 1, child: Text('硬解 (性能更好，更省电)')),
+              //     ],
+              //   ),
+              // ),
               ListTile(
                 title: const Text('默认在线播放音质'),
                 trailing: DropdownButton<int>(

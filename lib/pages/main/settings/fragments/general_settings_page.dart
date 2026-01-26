@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restart_app/restart_app.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
-import 'package:flutter_phoenix/flutter_phoenix.dart';
-import 'package:utopia_music/connection/update/github_api.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:utopia_music/widgets/update/update_dialog.dart';
-
-import '../../../../utils/update_util.dart';
+import 'package:utopia_music/utils/update_util.dart';
 
 class GeneralSettingsPage extends StatelessWidget {
   const GeneralSettingsPage({super.key});
@@ -42,15 +38,16 @@ class GeneralSettingsPage extends StatelessWidget {
                       value: null,
                       child: Text('跟随系统'),
                     ),
-                    ...S.delegate.supportedLocales.map<DropdownMenuItem<Locale>>((Locale locale) {
-                      String label = locale.languageCode;
-                      if (locale.languageCode == 'zh') label = '中文';
-                      if (locale.languageCode == 'en') label = 'English';
-                      return DropdownMenuItem<Locale>(
-                        value: locale,
-                        child: Text(label),
-                      );
-                    }),
+                    ...S.delegate.supportedLocales
+                        .map<DropdownMenuItem<Locale>>((Locale locale) {
+                          String label = locale.languageCode;
+                          if (locale.languageCode == 'zh') label = '中文';
+                          if (locale.languageCode == 'en') label = 'English';
+                          return DropdownMenuItem<Locale>(
+                            value: locale,
+                            child: Text(label),
+                          );
+                        }),
                   ],
                 ),
               ),
@@ -84,13 +81,22 @@ class GeneralSettingsPage extends StatelessWidget {
               ListTile(
                 title: const Text('重置为默认设置'),
                 trailing: const Icon(Icons.restore, size: 20),
-                onTap: () => _showResetDefaultsDialog(context, settingsProvider, playerProvider, securityProvider),
+                onTap: () => _showResetDefaultsDialog(
+                  context,
+                  settingsProvider,
+                  playerProvider,
+                  securityProvider,
+                ),
               ),
               ListTile(
                 title: const Text('重置软件'),
-                subtitle: const Text('暂未实现'),
                 trailing: const Icon(Icons.delete_forever, size: 20),
-                onTap: () => _showResetAppDialog(context, settingsProvider, playerProvider, securityProvider),
+                onTap: () => _showResetAppDialog(
+                  context,
+                  settingsProvider,
+                  playerProvider,
+                  securityProvider,
+                ),
               ),
             ],
           ),
@@ -99,7 +105,12 @@ class GeneralSettingsPage extends StatelessWidget {
     );
   }
 
-  void _showResetDefaultsDialog(BuildContext context, SettingsProvider settingsProvider, PlayerProvider playerProvider, SecurityProvider securityProvider) {
+  void _showResetDefaultsDialog(
+    BuildContext context,
+    SettingsProvider settingsProvider,
+    PlayerProvider playerProvider,
+    SecurityProvider securityProvider,
+  ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -116,9 +127,9 @@ class GeneralSettingsPage extends StatelessWidget {
               playerProvider.resetToDefaults();
               securityProvider.resetToDefaults();
               Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('已重置为默认设置')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('已重置为默认设置')));
             },
             child: const Text('确认'),
           ),
@@ -127,12 +138,19 @@ class GeneralSettingsPage extends StatelessWidget {
     );
   }
 
-  void _showResetAppDialog(BuildContext context, SettingsProvider settingsProvider, PlayerProvider playerProvider, SecurityProvider securityProvider) {
+  void _showResetAppDialog(
+    BuildContext context,
+    SettingsProvider settingsProvider,
+    PlayerProvider playerProvider,
+    SecurityProvider securityProvider,
+  ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('确认重置软件'),
-        content: const Text('是否将软件彻底重置为刚安装的状态？\n此操作将清空所有数据（包括缓存、登录信息、设置等）并重启应用。'),
+        content: const Text(
+          '是否将软件彻底重置为刚安装的状态？\n此操作将清空所有数据（包括已下载内容、缓存、登录信息、设置等）并重启应用。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -142,12 +160,11 @@ class GeneralSettingsPage extends StatelessWidget {
             onPressed: () async {
               Navigator.pop(dialogContext);
               await settingsProvider.resetApp();
-
               if (context.mounted) {
-                Phoenix.rebirth(context);
+                Restart.restartApp();
               }
             },
-            child: const Text('确认重置'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -186,12 +203,12 @@ class _SettingsGroup extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ],
       ),

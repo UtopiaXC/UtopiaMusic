@@ -14,7 +14,7 @@ class PlayerContent extends StatelessWidget {
         double imageSize = min(300.0, constraints.maxHeight - 60);
 
         if (imageSize < 0) imageSize = 0;
-        
+
         final String optimizedCover =
             song.coverUrl.isNotEmpty ? '${song.coverUrl}@600w_600h.webp' : '';
 

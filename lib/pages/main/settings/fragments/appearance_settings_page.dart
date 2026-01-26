@@ -1,3 +1,4 @@
+// Updated background mode to String
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
@@ -37,7 +38,7 @@ class AppearanceSettingsPage extends StatelessWidget {
           _SettingsGroup(
             title: '播放器',
             children: [
-              _buildBlurBackgroundItem(context, settingsProvider),
+              _buildPlayerBackgroundItem(context, settingsProvider),
             ],
           ),
         ],
@@ -101,12 +102,36 @@ class AppearanceSettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBlurBackgroundItem(BuildContext context, SettingsProvider provider) {
-    return SwitchListTile(
-      title: const Text('播放器高斯模糊'),
-      subtitle: const Text('非常费电，非常卡顿，非常好看'),
-      value: provider.enableBlurBackground,
-      onChanged: (value) => provider.setEnableBlurBackground(value),
+  Widget _buildPlayerBackgroundItem(BuildContext context, SettingsProvider provider) {
+    return ListTile(
+      title: const Text('播放器背景'),
+      subtitle: const Text('选择播放界面的背景样式'),
+      trailing: DropdownButton<String>(
+        value: provider.playerBackgroundMode,
+        underline: const SizedBox(),
+        alignment: Alignment.centerRight,
+        items: const [
+          DropdownMenuItem(
+            value: 'none',
+            child: Text('无'),
+          ),
+          DropdownMenuItem(
+            value: 'gradient',
+            child: Text('渐变'),
+          ),
+          DropdownMenuItem(
+            value: 'blur',
+            child: Text('模糊'),
+          ),
+          DropdownMenuItem(
+            value: 'gaussian_blur',
+            child: Text('高斯模糊'),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) provider.setPlayerBackgroundMode(value);
+        },
+      ),
     );
   }
 
@@ -250,13 +275,11 @@ class _SettingsGroup extends StatelessWidget {
   }
 }
 
-// 1. 修正后的 _LibraryOrderDialog 类
 class _LibraryOrderDialog extends StatelessWidget {
   const _LibraryOrderDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ScrollController 必须由 Scrollbar 和 ReorderableListView 共享
     final scrollController = ScrollController();
 
     return Dialog(
@@ -287,7 +310,6 @@ class _LibraryOrderDialog extends StatelessWidget {
                       controller: scrollController,
                       thumbVisibility: true,
                       child: ReorderableListView.builder(
-                        // 【修正】这里参数名是 scrollController，不是 controller
                         scrollController: scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         itemCount: libraryProvider.categoryOrder.length,
@@ -379,7 +401,6 @@ class _LibraryOrderDialog extends StatelessWidget {
   }
 }
 
-// 2. 修正后的 _DiscoverOrderDialog 类
 class _DiscoverOrderDialog extends StatelessWidget {
   const _DiscoverOrderDialog({super.key});
 
@@ -415,7 +436,6 @@ class _DiscoverOrderDialog extends StatelessWidget {
                       controller: scrollController,
                       thumbVisibility: true,
                       child: ReorderableListView.builder(
-                        // 【修正】这里参数名是 scrollController，不是 controller
                         scrollController: scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         itemCount: discoverProvider.categoryOrder.length,

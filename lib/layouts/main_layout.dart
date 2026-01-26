@@ -8,11 +8,7 @@ import 'package:utopia_music/pages/main/library/library_page.dart';
 import 'package:utopia_music/pages/main/settings/settings_page.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
-import 'package:utopia_music/connection/update/github_api.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:utopia_music/widgets/update/update_dialog.dart';
-
-import '../utils/update_util.dart';
+import 'package:utopia_music/utils/update_util.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -51,13 +47,15 @@ class _MainLayoutState extends State<MainLayout> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInit) {
-      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-      int startIndex = settingsProvider.startPageIndex;
-      if (startIndex < 0 || startIndex >= _pages.length) {
-        startIndex = 0;
+      final settingsProvider = Provider.of<SettingsProvider>(context);
+      if (settingsProvider.isSettingsLoaded) {
+        int startIndex = settingsProvider.startPageIndex;
+        if (startIndex < 0 || startIndex >= _pages.length) {
+          startIndex = 0;
+        }
+        _selectedIndex = startIndex;
+        _isInit = true;
       }
-      _selectedIndex = startIndex;
-      _isInit = true;
     }
   }
 

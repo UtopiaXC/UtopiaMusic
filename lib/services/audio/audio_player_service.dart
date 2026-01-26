@@ -473,6 +473,19 @@ class AudioPlayerService {
     }
   }
 
+  Future<void> resetState() async {
+    await stop();
+    _globalQueue = [];
+    _currentIndex = 0;
+    try {
+      await _player.clearAudioSources();
+    } catch (e) {
+      print("Error resetting player source: $e");
+    }
+    _isHandlingError = false;
+    _indexController.add(0);
+  }
+
   void dispose() {
     _player.dispose();
     _indexController.close();

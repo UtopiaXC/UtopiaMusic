@@ -8,8 +8,6 @@ import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:dio/dio.dart';
 
-import '../utils/constants.dart';
-
 class LibraryApi {
   final HtmlUnescape _unescape = HtmlUnescape();
   

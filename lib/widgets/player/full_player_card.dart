@@ -42,7 +42,6 @@ class FullPlayerPage extends StatefulWidget {
 }
 
 class _FullPlayerPageState extends State<FullPlayerPage> {
-  // 添加 GlobalKey 用于控制 SwipeablePlayerCard
   final GlobalKey<SwipeablePlayerCardState> _swipeKey = GlobalKey();
 
   bool _isDragging = false;
@@ -53,6 +52,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
   bool _isDownloaded = false;
   double _dragAccumulator = 0.0;
+  ColorScheme? _extractedColorScheme;
 
   @override
   void initState() {
@@ -74,6 +74,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     });
 
     _checkDownloadStatus();
+    _updatePalette();
   }
 
   @override
@@ -81,6 +82,24 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.song.bvid != widget.song.bvid || oldWidget.song.cid != widget.song.cid) {
       _checkDownloadStatus();
+      _updatePalette();
+    }
+  }
+
+  Future<void> _updatePalette() async {
+    if (widget.song.coverUrl.isEmpty) return;
+    try {
+      final scheme = await ColorScheme.fromImageProvider(
+        provider: NetworkImage(widget.song.coverUrl),
+        brightness: Theme.of(context).brightness,
+      );
+      if (mounted) {
+        setState(() {
+          _extractedColorScheme = scheme;
+        });
+      }
+    } catch (e) {
+      print('Failed to extract color: $e');
     }
   }
 
@@ -99,7 +118,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     super.dispose();
   }
 
-  // ... 保持原有的 _onSeekStart, _onSeekUpdate, _onSeekEnd, _showPlaylist 等辅助方法不变 ...
   void _onSeekStart(double value) {
     setState(() {
       _isDragging = true;
@@ -434,7 +452,41 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
   }
 
-  Widget _buildBlurredBackground(String coverUrl) {
+  Widget _buildBackground(String mode, String coverUrl) {
+    switch (mode) {
+      case 'gradient':
+        return _buildGradientBackground();
+      case 'gaussian_blur':
+        return _buildBlurredBackground(coverUrl, 20.0);
+      case 'blur':
+        return _buildBlurredBackground(coverUrl, 10.0);
+      case 'none':
+      default:
+        return Container(color: Theme.of(context).scaffoldBackgroundColor);
+    }
+  }
+
+  Widget _buildGradientBackground() {
+    if (_extractedColorScheme == null) {
+      return Container(color: Theme.of(context).scaffoldBackgroundColor);
+    }
+    final color = _extractedColorScheme!.primaryContainer;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark 
+            ? [color.withOpacity(0.6), Theme.of(context).scaffoldBackgroundColor]
+            : [color.withOpacity(0.3), Theme.of(context).scaffoldBackgroundColor],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlurredBackground(String coverUrl, double sigma) {
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,
@@ -447,7 +499,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           ),
           ClipRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+              filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
               child: Container(
                 color: Colors.black.withValues(alpha: 0.5),
               ),
@@ -465,6 +517,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final hasNext = playerProvider.hasNext;
     final hasPrevious = playerProvider.hasPrevious;
+    final backgroundMode = settingsProvider.playerBackgroundMode;
+
+    final bool forceDark = backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
+    final themeData = forceDark ? ThemeData.dark() : Theme.of(context);
 
     Song? previousSong;
     Song? nextSong;
@@ -489,247 +545,241 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     if (hasPrevious && previousSong == null) previousSong = widget.song;
     if (hasNext && nextSong == null) nextSong = widget.song;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-        if (_showLyrics) {
-          _toggleLyrics();
-          return;
-        }
-        widget.onCollapse();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (settingsProvider.enableBlurBackground)
-              _buildBlurredBackground(widget.song.coverUrl),
-
-            if (!settingsProvider.enableBlurBackground)
-              Container(color: Theme.of(context).scaffoldBackgroundColor),
-
-            Column(
-              children: [
-                SizedBox(height: topPadding + 12),
-                SizedBox(
-                  height: kToolbarHeight,
-                  child: NavigationToolbar(
-                    leading: IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down),
-                      onPressed: () {
-                        if (_showLyrics) {
-                          _toggleLyrics();
-                        }
-                        widget.onCollapse();
-                      },
-                      tooltip: S.of(context).common_retract,
-                    ),
-                    middle: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          height: 24,
-                          width: MediaQuery.of(context).size.width * 0.6,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final textStyle = const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              );
-                              final textSpan = TextSpan(
-                                text: widget.song.title,
-                                style: textStyle,
-                              );
-                              final textPainter = TextPainter(
-                                text: textSpan,
-                                textDirection: TextDirection.ltr,
-                                maxLines: 1,
-                              );
-                              textPainter.layout();
-
-                              if (textPainter.width > constraints.maxWidth) {
-                                return Marquee(
+    return Theme(
+      data: themeData,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) {
+            return;
+          }
+          if (_showLyrics) {
+            _toggleLyrics();
+            return;
+          }
+          widget.onCollapse();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildBackground(backgroundMode, widget.song.coverUrl),
+      
+              Column(
+                children: [
+                  SizedBox(height: topPadding + 12),
+                  SizedBox(
+                    height: kToolbarHeight,
+                    child: NavigationToolbar(
+                      leading: IconButton(
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        onPressed: () {
+                          if (_showLyrics) {
+                            _toggleLyrics();
+                          }
+                          widget.onCollapse();
+                        },
+                        tooltip: S.of(context).common_retract,
+                      ),
+                      middle: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            width: MediaQuery.of(context).size.width * 0.6,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final textStyle = TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: themeData.textTheme.bodyLarge?.color,
+                                );
+                                final textSpan = TextSpan(
                                   text: widget.song.title,
                                   style: textStyle,
-                                  scrollAxis: Axis.horizontal,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  blankSpace: 20.0,
-                                  velocity: 30.0,
-                                  pauseAfterRound: const Duration(seconds: 1),
-                                  startPadding: 0.0,
-                                  accelerationDuration: const Duration(
-                                    seconds: 1,
-                                  ),
-                                  accelerationCurve: Curves.linear,
-                                  decelerationDuration: const Duration(
-                                    milliseconds: 500,
-                                  ),
-                                  decelerationCurve: Curves.easeOut,
                                 );
-                              } else {
-                                return Text(
-                                  widget.song.title,
-                                  style: textStyle,
+                                final textPainter = TextPainter(
+                                  text: textSpan,
+                                  textDirection: TextDirection.ltr,
                                   maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
                                 );
-                              }
-                            },
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _showArtistSpace(context),
-                          behavior: HitTestBehavior.translucent,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 4.0,
-                              horizontal: 8.0,
+                                textPainter.layout();
+      
+                                if (textPainter.width > constraints.maxWidth) {
+                                  return Marquee(
+                                    text: widget.song.title,
+                                    style: textStyle,
+                                    scrollAxis: Axis.horizontal,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    blankSpace: 20.0,
+                                    velocity: 30.0,
+                                    pauseAfterRound: const Duration(seconds: 1),
+                                    startPadding: 0.0,
+                                    accelerationDuration: const Duration(
+                                      seconds: 1,
+                                    ),
+                                    accelerationCurve: Curves.linear,
+                                    decelerationDuration: const Duration(
+                                      milliseconds: 500,
+                                    ),
+                                    decelerationCurve: Curves.easeOut,
+                                  );
+                                } else {
+                                  return Text(
+                                    widget.song.title,
+                                    style: textStyle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  );
+                                }
+                              },
                             ),
-                            child: Text(
-                              widget.song.artist,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                decoration: TextDecoration.underline,
+                          ),
+                          GestureDetector(
+                            onTap: () => _showArtistSpace(context),
+                            behavior: HitTestBehavior.translucent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4.0,
+                                horizontal: 8.0,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              child: Text(
+                                widget.song.artist,
+                                style: themeData.textTheme.bodySmall
+                                    ?.copyWith(
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.more_vert),
+                        onPressed: _showMoreMenu,
+                        tooltip: '更多',
+                      ),
+                      centerMiddle: true,
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: _showMoreMenu,
-                      tooltip: '更多',
-                    ),
-                    centerMiddle: true,
                   ),
-                ),
-
-                // 1. 上半部分：使用 SwipeablePlayerCard，只包裹 PlayerContent
-                Expanded(
-                  child: SwipeablePlayerCard(
-                    key: _swipeKey, // 【核心】绑定 GlobalKey
-                    onNext: hasNext ? () => playerProvider.playNext() : null,
-                    onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
-                    // 传递 previousChild 和 nextChild 时，只传递它们的 Content 部分
-                    previousChild: previousSong != null
-                        ? GestureDetector(
-                      onHorizontalDragUpdate: (details) {}, // 拦截，防止穿透
-                      child: PlayerContent(song: previousSong),
-                    )
-                        : null,
-                    nextChild: nextSong != null
-                        ? GestureDetector(
-                      onHorizontalDragUpdate: (details) {}, // 拦截
-                      child: PlayerContent(song: nextSong),
-                    )
-                        : null,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      // 拦截横向滑动，防止触发外层（如果有的话），虽然现在是最外层了，但保持习惯
-                      onHorizontalDragUpdate: (details) {},
-                      onVerticalDragStart: (_) {
+      
+                  Expanded(
+                    child: SwipeablePlayerCard(
+                      key: _swipeKey,
+                      onNext: hasNext ? () => playerProvider.playNext() : null,
+                      onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                      previousChild: previousSong != null
+                          ? GestureDetector(
+                        onHorizontalDragUpdate: (details) {},
+                        child: PlayerContent(song: previousSong),
+                      )
+                          : null,
+                      nextChild: nextSong != null
+                          ? GestureDetector(
+                        onHorizontalDragUpdate: (details) {},
+                        child: PlayerContent(song: nextSong),
+                      )
+                          : null,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onHorizontalDragUpdate: (details) {},
+                        onVerticalDragStart: (_) {
+                          _dragAccumulator = 0.0;
+                        },
+                        onVerticalDragUpdate: (details) {
+                          _dragAccumulator += details.delta.dy;
+                          if (_dragAccumulator > 20) {
+                            widget.onCollapse();
+                            _dragAccumulator = 0.0;
+                          } else if (_dragAccumulator < -20) {
+                            _toggleLyrics();
+                            _dragAccumulator = 0.0;
+                          }
+                        },
+                        child: PlayerContent(song: widget.song),
+                      ),
+                    ),
+                  ),
+      
+                  GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragStart: (details) {
+                      _swipeKey.currentState?.handleDragStart(details);
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      _swipeKey.currentState?.handleDragUpdate(details);
+                    },
+                    onHorizontalDragEnd: (details) {
+                      _swipeKey.currentState?.handleDragEnd(details);
+                    },
+                    onVerticalDragStart: (_) {
+                      _dragAccumulator = 0.0;
+                    },
+                    onVerticalDragUpdate: (details) {
+                      _dragAccumulator += details.delta.dy;
+                      if (_dragAccumulator > 20) {
+                        widget.onCollapse();
                         _dragAccumulator = 0.0;
-                      },
-                      onVerticalDragUpdate: (details) {
-                        _dragAccumulator += details.delta.dy;
-                        if (_dragAccumulator > 20) {
-                          widget.onCollapse();
-                          _dragAccumulator = 0.0;
-                        } else if (_dragAccumulator < -20) {
-                          _toggleLyrics();
-                          _dragAccumulator = 0.0;
-                        }
-                      },
-                      child: PlayerContent(song: widget.song),
+                      } else if (_dragAccumulator < -20) {
+                        _toggleLyrics();
+                        _dragAccumulator = 0.0;
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
+                      child: StreamBuilder<Duration>(
+                        stream: playerProvider.player.positionStream,
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          return PlayerControls(
+                            isPlaying: playerProvider.isPlaying,
+                            isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
+                                playerProvider.player.processingState == ProcessingState.loading),
+                            duration: _duration,
+                            position: _isDragging ? Duration(seconds: _dragValue.toInt()) : position,
+                            loopMode: playerProvider.playMode,
+                            onSeek: _onSeekEnd,
+                            onSeekStart: _onSeekStart,
+                            onSeekUpdate: _onSeekUpdate,
+                            onPlayPause: playerProvider.togglePlayPause,
+                            onNext: hasNext ? () => playerProvider.playNext() : null,
+                            onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                            onShuffle: playerProvider.togglePlayMode,
+                            onPlaylist: _showPlaylist,
+                            onLyrics: _toggleLyrics,
+                            onTimer: _showTimerDialog,
+                            onComment: _showQualityDialog,
+                            onInfo: _showSpeedDialog,
+                            onMore: _showVideoDetail,
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-
-                // 2. 下半部分：控制栏，不包裹在 SwipeablePlayerCard 中
-                GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  // 【核心】在这里捕获横向拖拽，并转发给 SwipeablePlayerCard
-                  onHorizontalDragStart: (details) {
-                    _swipeKey.currentState?.handleDragStart(details);
-                  },
-                  onHorizontalDragUpdate: (details) {
-                    _swipeKey.currentState?.handleDragUpdate(details);
-                  },
-                  onHorizontalDragEnd: (details) {
-                    _swipeKey.currentState?.handleDragEnd(details);
-                  },
-                  onVerticalDragStart: (_) {
-                    _dragAccumulator = 0.0;
-                  },
-                  onVerticalDragUpdate: (details) {
-                    _dragAccumulator += details.delta.dy;
-                    if (_dragAccumulator > 20) {
-                      widget.onCollapse();
-                      _dragAccumulator = 0.0;
-                    } else if (_dragAccumulator < -20) {
-                      _toggleLyrics();
-                      _dragAccumulator = 0.0;
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                    child: StreamBuilder<Duration>(
-                      stream: playerProvider.player.positionStream,
-                      builder: (context, snapshot) {
-                        final position = snapshot.data ?? Duration.zero;
-                        return PlayerControls(
-                          isPlaying: playerProvider.isPlaying,
-                          isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
-                              playerProvider.player.processingState == ProcessingState.loading),
-                          duration: _duration,
-                          position: _isDragging ? Duration(seconds: _dragValue.toInt()) : position,
-                          loopMode: playerProvider.playMode,
-                          onSeek: _onSeekEnd,
-                          onSeekStart: _onSeekStart,
-                          onSeekUpdate: _onSeekUpdate,
-                          onPlayPause: playerProvider.togglePlayPause,
-                          onNext: hasNext ? () => playerProvider.playNext() : null,
-                          onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
-                          onShuffle: playerProvider.togglePlayMode,
-                          onPlaylist: _showPlaylist,
-                          onLyrics: _toggleLyrics,
-                          onTimer: _showTimerDialog,
-                          onComment: _showQualityDialog,
-                          onInfo: _showSpeedDialog,
-                          onMore: _showVideoDetail,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            AnimatedSlide(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              offset: _showLyrics ? Offset.zero : const Offset(0, 1),
-              child: LyricsPage(
-                onBack: _toggleLyrics,
-                onPlaylist: _showPlaylist,
+                ],
               ),
-            ),
-          ],
+      
+              AnimatedSlide(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                offset: _showLyrics ? Offset.zero : const Offset(0, 1),
+                child: LyricsPage(
+                  onBack: _toggleLyrics,
+                  onPlaylist: _showPlaylist,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ... 后面的 _TimerDialog 和 _QualityDialog 保持不变 ...
 class _TimerDialog extends StatefulWidget {
   const _TimerDialog();
 
