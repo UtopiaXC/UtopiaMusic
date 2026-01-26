@@ -1,6 +1,5 @@
-# Utopia Music - Another Unofficial Cross-Platform Bilibili Music Client
-
-## WIP
+# Utopia Music
+> Another Unofficial Cross-Platform Bilibili Music Client
 
 开发初衷：最近用了 [Biu](https://github.com/wood3n/biu) 和 [BBPlayer](https://github.com/bbplayer-app/BBPlayer)
 ，发现两个应用都很优秀。可惜Biu用的 Electron 只支持桌面端，BBPlayer虽然是React Native
