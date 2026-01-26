@@ -19,11 +19,6 @@ class VideoApi {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       int currentIdx = prefs.getInt(_kFreshIdxKey) ?? 1;
       currentIdx++;
       await prefs.setInt(_kFreshIdxKey, currentIdx);
@@ -70,12 +65,6 @@ class VideoApi {
 
   Future<List<Song>> getRankingVideos(BuildContext context, {int rid = 0}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlRanking,
         baseUrl: Api.urlBase,
@@ -99,12 +88,6 @@ class VideoApi {
 
   Future<List<Song>> getRegionRankingVideos(BuildContext context, {required int rid}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlRankingRegion,
         baseUrl: Api.urlBase,
@@ -127,12 +110,6 @@ class VideoApi {
 
   Future<Map<String, dynamic>> getFeed(BuildContext context, String offset) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlDynamicFeed,
         baseUrl: Api.urlBase,

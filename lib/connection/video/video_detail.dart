@@ -13,12 +13,6 @@ class VideoDetailApi {
 
   Future<Map<String, dynamic>?> getVideoDetail(String bvid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlVideoDetail,
         baseUrl: Api.urlBase,
@@ -37,12 +31,6 @@ class VideoDetailApi {
 
   Future<List<Song>> getRelatedVideos(BuildContext context, String bvid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlArchiveRelated,
         baseUrl: Api.urlBase,
@@ -61,12 +49,6 @@ class VideoDetailApi {
 
   Future<List<Song>> getVideoCollection(BuildContext context, String bvid, int aid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final detail = await getVideoDetail(bvid);
       if (detail != null && detail['ugc_season'] != null) {
          final sections = detail['ugc_season']['sections'];
@@ -89,12 +71,6 @@ class VideoDetailApi {
   
   Future<List<Song>> getVideoParts(BuildContext context, String bvid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final detail = await getVideoDetail(bvid);
       if (detail != null) {
         final int videos = detail['videos'] ?? 0;
@@ -139,12 +115,6 @@ class VideoDetailApi {
   
   Future<List<Map<String, dynamic>>> getVideoReplies(String bvid, {int page = 1}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       int aid = 0;
       final detail = await getVideoDetail(bvid);
       if (detail != null) {
@@ -179,12 +149,6 @@ class VideoDetailApi {
   
   Future<List<Map<String, dynamic>>> getReplyReplies(int oid, int rpid, {int page = 1}) async {
      try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlVideoReplyReply,
         baseUrl: Api.urlBase,

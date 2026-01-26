@@ -13,12 +13,6 @@ class LibraryApi {
   
   Future<List<dynamic>> getFavoriteFolders(int mid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlFavFolderCreatedListAll,
         baseUrl: Api.urlBase,
@@ -35,12 +29,6 @@ class LibraryApi {
 
   Future<Map<String, dynamic>?> getFavoriteFolderInfo(String mediaId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlFavFolderInfo,
         baseUrl: Api.urlBase,
@@ -58,12 +46,6 @@ class LibraryApi {
 
   Future<List<dynamic>> getCollections(int mid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       List<dynamic> allCollections = [];
       int page = 1;
       bool hasMore = true;
@@ -105,12 +87,6 @@ class LibraryApi {
     BuildContext context,
   ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       List<Song> allSongs = [];
       int page = 1;
       bool hasMore = true;
@@ -160,12 +136,6 @@ class LibraryApi {
     BuildContext context,
   ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       List<Song> allSongs = [];
       int page = 1;
       bool hasMore = true;

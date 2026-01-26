@@ -16,7 +16,6 @@ class WbiUtil {
 
   static Future<Map<String, dynamic>> signParams(Map<String, dynamic> params) async {
     await _ensureKeys();
-
     if (_imgKey == null || _subKey == null) {
       print("Wbi keys missing, request may fail.");
       return params;
@@ -24,8 +23,8 @@ class WbiUtil {
     return _encWbi(params, _imgKey!, _subKey!);
   }
 
-  static Future<void> _ensureKeys() async {
-    if (_imgKey != null && _subKey != null) return;
+  static Future<void> _ensureKeys({bool force = false}) async {
+    if (!force && _imgKey != null && _subKey != null) return;
 
     try {
       final data = await Request().get(
@@ -40,11 +39,17 @@ class WbiUtil {
 
         _imgKey = imgUrl.split('/').last.split('.').first;
         _subKey = subUrl.split('/').last.split('.').first;
-        print("Wbi Keys cached: $_imgKey, $_subKey");
+        print("Wbi Keys refreshed: $_imgKey, $_subKey");
       }
     } catch (e) {
       print("Failed to fetch Wbi keys: $e");
     }
+  }
+
+  static Future<void> invalidateKeys() async {
+    _imgKey = null;
+    _subKey = null;
+    await _ensureKeys(force: true);
   }
 
   static String _getMixinKey(String orig) {

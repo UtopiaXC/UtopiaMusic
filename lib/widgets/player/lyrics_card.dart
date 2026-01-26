@@ -7,6 +7,7 @@ import 'package:utopia_music/connection/subtitles/subtitle_api.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/models/danmaku.dart' as model;
 import 'package:utopia_music/models/subtitle.dart';
+import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/player/player_controls.dart';
@@ -58,6 +59,9 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   int _currentSubtitleIndex = -1;
   bool _autoScroll = true;
 
+  Timer? _subtitleTimer;
+  Timer? _danmakuTimer;
+
   @override
   void initState() {
     super.initState();
@@ -103,10 +107,15 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _tabController.dispose();
+    _subtitleTimer?.cancel();
+    _danmakuTimer?.cancel();
     super.dispose();
   }
 
   void _resetState() {
+    _subtitleTimer?.cancel();
+    _danmakuTimer?.cancel();
+
     setState(() {
       _subtitles = [];
       _isLoadingSubtitles = true;
@@ -168,52 +177,83 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     _lastProcessedIndex = newIndex;
   }
 
-  Future<void> _loadData() async {
+  void _loadData() {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final song = playerProvider.currentSong;
     if (song == null) return;
+
     final currentId = '${song.bvid}_${song.cid}';
     if (currentId != _currentSongId) return;
 
-    int realCid = song.cid;
-    if (realCid == 0) {
-      try {
-        final detail = await _videoDetailApi.getVideoDetail(song.bvid);
-        if (detail != null && detail['cid'] != null) {
-          realCid = detail['cid'];
-        }
-      } catch (e) {
-        print('LyricsPage: Failed to fetch CID: $e');
+    _subtitleTimer?.cancel();
+    _danmakuTimer?.cancel();
+
+    _subtitleTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) _loadSubtitles(song, currentId);
+    });
+
+    _danmakuTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted) _loadDanmaku(song, currentId);
+    });
+  }
+
+  Future<int> _resolveCid(Song song) async {
+    if (song.cid != 0) return song.cid;
+    try {
+      final detail = await _videoDetailApi.getVideoDetail(song.bvid);
+      if (detail != null && detail['cid'] != null) {
+        return detail['cid'] as int;
       }
+    } catch (e) {
+      print('LyricsPage: Failed to fetch CID: $e');
     }
+    return 0;
+  }
+
+  Future<void> _loadSubtitles(Song song, String originalId) async {
+    if (_currentSongId != originalId) return;
+
+    final int realCid = await _resolveCid(song);
+
+    if (_currentSongId != originalId || !mounted) return;
 
     if (realCid == 0) {
-      if (mounted && currentId == _currentSongId) {
-        setState(() {
-          _isLoadingSubtitles = false;
-          _isLoadingDanmaku = false;
-        });
-      }
+      setState(() => _isLoadingSubtitles = false);
       return;
     }
 
     final subtitles = await _subtitleApi.getSubtitles(song.bvid, realCid);
-    if (mounted && currentId == _currentSongId) {
+
+    if (mounted && _currentSongId == originalId) {
       setState(() {
         _subtitles = subtitles;
         _hasSubtitles = subtitles.isNotEmpty;
         _isLoadingSubtitles = false;
       });
     }
+  }
+
+  Future<void> _loadDanmaku(Song song, String originalId) async {
+    if (_currentSongId != originalId) return;
+
+    final int realCid = await _resolveCid(song);
+
+    if (_currentSongId != originalId || !mounted) return;
+
+    if (realCid == 0) {
+      setState(() => _isLoadingDanmaku = false);
+      return;
+    }
 
     final danmakus = await _danmakuApi.getDanmaku(realCid);
-    if (mounted && currentId == _currentSongId) {
+
+    if (mounted && _currentSongId == originalId) {
       setState(() {
         _rawDanmakus = danmakus;
         _hasDanmaku = danmakus.isNotEmpty;
         _isLoadingDanmaku = false;
       });
-      _resetDanmakuCursor(playerProvider.player.position.inMilliseconds / 1000.0);
+      _resetDanmakuCursor(Provider.of<PlayerProvider>(context, listen: false).player.position.inMilliseconds / 1000.0);
     }
   }
 
@@ -232,10 +272,10 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
       setState(() => _currentSubtitleIndex = index);
       if (_autoScroll && index != -1) {
         _itemScrollController.scrollTo(
-          index: index,
+          index: index + 1, // +1 因为头部有 Padding 占位
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          alignment: 0.5,
+          alignment: 0.35, // 歌词高亮位置靠上
         );
       }
     }
@@ -291,8 +331,12 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     final backgroundMode = settingsProvider.playerBackgroundMode;
     final isBlurMode = backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
     final isNoneMode = backgroundMode == 'none';
-    final themeData = isNoneMode ? ThemeData.light() : Theme.of(context);
-    
+
+    // --- 核心修改：主题与夜间模式适配 ---
+    final themeData = Theme.of(context);
+    final isDarkMode = themeData.brightness == Brightness.dark;
+    final bool useLightText = isDarkMode || isBlurMode; // 深色模式或模糊模式下，文字通常用白色
+
     return Theme(
       data: themeData,
       child: Stack(
@@ -301,10 +345,11 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
           if (isBlurMode)
             _buildBlurredBackground(song.coverUrl, backgroundMode == 'gaussian_blur' ? 20.0 : 10.0)
           else if (isNoneMode)
-             Container(color: Colors.white.withValues(alpha: 0.95))
+          // 修改：使用主题背景色，而不是写死白色
+            Container(color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95))
           else
-             Container(color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95)),
-             
+            Container(color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95)),
+
           Scaffold(
             backgroundColor: Colors.transparent,
             body: GestureDetector(
@@ -325,7 +370,10 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                         margin: const EdgeInsets.only(bottom: 8),
                         width: 200, height: 36,
                         decoration: BoxDecoration(
-                          color: isNoneMode ? Colors.black.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.2),
+                          // 修改：背景条颜色适配
+                          color: useLightText
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.black.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: TabBar(
@@ -336,12 +384,15 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                           ),
                           indicatorSize: TabBarIndicatorSize.tab,
                           labelColor: themeData.colorScheme.onPrimary,
-                          unselectedLabelColor: isNoneMode ? Colors.black54 : Colors.white.withValues(alpha: 0.9),
+                          // 修改：未选中文字颜色适配
+                          unselectedLabelColor: useLightText
+                              ? Colors.white.withValues(alpha: 0.9)
+                              : Colors.black54,
                           dividerColor: Colors.transparent,
                           tabs: const [Tab(text: 'AI/字幕'), Tab(text: '弹幕')],
                         ),
                       ),
-  
+
                       Expanded(
                         child: TabBarView(
                           controller: _tabController,
@@ -352,7 +403,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                               hasDanmaku: _hasDanmaku,
                               rawDanmakus: _rawDanmakus,
                               onControllerCreated: (controller) => _danmakuController = controller,
-                              textColor: isNoneMode ? Colors.black : Colors.white,
+                              // 修改：弹幕文字颜色适配
+                              textColor: useLightText ? Colors.white : Colors.black,
                             ),
                           ],
                         ),

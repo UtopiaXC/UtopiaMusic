@@ -55,9 +55,6 @@ class LoginApi {
           contentType: Headers.formUrlEncodedContentType,
         ),
       );
-
-      print('Poll TV QR Code Response: $data');
-
       if (data != null && data is Map) {
         final code = data['code'];
         if (code == 0) {
