@@ -7,41 +7,43 @@ import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/services/database_service.dart';
 
 class SearchApi {
+  final DatabaseService _dbService = DatabaseService();
   final HtmlUnescape _unescape = HtmlUnescape();
 
-  Future<List<Song>> searchVideos(BuildContext context, String keyword, {int page = 1, int retryCount = 0}) async {
-    final params = {
-      'search_type': 'video',
-      'keyword': keyword,
-      'page': page,
-    };
+  Future<List<Song>> searchVideos(
+    BuildContext context,
+    String keyword, {
+    int page = 1,
+    int retryCount = 0,
+  }) async {
+    final params = {'search_type': 'video', 'keyword': keyword, 'page': page};
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final delay = prefs.getInt(SettingsProvider.requestDelayKey) ?? 100;
-      if (delay > 0) {
-        await Future.delayed(Duration(milliseconds: delay));
-      }
-
       final data = await Request().get(
         Api.urlSearch,
         baseUrl: Api.urlBase,
         params: params,
         useWbi: true,
       );
-      
+      final prefs = await SharedPreferences.getInstance();
       final maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
 
       if (data != null && data is Map && data['code'] == 0) {
         if (data['data'] == null) {
-           if (retryCount < maxRetries) {
-             print('Search response data is null, retrying... ($retryCount)');
-             await Future.delayed(const Duration(milliseconds: 500));
-             return searchVideos(context, keyword, page: page, retryCount: retryCount + 1);
-           }
-           return [];
+          if (retryCount < maxRetries) {
+            print('Search response data is null, retrying... ($retryCount)');
+            await Future.delayed(const Duration(milliseconds: 500));
+            return searchVideos(
+              context,
+              keyword,
+              page: page,
+              retryCount: retryCount + 1,
+            );
+          }
+          return [];
         }
 
         final result = data['data']['result'];
@@ -55,9 +57,16 @@ class SearchApi {
         }
       } else {
         if (retryCount < maxRetries) {
-           print('Search failed (code: ${data is Map ? data['code'] : 'invalid'}), retrying... ($retryCount)');
-           await Future.delayed(const Duration(milliseconds: 500));
-           return searchVideos(context, keyword, page: page, retryCount: retryCount + 1);
+          print(
+            'Search failed (code: ${data is Map ? data['code'] : 'invalid'}), retrying... ($retryCount)',
+          );
+          await Future.delayed(const Duration(milliseconds: 500));
+          return searchVideos(
+            context,
+            keyword,
+            page: page,
+            retryCount: retryCount + 1,
+          );
         }
 
         print(
@@ -68,11 +77,16 @@ class SearchApi {
     } catch (e) {
       final prefs = await SharedPreferences.getInstance();
       final maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
-      
+
       if (retryCount < maxRetries) {
         print('Error searching videos: $e, retrying... ($retryCount)');
         await Future.delayed(const Duration(milliseconds: 500));
-        return searchVideos(context, keyword, page: page, retryCount: retryCount + 1);
+        return searchVideos(
+          context,
+          keyword,
+          page: page,
+          retryCount: retryCount + 1,
+        );
       }
       print('Error searching videos: $e');
       return [];
@@ -82,11 +96,7 @@ class SearchApi {
   Future<List<String>> getSearchSuggestions(String keyword) async {
     if (keyword.isEmpty) return [];
 
-    final params = {
-      'term': keyword,
-      'main_ver': 'v1',
-      'highlight': '',
-    };
+    final params = {'term': keyword, 'main_ver': 'v1', 'highlight': ''};
 
     try {
       var data = await Request().get(
@@ -110,21 +120,28 @@ class SearchApi {
           if (resultNode is Map) {
             if (resultNode['tag'] != null && resultNode['tag'] is List) {
               final List tags = resultNode['tag'];
-              return tags.map<String>((item) {
-                if (item is Map) {
-                  return item['value']?.toString() ?? item['term']?.toString() ?? '';
-                }
-                return '';
-              }).where((s) => s.isNotEmpty).toList();
+              return tags
+                  .map<String>((item) {
+                    if (item is Map) {
+                      return item['value']?.toString() ??
+                          item['term']?.toString() ??
+                          '';
+                    }
+                    return '';
+                  })
+                  .where((s) => s.isNotEmpty)
+                  .toList();
             }
-          }
-          else if (resultNode is List) {
-            return resultNode.map<String>((item) {
-              if (item is Map) {
-                return item['value']?.toString() ?? '';
-              }
-              return '';
-            }).where((s) => s.isNotEmpty).toList();
+          } else if (resultNode is List) {
+            return resultNode
+                .map<String>((item) {
+                  if (item is Map) {
+                    return item['value']?.toString() ?? '';
+                  }
+                  return '';
+                })
+                .where((s) => s.isNotEmpty)
+                .toList();
           }
         }
       }
@@ -178,6 +195,10 @@ class SearchApi {
         params: {'bvid': bvid},
       );
       if (detailData != null && detailData is Map && detailData['code'] == 0) {
+        int cid = detailData['data']['cid'];
+        if (cid != 0) {
+          _dbService.updateCid(bvid, cid);
+        }
         return detailData['data']['cid'] ?? 0;
       }
     } catch (e) {

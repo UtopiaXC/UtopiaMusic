@@ -2,6 +2,8 @@ import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 
+import 'package:utopia_music/connection/utils/wbi.dart';
+
 class AudioStreamInfo {
   final String url;
   final int quality;
@@ -23,6 +25,22 @@ class AudioStreamApi {
     int qn = 16,
     int preferredQuality = 30280,
   }) async {
+    return await _getAudioStreamInternal(
+      bvid,
+      cid,
+      qn,
+      preferredQuality,
+      isRetry: false,
+    );
+  }
+
+  Future<AudioStreamInfo?> _getAudioStreamInternal(
+    String bvid,
+    int cid,
+    int qn,
+    int preferredQuality, {
+    required bool isRetry,
+  }) async {
     final params = {
       'bvid': bvid,
       'cid': cid,
@@ -40,81 +58,101 @@ class AudioStreamApi {
         suppressErrorDialog: true,
       );
 
-      if (data != null && data['code'] == 0) {
-        final dash = data['data']['dash'];
-        if (dash != null) {
-          List<dynamic> allAudio = [];
-
-          if (dash['audio'] != null && dash['audio'] is List) {
-            allAudio.addAll(dash['audio']);
-          }
-
-          if (dash['dolby'] != null &&
-              dash['dolby']['audio'] != null &&
-              dash['dolby']['audio'] is List) {
-            allAudio.addAll(dash['dolby']['audio']);
-          }
-
-          if (dash['flac'] != null && dash['flac']['audio'] != null) {
-            if (dash['flac']['audio'] is List) {
-              allAudio.addAll(dash['flac']['audio']);
-            } else if (dash['flac']['audio'] is Map) {
-              allAudio.add(dash['flac']['audio']);
+      if (data != null) {
+        if (data['code'] == 0) {
+          final dash = data['data']['dash'];
+          if (dash != null) {
+            List<dynamic> allAudio = [];
+            if (dash['audio'] != null && dash['audio'] is List) {
+              allAudio.addAll(dash['audio']);
             }
-          }
+            if (dash['dolby'] != null &&
+                dash['dolby']['audio'] != null &&
+                dash['dolby']['audio'] is List) {
+              allAudio.addAll(dash['dolby']['audio']);
+            }
 
-          if (allAudio.isNotEmpty) {
-            List<int> availableQualities = [];
-            for (var a in allAudio) {
-              if (a['id'] != null) {
-                availableQualities.add(a['id'] as int);
+            if (dash['flac'] != null && dash['flac']['audio'] != null) {
+              if (dash['flac']['audio'] is List) {
+                allAudio.addAll(dash['flac']['audio']);
+              } else if (dash['flac']['audio'] is Map) {
+                allAudio.add(dash['flac']['audio']);
               }
             }
-            availableQualities = availableQualities.toSet().toList();
-            availableQualities.sort(
-              (a, b) => getScore(b).compareTo(getScore(a)),
+
+            if (allAudio.isNotEmpty) {
+              List<int> availableQualities = [];
+              for (var a in allAudio) {
+                if (a['id'] != null) {
+                  availableQualities.add(a['id'] as int);
+                }
+              }
+              availableQualities = availableQualities.toSet().toList();
+              availableQualities.sort(
+                (a, b) => getScore(b).compareTo(getScore(a)),
+              );
+
+              int preferredScore = getScore(preferredQuality);
+
+              var candidates = allAudio.where((a) {
+                int id = a['id'] as int;
+                return getScore(id) <= preferredScore;
+              }).toList();
+
+              Map<String, dynamic> selectedAudio;
+
+              if (candidates.isNotEmpty) {
+                candidates.sort(
+                  (a, b) => getScore(b['id']).compareTo(getScore(a['id'])),
+                );
+                selectedAudio = candidates.first;
+              } else {
+                allAudio.sort(
+                  (a, b) => getScore(a['id']).compareTo(getScore(b['id'])),
+                );
+                selectedAudio = allAudio.first;
+              }
+
+              String url = selectedAudio['baseUrl'];
+              if (url.startsWith('http://')) {
+                url = url.replaceFirst('http://', 'https://');
+              }
+
+              String extension = 'm4s';
+              if (url.contains('.m4s')) {
+                extension = 'm4s';
+              } else if (url.contains('.mp4')) {
+                extension = 'mp4';
+              } else if (url.contains('.flac')) {
+                extension = 'flac';
+              }
+
+              return AudioStreamInfo(
+                url: url,
+                quality: selectedAudio['id'] as int,
+                extension: extension,
+                availableQualities: availableQualities,
+              );
+            }
+          }
+        } else {
+          print(
+            'GetAudioStream Error Code: ${data['code']}, Message: ${data['message']}',
+          );
+          if (!isRetry &&
+              (data['code'] == -403 ||
+                  data['code'] == -412 ||
+                  data['code'] == -400)) {
+            print(
+              "WBI signature might be invalid. Refreshing keys and retrying...",
             );
-
-            int preferredScore = getScore(preferredQuality);
-
-            var candidates = allAudio.where((a) {
-              int id = a['id'] as int;
-              return getScore(id) <= preferredScore;
-            }).toList();
-
-            Map<String, dynamic> selectedAudio;
-
-            if (candidates.isNotEmpty) {
-              candidates.sort(
-                (a, b) => getScore(b['id']).compareTo(getScore(a['id'])),
-              );
-              selectedAudio = candidates.first;
-            } else {
-              allAudio.sort(
-                (a, b) => getScore(a['id']).compareTo(getScore(b['id'])),
-              );
-              selectedAudio = allAudio.first;
-            }
-
-            String url = selectedAudio['baseUrl'];
-            if (url.startsWith('http://')) {
-              url = url.replaceFirst('http://', 'https://');
-            }
-
-            String extension = 'm4s';
-            if (url.contains('.m4s')) {
-              extension = 'm4s';
-            } else if (url.contains('.mp4')) {
-              extension = 'mp4';
-            } else if (url.contains('.flac')) {
-              extension = 'flac';
-            }
-
-            return AudioStreamInfo(
-              url: url,
-              quality: selectedAudio['id'] as int,
-              extension: extension,
-              availableQualities: availableQualities,
+            await WbiUtil.invalidateKeys();
+            return await _getAudioStreamInternal(
+              bvid,
+              cid,
+              qn,
+              preferredQuality,
+              isRetry: true,
             );
           }
         }
@@ -122,6 +160,16 @@ class AudioStreamApi {
       return null;
     } catch (e) {
       print('Error fetching audio stream: $e');
+      if (!isRetry) {
+        // 如果是网络异常，也可以尝试刷新一下（虽然主要是 WBI 问题，但防一手）
+        return await _getAudioStreamInternal(
+          bvid,
+          cid,
+          qn,
+          preferredQuality,
+          isRetry: true,
+        );
+      }
       return null;
     }
   }

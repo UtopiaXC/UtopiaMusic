@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/main.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/audio/bili_audio_source.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:flutter/material.dart';
@@ -23,8 +22,6 @@ class AudioPlayerService {
   int _preferredQuality = 30280;
 
   factory AudioPlayerService() => _instance;
-
-  final DatabaseService _dbService = DatabaseService();
   final DownloadManager _downloadManager = DownloadManager();
   final AudioPlayer _player = AudioPlayer();
 
@@ -195,6 +192,11 @@ class AudioPlayerService {
       artist: song.artist,
       coverUrl: song.coverUrl,
       quality: _preferredQuality,
+      onFatalError: (bvid, cid, msg) {
+        Future.microtask(() {
+          notifyPlaybackError(bvid, cid);
+        });
+      },
     );
   }
 
@@ -258,6 +260,14 @@ class AudioPlayerService {
       }
     } catch (e) {
       print("Set Audio Source Error (Mobile): $e");
+      if (e.toString().contains("403") || e.toString().contains("404")) {
+        _playbackErrorController.add({
+          'bvid': queue[index].bvid,
+          'cid': queue[index].cid,
+          'error': 'resource_error',
+        });
+      }
+
       await _handleInvalidResourceAndPlayNext();
     }
   }
@@ -303,29 +313,34 @@ class AudioPlayerService {
       final currentSong = this.currentSong;
       if (playlist == null || currentSong == null) {
         await playWithQueue(
-            newQueue,
-            newIndex,
-            autoPlay: _player.playing,
-            initialPosition: _player.position
+          newQueue,
+          newIndex,
+          autoPlay: _player.playing,
+          initialPosition: _player.position,
         );
         return;
       }
 
       final targetSong = newQueue[newIndex];
-      if (targetSong.bvid != currentSong.bvid || targetSong.cid != currentSong.cid) {
+      if (targetSong.bvid != currentSong.bvid ||
+          targetSong.cid != currentSong.cid) {
         await playWithQueue(
-            newQueue,
-            newIndex,
-            autoPlay: _player.playing,
-            initialPosition: _player.position
+          newQueue,
+          newIndex,
+          autoPlay: _player.playing,
+          initialPosition: _player.position,
         );
         return;
       }
       final songsBefore = newQueue.sublist(0, newIndex);
       final songsAfter = newQueue.sublist(newIndex + 1);
 
-      final sourcesBefore = songsBefore.map((s) => _createAudioSource(s)).toList();
-      final sourcesAfter = songsAfter.map((s) => _createAudioSource(s)).toList();
+      final sourcesBefore = songsBefore
+          .map((s) => _createAudioSource(s))
+          .toList();
+      final sourcesAfter = songsAfter
+          .map((s) => _createAudioSource(s))
+          .toList();
       final playerIndex = _player.currentIndex;
       if (playerIndex == null) throw Exception("Player index is null");
       if (playerIndex < playlist.length - 1) {
@@ -345,14 +360,13 @@ class AudioPlayerService {
       _currentIndex = newIndex;
 
       print("Hot swap playlist completed successfully.");
-
     } catch (e) {
       print("Hot swap failed, falling back to reload: $e");
       await playWithQueue(
-          newQueue,
-          newIndex,
-          autoPlay: _player.playing,
-          initialPosition: _player.position
+        newQueue,
+        newIndex,
+        autoPlay: _player.playing,
+        initialPosition: _player.position,
       );
     }
   }

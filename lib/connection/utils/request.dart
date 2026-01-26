@@ -17,6 +17,7 @@ import 'package:utopia_music/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 
 enum ResponseType { data, response }
 
@@ -26,7 +27,6 @@ class Request {
   late final PersistCookieJar _cookieJar;
   late final Future<void> _initWait;
   int _maxRetries = 2;
-
   static bool _isShowingAuthDialog = false;
   static bool _isShowingErrorDialog = false;
 
@@ -73,6 +73,7 @@ class Request {
   }
 
   Future<void> _loadSettings() async {
+
     final prefs = await SharedPreferences.getInstance();
     _maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
   }

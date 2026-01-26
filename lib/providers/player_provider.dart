@@ -43,6 +43,7 @@ class PlayerProvider extends ChangeNotifier {
   bool _stopAfterCurrent = false;
 
   int _currentPlayingQuality = 30280;
+
   int get currentPlayingQuality => _currentPlayingQuality;
 
   static const String _playModeKey = 'play_mode';
@@ -58,24 +59,39 @@ class PlayerProvider extends ChangeNotifier {
   int _historyReportCounter = 12;
 
   Song? get currentSong => _currentSong;
+
   List<Song> get playlist => _playlist;
+
   bool get isPlaying => _isPlaying;
+
   bool get isBuffering => _isBuffering;
+
   bool get isPlayerExpanded => _isPlayerExpanded;
+
   bool get showFullPlayer => _showFullPlayer;
+
   PlayMode get playMode => _playMode;
+
   bool get saveProgress => _saveProgress;
+
   bool get autoPlay => _autoPlay;
+
   bool get autoSkipInvalid => _autoSkipInvalid;
+
   bool get recommendationAutoPlay => _recommendationAutoPlay;
+
   bool get isRecommendationLoading => _isRecommendationLoading;
+
   bool get isTimerActive => _stopTimer != null;
+
   DateTime? get stopTime => _stopTime;
+
   bool get stopAfterCurrent => _stopAfterCurrent;
 
   int get decoderType => 0;
 
   static String get autoSkipInvalidKey => _autoSkipInvalidKey;
+
   AudioPlayer get player => _audioPlayerService.player;
 
   PlayerProvider() {
@@ -88,8 +104,11 @@ class PlayerProvider extends ChangeNotifier {
       final playing = state.playing;
       final processingState = state.processingState;
 
-      bool newIsPlaying = playing && processingState != ProcessingState.completed;
-      bool newIsBuffering = processingState == ProcessingState.buffering || processingState == ProcessingState.loading;
+      bool newIsPlaying =
+          playing && processingState != ProcessingState.completed;
+      bool newIsBuffering =
+          processingState == ProcessingState.buffering ||
+          processingState == ProcessingState.loading;
 
       if (_isPlaying != newIsPlaying || _isBuffering != newIsBuffering) {
         _isPlaying = newIsPlaying;
@@ -105,7 +124,10 @@ class PlayerProvider extends ChangeNotifier {
       }
 
       if (processingState == ProcessingState.completed) {
-        if (_stopAfterCurrent && isTimerActive && _stopTime != null && DateTime.now().isAfter(_stopTime!)) {
+        if (_stopAfterCurrent &&
+            isTimerActive &&
+            _stopTime != null &&
+            DateTime.now().isAfter(_stopTime!)) {
           cancelStopTimer();
           _audioPlayerService.stop();
         }
@@ -115,7 +137,8 @@ class PlayerProvider extends ChangeNotifier {
     _audioPlayerService.currentIndexStream.listen((index) {
       if (index >= 0 && index < _playlist.length) {
         final newSong = _playlist[index];
-        if (_currentSong?.bvid != newSong.bvid || _currentSong?.cid != newSong.cid) {
+        if (_currentSong?.bvid != newSong.bvid ||
+            _currentSong?.cid != newSong.cid) {
           _onSongChanged(newSong);
         }
       }
@@ -151,7 +174,8 @@ class PlayerProvider extends ChangeNotifier {
     _saveProgress = prefs.getBool(_saveProgressKey) ?? true;
     _autoPlay = prefs.getBool(_autoPlayKey) ?? false;
     _autoSkipInvalid = prefs.getBool(_autoSkipInvalidKey) ?? true;
-    _recommendationAutoPlay = prefs.getBool(_recommendationAutoPlayKey) ?? false;
+    _recommendationAutoPlay =
+        prefs.getBool(_recommendationAutoPlayKey) ?? false;
 
     _audioPlayerService.setAutoSkipInvalid(_autoSkipInvalid);
     int quality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
@@ -169,7 +193,7 @@ class PlayerProvider extends ChangeNotifier {
     } else {
       _historyReportCounter = 12;
     }
-    
+
     notifyListeners();
     _databaseService.recordCacheAccess(newSong.bvid, newSong.cid, 30280);
 
@@ -188,14 +212,18 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> _handlePlaybackError(Map<String, dynamic> error) async {
     if (!_autoSkipInvalid) return;
-
+    await Future.delayed(const Duration(milliseconds: 300));
     final String bvid = error['bvid'] ?? '';
     final int cid = error['cid'] ?? 0;
 
-    int index = _playlist.indexWhere((s) => s.bvid == bvid && (cid == 0 || s.cid == 0 || s.cid == cid));
+    int index = _playlist.indexWhere(
+      (s) => s.bvid == bvid && (cid == 0 || s.cid == 0 || s.cid == cid),
+    );
 
     if (index != -1) {
-      print("PlayerProvider: Removing invalid song from playlist: $bvid / $cid");
+      print(
+        "PlayerProvider: Removing invalid song from playlist: $bvid / $cid",
+      );
       final context = navigatorKey.currentContext;
       if (context != null) {
         ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -222,13 +250,16 @@ class PlayerProvider extends ChangeNotifier {
       final context = navigatorKey.currentContext;
       if (context == null) return;
 
-      final related = await _videoDetailApi.getRelatedVideos(context, currentSong.bvid);
+      final related = await _videoDetailApi.getRelatedVideos(
+        context,
+        currentSong.bvid,
+      );
 
       if (_currentSong?.bvid != currentSong.bvid) return;
 
       if (related.isNotEmpty) {
         List<Song> newPlaylist = [currentSong, ...related];
-        final Set<String> seen = { '${currentSong.bvid}_${currentSong.cid}' };
+        final Set<String> seen = {'${currentSong.bvid}_${currentSong.cid}'};
         List<Song> deduped = [currentSong];
         for (var s in related) {
           final key = '${s.bvid}_${s.cid}';
@@ -242,7 +273,9 @@ class PlayerProvider extends ChangeNotifier {
         await _databaseService.replacePlaylist(newPlaylist);
         await _reloadPlaylistFromDb();
 
-        int newIndex = _playlist.indexWhere((s) => s.bvid == currentSong.bvid && s.cid == currentSong.cid);
+        int newIndex = _playlist.indexWhere(
+          (s) => s.bvid == currentSong.bvid && s.cid == currentSong.cid,
+        );
         if (newIndex == -1) newIndex = 0;
 
         await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
@@ -262,9 +295,13 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> playSong(Song song) async {
-    int index = _playlist.indexWhere((s) => s.bvid == song.bvid && s.cid == song.cid);
+    int index = _playlist.indexWhere(
+      (s) => s.bvid == song.bvid && s.cid == song.cid,
+    );
     if (index != -1) {
-      if (_currentSong?.bvid == song.bvid && _currentSong?.cid == song.cid && _isPlaying) {
+      if (_currentSong?.bvid == song.bvid &&
+          _currentSong?.cid == song.cid &&
+          _isPlaying) {
         return;
       }
       await _startPlay(index);
@@ -346,9 +383,12 @@ class PlayerProvider extends ChangeNotifier {
     await _databaseService.removeSong(songToRemove.bvid, songToRemove.cid);
     await _reloadPlaylistFromDb();
 
-    bool isCurrent = _currentSong != null &&
+    bool isCurrent =
+        _currentSong != null &&
         _currentSong!.bvid == songToRemove.bvid &&
-        (_currentSong!.cid == 0 || songToRemove.cid == 0 || _currentSong!.cid == songToRemove.cid);
+        (_currentSong!.cid == 0 ||
+            songToRemove.cid == 0 ||
+            _currentSong!.cid == songToRemove.cid);
 
     if (isCurrent) {
       if (_playlist.isEmpty) {
@@ -357,7 +397,11 @@ class PlayerProvider extends ChangeNotifier {
         int nextIndex = index;
         if (nextIndex >= _playlist.length) nextIndex = 0;
 
-        await _audioPlayerService.playWithQueue(_playlist, nextIndex, autoPlay: true);
+        await _audioPlayerService.playWithQueue(
+          _playlist,
+          nextIndex,
+          autoPlay: true,
+        );
       }
     } else {
       await _syncPlayerQueue();
@@ -373,9 +417,14 @@ class PlayerProvider extends ChangeNotifier {
     await _reloadPlaylistFromDb();
 
     if (_currentSong != null) {
-      int newCurrentIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+      int newCurrentIndex = _playlist.indexWhere(
+        (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+      );
       if (newCurrentIndex != -1) {
-        await _audioPlayerService.updateQueueKeepPlaying(_playlist, newCurrentIndex);
+        await _audioPlayerService.updateQueueKeepPlaying(
+          _playlist,
+          newCurrentIndex,
+        );
       }
     }
   }
@@ -387,7 +436,9 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> _syncPlayerQueue() async {
     if (_currentSong == null) return;
-    int currentIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+    int currentIndex = _playlist.indexWhere(
+      (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+    );
     if (currentIndex != -1) {
       await _audioPlayerService.updateQueueKeepPlaying(_playlist, currentIndex);
     } else if (_playlist.isNotEmpty) {
@@ -405,7 +456,7 @@ class PlayerProvider extends ChangeNotifier {
     } else {
       _historyReportCounter = 12;
     }
-    
+
     await _audioPlayerService.playWithQueue(_playlist, index, autoPlay: true);
     await _setPlayerLoopMode();
   }
@@ -426,13 +477,16 @@ class PlayerProvider extends ChangeNotifier {
     _playMode = newMode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_playModeKey, _playMode.index);
-    bool isOrderChanged = (oldMode == PlayMode.shuffle) || (newMode == PlayMode.shuffle);
+    bool isOrderChanged =
+        (oldMode == PlayMode.shuffle) || (newMode == PlayMode.shuffle);
 
     if (isOrderChanged) {
       await _reloadPlaylistFromDb();
 
       if (_currentSong != null) {
-        int newIndex = _playlist.indexWhere((s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid);
+        int newIndex = _playlist.indexWhere(
+          (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
+        );
         if (newIndex != -1) {
           await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
         } else if (_playlist.isNotEmpty) {
@@ -474,8 +528,10 @@ class PlayerProvider extends ChangeNotifier {
 
   void _startProgressTimer() {
     _stopProgressTimer();
-    
-    _progressSaveTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+
+    _progressSaveTimer = Timer.periodic(const Duration(seconds: 1), (
+      timer,
+    ) async {
       if (_isPlaying) {
         if (_saveProgress) {
           _saveCurrentProgress();
@@ -483,21 +539,24 @@ class PlayerProvider extends ChangeNotifier {
 
         final context = navigatorKey.currentContext;
         if (context != null && _currentSong != null) {
-           final settings = Provider.of<SettingsProvider>(context, listen: false);
-           final auth = Provider.of<AuthProvider>(context, listen: false);
-           
-           if (settings.enableHistoryReport && auth.isLoggedIn) {
-             _historyReportCounter++;
-             
-             if (_historyReportCounter >= 15) {
-               _reportHistoryApi.reportHistory(
-                 bvid: _currentSong!.bvid,
-                 cid: _currentSong!.cid,
-                 playedTime: player.position.inSeconds,
-               );
-               _historyReportCounter = 0;
-             }
-           }
+          final settings = Provider.of<SettingsProvider>(
+            context,
+            listen: false,
+          );
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+
+          if (settings.enableHistoryReport && auth.isLoggedIn) {
+            _historyReportCounter++;
+
+            if (_historyReportCounter >= 15) {
+              _reportHistoryApi.reportHistory(
+                bvid: _currentSong!.bvid,
+                cid: _currentSong!.cid,
+                playedTime: player.position.inSeconds,
+              );
+              _historyReportCounter = 0;
+            }
+          }
         }
       }
     });
@@ -556,7 +615,9 @@ class PlayerProvider extends ChangeNotifier {
 
     int initialIndex = 0;
     if (lastBvid != null) {
-      initialIndex = _playlist.indexWhere((s) => s.bvid == lastBvid && s.cid == lastCid);
+      initialIndex = _playlist.indexWhere(
+        (s) => s.bvid == lastBvid && s.cid == lastCid,
+      );
     }
 
     if (initialIndex == -1) {
@@ -572,7 +633,11 @@ class PlayerProvider extends ChangeNotifier {
     _showFullPlayer = true;
 
     try {
-      await _audioPlayerService.playWithQueue(_playlist, initialIndex, autoPlay: _autoPlay);
+      await _audioPlayerService.playWithQueue(
+        _playlist,
+        initialIndex,
+        autoPlay: _autoPlay,
+      );
       if (_saveProgress && lastPosition > 0) {
         await player.seek(Duration(milliseconds: lastPosition));
       }
@@ -583,8 +648,12 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> playNext() async => await _audioPlayerService.playNext();
+
   Future<void> playPrevious() async => await _audioPlayerService.playPrevious();
-  Future<void> togglePlayPause() async => await _audioPlayerService.togglePlayPause();
+
+  Future<void> togglePlayPause() async =>
+      await _audioPlayerService.togglePlayPause();
+
   Future<void> seek(Duration position) async => await player.seek(position);
 
   void expandPlayer() {

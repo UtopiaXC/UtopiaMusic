@@ -97,6 +97,7 @@ class SubtitleApi {
         baseUrl: Api.urlBase,
         params: params,
         useWbi: true,
+        suppressErrorDialog: true
       );
 
       if (data != null && data['code'] == 0) {

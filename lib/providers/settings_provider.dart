@@ -5,7 +5,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
-import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -14,8 +13,12 @@ class SettingsProvider extends ChangeNotifier {
   static const String _startPageKey = 'start_page';
   static const String _saveSearchHistoryKey = 'save_search_history';
   static const String _searchHistoryLimitKey = 'search_history_limit';
-  static const String maxRetriesKey = 'max_retries';
-  static const String requestDelayKey = 'request_delay';
+  //TODO: NEEDS TO REFACTOR FOR RETRY AND DELAY
+  static const String _maxRetriesKey = 'max_retries';
+  static const String maxRetriesKey = _maxRetriesKey;
+  static const String _requestDelayKey = 'request_delay';
+  // static const String requestDelayKey = _requestDelayKey;
+
   static const String _localeKey = 'locale';
   static const String _cacheLimitKey = 'cache_limit';
   static const String _autoCheckUpdateKey = 'auto_check_update';
@@ -110,8 +113,8 @@ class SettingsProvider extends ChangeNotifier {
     _startPageIndex = prefs.getInt(_startPageKey) ?? 0;
     _saveSearchHistory = prefs.getBool(_saveSearchHistoryKey) ?? true;
     _searchHistoryLimit = prefs.getInt(_searchHistoryLimitKey) ?? 10;
-    _maxRetries = prefs.getInt(maxRetriesKey) ?? 2;
-    _requestDelay = prefs.getInt(requestDelayKey) ?? 50;
+    _maxRetries = prefs.getInt(_maxRetriesKey) ?? 2;
+    _requestDelay = prefs.getInt(_requestDelayKey) ?? 50;
 
     final localeCode = prefs.getString(_localeKey);
     if (localeCode != null) {
@@ -180,14 +183,14 @@ class SettingsProvider extends ChangeNotifier {
     _maxRetries = retries;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(maxRetriesKey, retries);
+    await prefs.setInt(_maxRetriesKey, retries);
   }
 
   Future<void> setRequestDelay(int delay) async {
     _requestDelay = delay;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(requestDelayKey, delay);
+    await prefs.setInt(_requestDelayKey, delay);
   }
 
   Future<void> setLocale(Locale? locale) async {
@@ -312,8 +315,8 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_startPageKey);
     await prefs.remove(_saveSearchHistoryKey);
     await prefs.remove(_searchHistoryLimitKey);
-    await prefs.remove(maxRetriesKey);
-    await prefs.remove(requestDelayKey);
+    await prefs.remove(_maxRetriesKey);
+    await prefs.remove(_requestDelayKey);
     await prefs.remove(_localeKey);
     await prefs.remove(_cacheLimitKey);
     await prefs.remove(_autoCheckUpdateKey);

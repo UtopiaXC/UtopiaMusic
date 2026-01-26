@@ -368,11 +368,6 @@ class DatabaseService {
     await db.delete('cache_meta');
   }
 
-  Future<void> clearBufferingCacheMeta() async {
-    final db = await database;
-    await db.delete('cache_meta', where: 'status = ?', whereArgs: [2]);
-  }
-
   Future<int> createLocalPlaylist(String title, String description) async {
     final db = await database;
     return await db.insert('local_playlists', {
@@ -554,6 +549,27 @@ class DatabaseService {
   Future<void> clearStaticCacheMeta() async {
     final db = await database;
     await db.delete('cache_meta', where: 'status = ?', whereArgs: [1]);
+  }
+
+  Future<void> updateCid(String bvid, int newCid) async {
+    final db = await database;
+    try {
+      await db.update(
+          'playlist',
+          {'cid': newCid},
+          where: 'bvid = ?',
+          whereArgs: [bvid]
+      );
+      await db.update(
+          'local_playlist_songs',
+          {'cid': newCid},
+          where: 'bvid = ?',
+          whereArgs: [bvid]
+      );
+      print('DatabaseService: Updated CID for $bvid to $newCid');
+    } catch (e) {
+      print('DatabaseService: Failed to update CID: $e');
+    }
   }
 
   Future<void> deleteDatabaseFile() async {
