@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 on:
   push:
@@ -12,30 +12,51 @@ env:
   FLUTTER_CHANNEL: "stable"
 
 jobs:
-  prepare:
+  version:
     runs-on: ubuntu-latest
     outputs:
-      BUILD_NAME: ${{ steps.version.outputs.build_name }}
-      BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+      VERSION_NAME: ${{ steps.version_computation.outputs.version_name }}
+      BUILD_NUMBER: ${{ steps.version_computation.outputs.build_number }}
+      RELEASE_NOTE_PATH: ${{ steps.release_note_finder.outputs.note_path }}
     steps:
       - uses: actions/checkout@v4
-      - name: Compute Version
-        id: version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute version from tag
+        id: version_computation
+        shell: bash
         run: |
-          tag_name="${{ github.ref_name }}"
-          build_name="${tag_name#v}"
-          today=$(TZ=Asia/Tokyo date +%Y%m%d)
-          count=$(gh release list --limit 100 --json createdAt --jq "[.[] | select(.createdAt | startswith(\"${today}\"))] | length")
-          seq=$((count + 1))
-          build_number=$(printf "%s%02d" "$today" "$seq")
-          echo "build_name=$build_name" >> "$GITHUB_OUTPUT"
-          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+          tagName=${{ github.ref_name }}
+          cleanVersion=${tagName#v}
+          cleanVersion=${cleanVersion%+*}
+          
+          echo "version_name=$cleanVersion" >> "$GITHUB_OUTPUT"
+          echo "build_number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Find release note file
+        id: release_note_finder
+        shell: bash
+        run: |
+          tagName=${{ github.ref_name }}
+          cleanVersion=${tagName#v}
+          cleanVersion=${cleanVersion%+*}
+          
+          notePathWithV="assets/documentations/release_note/${tagName}.md"
+          notePathWithoutV="assets/documentations/release_note/${cleanVersion}.md"
+          
+          if [ -f "$notePathWithV" ]; then
+            echo "note_path=$notePathWithV" >> "$GITHUB_OUTPUT"
+          elif [ -f "$notePathWithoutV" ]; then
+            echo "note_path=$notePathWithoutV" >> "$GITHUB_OUTPUT"
+          else
+            touch release_note_empty.md
+            echo "note_path=release_note_empty.md" >> "$GITHUB_OUTPUT"
+          fi
 
   android:
-    needs: prepare
+    needs: version
     runs-on: ubuntu-latest
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -45,44 +66,57 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
-      - run: flutter pub get
-      - name: Build APK
-        run: flutter build apk --release --split-per-abi --build-name ${{ needs.prepare.outputs.BUILD_NAME }} --build-number ${{ needs.prepare.outputs.BUILD_NUMBER }}
-      - name: Rename Artifacts
-        env:
-          VERSION: ${{ needs.prepare.outputs.BUILD_NAME }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle
+            ~/.android
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build split-per-abi APKs
+        run: flutter build apk --release --split-per-abi --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+      - name: Rename and Collect APKs
         run: |
-          mkdir dist
+          mkdir -p out
           for apk in build/app/outputs/flutter-apk/*-release.apk; do
             abi=$(basename "$apk" | sed 's/.*-\(.*\)-release\.apk/\1/')
-            cp "$apk" "dist/UtopiaMusic-${VERSION}-Android-${abi}.apk"
+            cp "$apk" "out/UtopiaMusic-${VERSION_NAME}-Android-${abi}.apk"
           done
       - uses: actions/upload-artifact@v4
         with:
           name: android
-          path: dist/*.apk
+          path: out/*.apk
 
   linux:
-    needs: prepare
+    needs: version
     runs-on: ubuntu-latest
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
-      - name: Install Dependencies
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libglib2.0-dev patchelf ruby-dev rubygems rpm
           sudo gem install --no-document fpm
           wget -q https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
-      - run: flutter pub get
-      - name: Build Linux
-        run: flutter build linux --release --build-name ${{ needs.prepare.outputs.BUILD_NAME }} --build-number ${{ needs.prepare.outputs.BUILD_NUMBER }}
-      - name: Package
-        env:
-          VERSION: ${{ needs.prepare.outputs.BUILD_NAME }}
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build linux bundle
+        run: flutter build linux --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+      - name: Package AppImage deb rpm
         run: |
           mkdir -p dist/AppDir/usr/bin dist/AppDir/usr/share/applications dist/AppDir/usr/share/icons/hicolor/256x256/apps
           cp -r build/linux/x64/release/bundle/* dist/AppDir/usr/bin/
@@ -95,6 +129,7 @@ jobs:
           Icon=utopiamusic
           Categories=Audio;Music;
           EOF
+          
           cp dist/AppDir/utopiamusic.desktop dist/AppDir/usr/share/applications/
           
           if [ -f assets/images/ic_windows.png ]; then 
@@ -103,110 +138,109 @@ jobs:
           fi
           
           ln -s usr/bin/UtopiaMusic dist/AppDir/AppRun
-          (cd dist && ARCH=x86_64 ../appimagetool AppDir "UtopiaMusic-${VERSION}-Linux-x64.AppImage")
-          fpm -s dir -t deb -n utopiamusic -v "${VERSION}" --architecture amd64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
-          mv utopiamusic_${VERSION}_amd64.deb "dist/UtopiaMusic-${VERSION}-Linux-x64.deb"
-          fpm -s dir -t rpm -n utopiamusic -v "${VERSION}" --architecture x86_64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
-          mv utopiamusic-${VERSION}-1.x86_64.rpm "dist/UtopiaMusic-${VERSION}-Linux-x64.rpm"
+          
+          (cd dist && ARCH=x86_64 ../appimagetool AppDir "UtopiaMusic-${VERSION_NAME}-Linux-x64.AppImage")
+          
+          debVersion=${VERSION_NAME/+/-}
+          fpm -s dir -t deb -n utopiamusic -v "$debVersion" --architecture amd64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
+          mv utopiamusic_${debVersion}_amd64.deb "UtopiaMusic-${VERSION_NAME}-Linux-x64.deb"
+          
+          rpmVersion=${VERSION_NAME/+/.}
+          fpm -s dir -t rpm -n utopiamusic -v "$rpmVersion" --architecture x86_64 --prefix /opt/utopiamusic -C build/linux/x64/release/bundle .
+          mv utopiamusic-${rpmVersion}-1.x86_64.rpm "UtopiaMusic-${VERSION_NAME}-Linux-x64.rpm"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: dist/*.*
+          path: |
+            dist/UtopiaMusic-${{ env.VERSION_NAME }}-Linux-x64.AppImage
+            dist/UtopiaMusic-${{ env.VERSION_NAME }}-Linux-x64.deb
+            dist/UtopiaMusic-${{ env.VERSION_NAME }}-Linux-x64.rpm
 
   apple:
-    needs: prepare
+    needs: version
     runs-on: macos-latest
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
-      - run: flutter pub get
-
-      - name: Build iOS
-        run: flutter build ios --release --no-codesign --build-name ${{ needs.prepare.outputs.BUILD_NAME }} --build-number ${{ needs.prepare.outputs.BUILD_NUMBER }}
-      - name: Package IPA
-        env:
-          VERSION: ${{ needs.prepare.outputs.BUILD_NAME }}
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build iOS unsigned
+        run: flutter build ios --release --no-codesign --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+      - name: Create unsigned IPA
         run: |
-          mkdir -p dist/ios/Payload
-          cp -R build/ios/Release-iphoneos/Runner.app dist/ios/Payload/Runner.app
-          cd dist/ios
-          zip -r "UtopiaMusic-${VERSION}-iOS.ipa" Payload
-
-      - name: Build macOS
-        run: flutter build macos --release --build-name ${{ needs.prepare.outputs.BUILD_NAME }} --build-number ${{ needs.prepare.outputs.BUILD_NUMBER }}
-      - name: Package DMG
-        env:
-          VERSION: ${{ needs.prepare.outputs.BUILD_NAME }}
+          mkdir -p out/ios/Payload
+          cp -R build/ios/Release-iphoneos/Runner.app out/ios/Payload/Runner.app
+          (cd out/ios && zip -r "UtopiaMusic-${VERSION_NAME}-iOS-universal.ipa" Payload)
+      - name: Build macOS app
+        run: flutter build macos --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+      - name: Create DMG
         run: |
-          mkdir -p dist/mac
-          APP_PATH=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n1)
-          hdiutil create -volname "UtopiaMusic" -srcfolder "$APP_PATH" -ov -format UDZO "dist/mac/UtopiaMusic-${VERSION}-macOS-universal.dmg"
-
+          mkdir -p out/mac
+          applicationPath=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n1)
+          if [ -z "$applicationPath" ]; then
+            exit 1
+          fi
+          hdiutil create -volname "UtopiaMusic" -srcfolder "$applicationPath" -ov -format UDZO "out/mac/UtopiaMusic-${VERSION_NAME}-macOS-universal.dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: apple
           path: |
-            dist/ios/*.ipa
-            dist/mac/*.dmg
+            out/ios/UtopiaMusic-${{ env.VERSION_NAME }}-iOS-universal.ipa
+            out/mac/UtopiaMusic-${{ env.VERSION_NAME }}-macOS-universal.dmg
 
   windows:
-    needs: prepare
+    needs: version
     runs-on: windows-latest
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
+      BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
-      - run: flutter pub get
+      - name: Flutter pub get
+        run: flutter pub get
       - name: Build Windows
-        run: flutter build windows --release --build-name ${{ needs.prepare.outputs.BUILD_NAME }} --build-number ${{ needs.prepare.outputs.BUILD_NUMBER }}
-      - name: Package
-        env:
-          VERSION: ${{ needs.prepare.outputs.BUILD_NAME }}
+        run: flutter build windows --release --build-name $env:VERSION_NAME --build-number $env:BUILD_NUMBER
+      - name: Package portable zip
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\UtopiaMusic-${env:VERSION}-Windows-x64-portable.zip"
-          
-          # Setup: UtopiaMusic-1.0.0-Windows-x64-setup.exe
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "out\UtopiaMusic-${env:VERSION_NAME}-Windows-x64-portable.zip"
+      - name: Package setup exe
+        run: |
           if (Test-Path "windows\installer.iss") {
             choco install innosetup -y
-            iscc "windows\installer.iss" /DAppVersion=${env:VERSION} /O"dist" /F"UtopiaMusic-${env:VERSION}-Windows-x64-setup"
+            iscc "windows\installer.iss" /DAppVersion=${env:VERSION_NAME} /O"out" /F"UtopiaMusic-${env:VERSION_NAME}-Windows-x64-setup"
           }
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: dist/*
+          path: out/*
 
   publish:
-    needs: [prepare, android, linux, apple, windows]
+    needs: [version, android, linux, apple, windows]
     runs-on: ubuntu-latest
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
+      RELEASE_NOTE_PATH: ${{ needs.version.outputs.RELEASE_NOTE_PATH }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
-
-      - name: Prepare Release Note
-        id: note
-        run: |
-          tag_name="${{ github.ref_name }}"
-          note_file="assets/documentations/release_note/${tag_name}.md"
-          
-          if [ -f "$note_file" ]; then
-            cat "$note_file" > release_body.md
-          else
-            touch release_body.md
-          fi
-
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
-          body_path: release_body.md
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**/*
           draft: false
           prerelease: false
+          body_path: ${{ env.RELEASE_NOTE_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
