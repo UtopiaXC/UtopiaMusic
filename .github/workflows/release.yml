@@ -1,5 +1,5 @@
 name: Release
-
+run-name: Release ${{ github.ref_name }} by @${{ github.actor }}
 on:
   push:
     tags:
@@ -188,7 +188,7 @@ jobs:
           cp -R build/ios/Release-iphoneos/Runner.app dist/ios/Payload/Runner.app
           (cd dist/ios && zip -r "UtopiaMusic-${VERSION_NAME}-iOS-universal.ipa" Payload)
       - name: Build macOS app
-        run: flutter build macos --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER --no-codesign
+        run: flutter build macos --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER
       - name: Ad-hoc Sign macOS App
         run: |
           appPath=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n1)
