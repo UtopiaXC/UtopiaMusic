@@ -1,5 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "SWIPEABLE_PLAYER_CARD";
 
 class SwipeablePlayerCard extends StatefulWidget {
   final Widget child;
@@ -32,6 +35,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
 
   @override
   void initState() {
+    Log.v(_tag, "initState");
     super.initState();
     _controller = AnimationController(
       vsync: this,
@@ -41,11 +45,13 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
 
   @override
   void dispose() {
+    Log.v(_tag, "dispose");
     _controller.dispose();
     super.dispose();
   }
 
   void handleDragStart(DragStartDetails details) {
+    Log.v(_tag, "handleDragStart, details: $details");
     if (!widget.enableSwipe || _isAnimatingOut) return;
     setState(() {
       _dragExtent = 0.0;
@@ -53,6 +59,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
   }
 
   void handleDragUpdate(DragUpdateDetails details) {
+    Log.v(_tag, "handleDragUpdate, details: $details");
     if (!widget.enableSwipe || _isAnimatingOut) return;
     setState(() {
       _dragExtent += details.delta.dx;
@@ -60,6 +67,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
   }
 
   void handleDragEnd(DragEndDetails details) {
+    Log.v(_tag, "handleDragEnd, details: $details");
     if (!widget.enableSwipe || _isAnimatingOut) return;
 
     final velocity = details.primaryVelocity ?? 0;
@@ -80,6 +88,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
   }
 
   void _animateBack() {
+    Log.v(_tag, "_animateBack");
     _controller.duration = const Duration(milliseconds: 300);
     final start = _dragExtent;
 
@@ -99,6 +108,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
   }
 
   void _animateOut(double direction) {
+    Log.v(_tag, "_animateOut, direction: $direction");
     setState(() {
       _isAnimatingOut = true;
     });
@@ -132,6 +142,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
 
   @override
   void didUpdateWidget(SwipeablePlayerCard oldWidget) {
+    Log.v(_tag, "didUpdateWidget, oldWidget: $oldWidget");
     super.didUpdateWidget(oldWidget);
     if (_isAnimatingOut) {
       _controller.stop();
@@ -144,6 +155,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     return LayoutBuilder(
       builder: (context, constraints) {
         _width = constraints.maxWidth;

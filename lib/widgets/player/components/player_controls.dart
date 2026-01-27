@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "PLAYER_CONTROLS";
 
 class PlayerControls extends StatelessWidget {
   final VoidCallback onPlayPause;
@@ -51,6 +54,7 @@ class PlayerControls extends StatelessWidget {
   });
 
   String _formatDuration(Duration duration) {
+    Log.v(_tag, "_formatDuration, duration: $duration");
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     final hours = duration.inHours;
     final minutes = twoDigits(duration.inMinutes.remainder(60));
@@ -62,6 +66,7 @@ class PlayerControls extends StatelessWidget {
   }
 
   Widget _getLoopModeIcon(BuildContext context) {
+    Log.v(_tag, "_getLoopModeIcon");
     switch (loopMode) {
       case PlayMode.sequence:
         return const Icon(Icons.repeat, color: Colors.grey);
@@ -75,6 +80,7 @@ class PlayerControls extends StatelessWidget {
   }
 
   Color? _getLoopModeColor(BuildContext context) {
+    Log.v(_tag, "_getLoopModeColor");
     if (loopMode == PlayMode.sequence) {
       return Theme.of(context).disabledColor;
     }
@@ -82,6 +88,7 @@ class PlayerControls extends StatelessWidget {
   }
 
   Widget _getSpeedIcon(BuildContext context) {
+    Log.v(_tag, "_getSpeedIcon");
     final playerProvider = Provider.of<PlayerProvider>(context);
     final speed = playerProvider.player.speed;
 
@@ -120,6 +127,7 @@ class PlayerControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     final maxDuration = duration.inSeconds.toDouble();
     final currentPosition = position.inSeconds.toDouble();
     final sliderValue = currentPosition > maxDuration

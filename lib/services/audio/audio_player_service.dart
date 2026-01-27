@@ -17,8 +17,7 @@ const String _tag = "AUDIO_PLAYER_SERVICE";
 class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
   static const String _defaultAudioQualityKey = 'default_audio_quality';
-  final StreamController<int> _actualQualityController =
-      StreamController<int>.broadcast();
+  final StreamController<int> _actualQualityController = StreamController<int>.broadcast();
 
   Stream<int> get actualQualityStream => _actualQualityController.stream;
 
@@ -33,19 +32,13 @@ class AudioPlayerService {
   bool _autoSkipInvalid = true;
   bool _isHandlingError = false;
 
-  bool get _isDesktop =>
-      !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+  bool get _isDesktop => !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
-  final StreamController<int> _indexController =
-      StreamController<int>.broadcast();
-
+  final StreamController<int> _indexController = StreamController<int>.broadcast();
   Stream<int> get currentIndexStream => _indexController.stream;
 
-  final StreamController<Map<String, dynamic>> _playbackErrorController =
-      StreamController<Map<String, dynamic>>.broadcast();
-
-  Stream<Map<String, dynamic>> get playbackErrorStream =>
-      _playbackErrorController.stream;
+  final StreamController<Map<String, dynamic>> _playbackErrorController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get playbackErrorStream => _playbackErrorController.stream;
 
   List<Song> get queue => List.unmodifiable(_globalQueue);
 
@@ -66,7 +59,7 @@ class AudioPlayerService {
     });
 
     _player.playbackEventStream.listen(
-      (event) {},
+          (event) {},
       onError: (Object e, StackTrace stackTrace) {
         Log.e(_tag, "Player codec error", e);
         _handleInvalidResourceAndPlayNext();
@@ -123,16 +116,10 @@ class AudioPlayerService {
                 ),
                 TextButton(
                   onPressed: () async {
-                    await prefs.setBool(
-                      PlayerProvider.autoSkipInvalidKey,
-                      true,
-                    );
+                    await prefs.setBool(PlayerProvider.autoSkipInvalidKey, true);
                     _autoSkipInvalid = true;
                     try {
-                      Provider.of<PlayerProvider>(
-                        context,
-                        listen: false,
-                      ).setAutoSkipInvalid(true);
+                      Provider.of<PlayerProvider>(context, listen: false).setAutoSkipInvalid(true);
                     } catch (e) {
                       Log.e(_tag, "Failed to sync provider state", e);
                     }
@@ -169,24 +156,15 @@ class AudioPlayerService {
     _preferredQuality = prefs.getInt(_defaultAudioQualityKey) ?? 30280;
   }
 
-  Future<int> getMaxCacheSize() async {
-    return await _downloadManager.getMaxCacheSize();
-  }
-
-  Future<void> setMaxCacheSize(int sizeMb) async {
-    await _downloadManager.setMaxCacheSize(sizeMb);
-  }
-
-  void setPreferredQuality(int quality) {
-    _preferredQuality = quality;
-  }
-
+  Future<int> getMaxCacheSize() async => await _downloadManager.getMaxCacheSize();
+  Future<void> setMaxCacheSize(int sizeMb) async => await _downloadManager.setMaxCacheSize(sizeMb);
+  void setPreferredQuality(int quality) => _preferredQuality = quality;
   AudioPlayer get player => _player;
 
   Song? get currentSong =>
       (_currentIndex >= 0 && _currentIndex < _globalQueue.length)
-      ? _globalQueue[_currentIndex]
-      : null;
+          ? _globalQueue[_currentIndex]
+          : null;
 
   AudioSource _createAudioSource(Song song) {
     return BiliAudioSource(
@@ -197,9 +175,7 @@ class AudioPlayerService {
       coverUrl: song.coverUrl,
       quality: _preferredQuality,
       onFatalError: (bvid, cid, msg) {
-        Future.microtask(() {
-          notifyPlaybackError(bvid, cid);
-        });
+        Future.microtask(() => notifyPlaybackError(bvid, cid));
       },
     );
   }
@@ -209,29 +185,20 @@ class AudioPlayerService {
   }
 
   Future<void> playWithQueue(
-    List<Song> queue,
-    int index, {
-    bool autoPlay = true,
-    Duration? initialPosition,
-  }) async {
+      List<Song> queue,
+      int index, {
+        bool autoPlay = true,
+        Duration? initialPosition,
+      }) async {
     try {
       _globalQueue = queue;
       _currentIndex = index;
       _indexController.add(index);
 
       if (_isDesktop) {
-        await _playSingleDesktop(
-          index,
-          autoPlay: autoPlay,
-          initialPosition: initialPosition,
-        );
+        await _playSingleDesktop(index, autoPlay: autoPlay, initialPosition: initialPosition);
       } else {
-        await _playListMobile(
-          queue,
-          index,
-          autoPlay: autoPlay,
-          initialPosition: initialPosition,
-        );
+        await _playListMobile(queue, index, autoPlay: autoPlay, initialPosition: initialPosition);
       }
     } catch (e) {
       Log.e(_tag, "Error setting audio source", e);
@@ -239,20 +206,13 @@ class AudioPlayerService {
   }
 
   Future<void> _playListMobile(
-    List<Song> queue,
-    int index, {
-    bool autoPlay = true,
-    Duration? initialPosition,
-  }) async {
+      List<Song> queue,
+      int index, {
+        bool autoPlay = true,
+        Duration? initialPosition,
+      }) async {
     Log.v(_tag, "playListMobile");
-    final List<AudioSource> sources = queue
-        .map((s) => _createAudioSource(s))
-        .toList();
-
-    // final playlist = ConcatenatingAudioSource(
-    //   children: sources,
-    //   useLazyPreparation: true,
-    // );
+    final List<AudioSource> sources = queue.map((s) => _createAudioSource(s)).toList();
 
     try {
       await _player.setAudioSources(
@@ -266,10 +226,6 @@ class AudioPlayerService {
     } catch (e) {
       Log.e(_tag, "Set Audio Source Error on mobile", e);
       if (e.toString().contains("403") || e.toString().contains("404")) {
-        Log.i(
-          _tag,
-          "song bvid: ${queue[index].bvid}, cid: ${queue[index].cid} is not available",
-        );
         _playbackErrorController.add({
           'bvid': queue[index].bvid,
           'cid': queue[index].cid,
@@ -280,21 +236,13 @@ class AudioPlayerService {
     }
   }
 
-  Future<void> _playSingleDesktop(
-    int index, {
-    bool autoPlay = true,
-    Duration? initialPosition,
-  }) async {
+  Future<void> _playSingleDesktop(int index, {bool autoPlay = true, Duration? initialPosition}) async {
     if (index < 0 || index >= _globalQueue.length) return;
-
     final song = _globalQueue[index];
     final source = _createAudioSource(song);
-
     try {
       await _player.setAudioSource(source, initialPosition: initialPosition);
-      if (autoPlay) {
-        await _player.play();
-      }
+      if (autoPlay) await _player.play();
     } catch (e) {
       Log.e(_tag, "Set Audio Source Error on desktop", e);
       await _handleInvalidResourceAndPlayNext();
@@ -302,10 +250,7 @@ class AudioPlayerService {
   }
 
   Future<void> updateQueueKeepPlaying(List<Song> newQueue, int newIndex) async {
-    Log.d(
-      _tag,
-      "updateQueueKeepPlaying, newQueue: ${newQueue.length}, newIndex: $newIndex",
-    );
+    Log.d(_tag, "updateQueueKeepPlaying, newQueue: ${newQueue.length}, newIndex: $newIndex");
     if (newQueue.isEmpty) {
       _globalQueue = [];
       await stop();
@@ -321,63 +266,59 @@ class AudioPlayerService {
 
     try {
       final playlist = _player.audioSource as ConcatenatingAudioSource?;
-      final currentSong = this.currentSong;
-      if (playlist == null || currentSong == null) {
-        await playWithQueue(
-          newQueue,
-          newIndex,
-          autoPlay: _player.playing,
-          initialPosition: _player.position,
-        );
+      final currentS = currentSong;
+
+      if (playlist == null || currentS == null) {
+        await playWithQueue(newQueue, newIndex, autoPlay: _player.playing, initialPosition: _player.position);
         return;
       }
 
       final targetSong = newQueue[newIndex];
-      if (targetSong.bvid != currentSong.bvid ||
-          targetSong.cid != currentSong.cid) {
-        await playWithQueue(
-          newQueue,
-          newIndex,
-          autoPlay: _player.playing,
-          initialPosition: _player.position,
-        );
+      bool isSameSong = targetSong.bvid == currentS.bvid;
+      if (isSameSong) {
+        if (targetSong.cid != 0 && currentS.cid != 0) {
+          isSameSong = targetSong.cid == currentS.cid;
+        }
+      }
+
+      if (!isSameSong) {
+        Log.i(_tag, "Target song mismatch (Hot swap canceled). Playing new queue directly.");
+        await playWithQueue(newQueue, newIndex, autoPlay: _player.playing, initialPosition: _player.position);
         return;
       }
+
       final songsBefore = newQueue.sublist(0, newIndex);
       final songsAfter = newQueue.sublist(newIndex + 1);
 
-      final sourcesBefore = songsBefore
-          .map((s) => _createAudioSource(s))
-          .toList();
-      final sourcesAfter = songsAfter
-          .map((s) => _createAudioSource(s))
-          .toList();
+      final sourcesBefore = songsBefore.map((s) => _createAudioSource(s)).toList();
+      final sourcesAfter = songsAfter.map((s) => _createAudioSource(s)).toList();
+
       final playerIndex = _player.currentIndex;
       if (playerIndex == null) throw Exception("Player index is null");
+
       if (playerIndex < playlist.length - 1) {
         await playlist.removeRange(playerIndex + 1, playlist.length);
       }
       if (playerIndex > 0) {
         await playlist.removeRange(0, playerIndex);
       }
+
       if (sourcesBefore.isNotEmpty) {
         await playlist.insertAll(0, sourcesBefore);
       }
+
       if (sourcesAfter.isNotEmpty) {
         await playlist.addAll(sourcesAfter);
       }
 
       _globalQueue = newQueue;
       _currentIndex = newIndex;
+      _indexController.add(newIndex);
+
       Log.i(_tag, "Hot swap playlist completed successfully.");
     } catch (e) {
-      Log.w(_tag, "Hot swap failed: $e");
-      await playWithQueue(
-        newQueue,
-        newIndex,
-        autoPlay: _player.playing,
-        initialPosition: _player.position,
-      );
+      Log.w(_tag, "Hot swap failed: $e, falling back to reload");
+      await playWithQueue(newQueue, newIndex, autoPlay: _player.playing, initialPosition: _player.position);
     }
   }
 
@@ -435,37 +376,26 @@ class AudioPlayerService {
   Future<void> togglePlayPause() async {
     Log.v(_tag, "togglePlayPause");
     if (_player.playing) {
-      Log.d(_tag, "playing, pause");
       await _player.pause();
     } else {
-      Log.d(_tag, "not playing, play");
       await _player.play();
     }
   }
 
-  Future<int> getUsedCacheSize() async {
-    Log.v(_tag, "getUsedCacheSize");
-    return await _downloadManager.getUsedCacheSize();
-  }
+  Future<int> getUsedCacheSize() async => await _downloadManager.getUsedCacheSize();
 
   Future<void> clearCache() async {
     Log.v(_tag, "clearCache");
     await stop();
     await _downloadManager.clearAllCache();
-    Log.i(_tag, "All audio cache and metadata cleared via DownloadManager.");
   }
 
-  void notifyActualQuality(int quality) {
-    Log.v(_tag, "notifyActualQuality, quality: $quality");
-    _actualQualityController.add(quality);
-  }
+  void notifyActualQuality(int quality) => _actualQualityController.add(quality);
 
   Future<void> switchQuality(int newQuality) async {
     Log.v(_tag, "switchQuality, newQuality: $newQuality");
     if (_preferredQuality == newQuality) return;
-    Log.i(_tag, "AudioPlayerService: Switching quality to $newQuality...");
     _preferredQuality = newQuality;
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_defaultAudioQualityKey, newQuality);
 
@@ -477,38 +407,12 @@ class AudioPlayerService {
     try {
       if (_isDesktop) {
         await _player.stop();
-
         final song = _globalQueue[currentIndex];
-        final source = _createAudioSource(song);
-
-        await _player.setAudioSource(source, initialPosition: currentPos);
-
-        if (wasPlaying) {
-          await _player.play();
-        }
+        await _player.setAudioSource(_createAudioSource(song), initialPosition: currentPos);
+        if (wasPlaying) await _player.play();
       } else {
-        await _player.stop();
-
-        final List<AudioSource> sources = _globalQueue
-            .map((s) => _createAudioSource(s))
-            .toList();
-
-        // final playlist = ConcatenatingAudioSource(
-        //   children: sources,
-        //   useLazyPreparation: true,
-        // );
-
-        await _player.setAudioSources(
-          sources,
-          initialIndex: currentIndex,
-          initialPosition: currentPos,
-        );
-
-        if (wasPlaying) {
-          await _player.play();
-        }
+        await _playListMobile(_globalQueue, currentIndex, autoPlay: wasPlaying, initialPosition: currentPos);
       }
-      Log.i(_tag, "Quality switched successfully.");
     } catch (e) {
       Log.e(_tag, "Switch quality failed", e);
     }
@@ -521,9 +425,7 @@ class AudioPlayerService {
     _currentIndex = 0;
     try {
       await _player.clearAudioSources();
-    } catch (e) {
-      Log.e(_tag, "Error resetting player source", e);
-    }
+    } catch (_) {}
     _isHandlingError = false;
     _indexController.add(0);
   }

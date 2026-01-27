@@ -7,6 +7,11 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "PLAYLIST_SHEET";
+
+
 class PlaylistSheet extends StatefulWidget {
   final List<Song> playlist;
   final Song currentSong;
@@ -28,6 +33,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
 
   @override
   void initState() {
+    Log.v(_tag, "initState");
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentSong();
@@ -35,6 +41,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
   }
 
   void _scrollToCurrentSong() {
+    Log.v(_tag, "_scrollToCurrentSong");
     if (widget.playlist.isEmpty) return;
 
     final index = widget.playlist.indexWhere(
@@ -58,6 +65,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
   }
 
   void _showClearConfirmation() {
+    Log.v(_tag, "_showClearConfirmation");
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -84,6 +92,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
   }
 
   void _handleSavePlaylist() {
+    Log.v(_tag, "_handleSavePlaylist");
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -118,12 +127,14 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
 
   @override
   void dispose() {
+    Log.v(_tag, "dispose");
     _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,

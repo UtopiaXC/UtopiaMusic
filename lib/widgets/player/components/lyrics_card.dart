@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/subtitles/danmaku_api.dart';
@@ -10,11 +9,13 @@ import 'package:utopia_music/models/subtitle.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
-import 'package:utopia_music/widgets/player/player_controls.dart';
+import 'package:utopia_music/widgets/player/components/player_controls.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/widgets/player/components/player_background.dart';
+
 import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "LYRICS_CARD";
@@ -32,57 +33,42 @@ class LyricsPage extends StatefulWidget {
 class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   bool _isDragging = false;
   double _dragValue = 0.0;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
-
   late TabController _tabController;
   final SubtitleApi _subtitleApi = SubtitleApi();
   final DanmakuApi _danmakuApi = DanmakuApi();
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
-
   List<SubtitleItem> _subtitles = [];
   bool _isLoadingSubtitles = false;
   bool _hasSubtitles = false;
-
   List<model.DanmakuItem> _rawDanmakus = [];
   bool _isLoadingDanmaku = false;
   bool _hasDanmaku = false;
-
   DanmakuController? _danmakuController;
-
   int _lastProcessedIndex = 0;
   double _lastPositionSeconds = 0.0;
   String? _currentSongId;
+  int _currentSubtitleIndex = -1;
+  bool _autoScroll = true;
 
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
-  int _currentSubtitleIndex = -1;
-  bool _autoScroll = true;
 
   Timer? _subtitleTimer;
   Timer? _danmakuTimer;
+  StreamSubscription? _danmakuSyncSubscription;
 
   @override
   void initState() {
+    Log.v(_tag, "initState");
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    _position = playerProvider.player.position;
-    _duration = playerProvider.player.duration ?? Duration.zero;
-
-    playerProvider.player.positionStream.listen((position) {
-      if (mounted) {
-        if (!_isDragging) {
-          setState(() {
-            _position = position;
-          });
-          if (playerProvider.isPlaying) {
-            _syncDanmaku(position);
-          }
-        }
-        _updateSubtitleIndex(position);
+    _danmakuSyncSubscription = playerProvider.player.positionStream.listen((
+      position,
+    ) {
+      if (mounted && playerProvider.isPlaying && !_isDragging) {
+        _syncDanmaku(position);
       }
     });
 
@@ -95,25 +81,20 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         }
       }
     });
-
-    playerProvider.player.durationStream.listen((duration) {
-      if (mounted && duration != null) {
-        setState(() {
-          _duration = duration;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
+    Log.v(_tag, "dispose");
     _tabController.dispose();
     _subtitleTimer?.cancel();
     _danmakuTimer?.cancel();
+    _danmakuSyncSubscription?.cancel();
     super.dispose();
   }
 
   void _resetState() {
+    Log.v(_tag, "_resetState");
     _subtitleTimer?.cancel();
     _danmakuTimer?.cancel();
 
@@ -133,53 +114,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     _danmakuController?.clear();
   }
 
-  void _syncDanmaku(Duration position) {
-    if (_rawDanmakus.isEmpty || _danmakuController == null) return;
-
-    final double currentSeconds = position.inMilliseconds / 1000.0;
-
-    if (currentSeconds < _lastPositionSeconds ||
-        (currentSeconds - _lastPositionSeconds).abs() > 1.5) {
-      _resetDanmakuCursor(currentSeconds);
-      return;
-    }
-
-    int i = _lastProcessedIndex;
-    while (i < _rawDanmakus.length) {
-      final item = _rawDanmakus[i];
-      if (item.time > currentSeconds) break;
-
-      if (item.time >= _lastPositionSeconds) {
-        _danmakuController!.addDanmaku(
-          DanmakuContentItem(
-            item.content,
-            color: Color(item.color | 0xFF000000),
-            type: DanmakuItemType.scroll,
-          ),
-        );
-      }
-      i++;
-    }
-
-    _lastProcessedIndex = i;
-    _lastPositionSeconds = currentSeconds;
-  }
-
-  void _resetDanmakuCursor(double targetSeconds) {
-    _danmakuController?.clear();
-    _lastPositionSeconds = targetSeconds;
-
-    int newIndex = 0;
-    for (int i = 0; i < _rawDanmakus.length; i++) {
-      if (_rawDanmakus[i].time >= targetSeconds) {
-        newIndex = i;
-        break;
-      }
-    }
-    _lastProcessedIndex = newIndex;
-  }
-
   void _loadData() {
+    Log.v(_tag, "_loadData");
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final song = playerProvider.currentSong;
     if (song == null) return;
@@ -200,6 +136,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   Future<int> _resolveCid(Song song) async {
+    Log.v(_tag, "_resolveCid, bvid: ${song.bvid}, cid: ${song.cid}");
     if (song.cid != 0) return song.cid;
     try {
       final detail = await _videoDetailApi.getVideoDetail(song.bvid);
@@ -207,25 +144,22 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         return detail['cid'] as int;
       }
     } catch (e) {
-      print('LyricsPage: Failed to fetch CID: $e');
+      debugPrint('LyricsPage: Failed to fetch CID: $e');
     }
     return 0;
   }
 
   Future<void> _loadSubtitles(Song song, String originalId) async {
+    Log.v(_tag, "_loadSubtitles, bvid: ${song.bvid}, cid: ${song.cid}");
     if (_currentSongId != originalId) return;
-
     final int realCid = await _resolveCid(song);
-
     if (_currentSongId != originalId || !mounted) return;
 
     if (realCid == 0) {
       setState(() => _isLoadingSubtitles = false);
       return;
     }
-
     final subtitles = await _subtitleApi.getSubtitles(song.bvid, realCid);
-
     if (mounted && _currentSongId == originalId) {
       setState(() {
         _subtitles = subtitles;
@@ -236,37 +170,84 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadDanmaku(Song song, String originalId) async {
+    Log.v(_tag, "_loadDanmaku, bvid: ${song.bvid}, cid: ${song.cid}");
     if (_currentSongId != originalId) return;
-
     final int realCid = await _resolveCid(song);
-
     if (_currentSongId != originalId || !mounted) return;
 
     if (realCid == 0) {
       setState(() => _isLoadingDanmaku = false);
       return;
     }
-
     final danmakus = await _danmakuApi.getDanmaku(realCid);
-
     if (mounted && _currentSongId == originalId) {
       setState(() {
         _rawDanmakus = danmakus;
         _hasDanmaku = danmakus.isNotEmpty;
         _isLoadingDanmaku = false;
       });
-      _resetDanmakuCursor(
-        Provider.of<PlayerProvider>(
-              context,
-              listen: false,
-            ).player.position.inMilliseconds /
-            1000.0,
-      );
+      if (mounted) {
+        _resetDanmakuCursor(
+          Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              ).player.position.inMilliseconds /
+              1000.0,
+        );
+      }
     }
   }
 
-  void _updateSubtitleIndex(Duration position) {
-    if (_subtitles.isEmpty) return;
+  void _syncDanmaku(Duration position) {
+    Log.v(_tag, "_syncDanmaku, position: ${position.inMilliseconds}");
+    if (_rawDanmakus.isEmpty || _danmakuController == null) return;
+
+    final double currentSeconds = position.inMilliseconds / 1000.0;
+    if (currentSeconds < _lastPositionSeconds ||
+        (currentSeconds - _lastPositionSeconds).abs() > 1.5) {
+      _resetDanmakuCursor(currentSeconds);
+      return;
+    }
+
+    int i = _lastProcessedIndex;
+    while (i < _rawDanmakus.length) {
+      final item = _rawDanmakus[i];
+      if (item.time > currentSeconds) break;
+      if (item.time >= _lastPositionSeconds) {
+        _danmakuController!.addDanmaku(
+          DanmakuContentItem(
+            item.content,
+            color: Color(item.color | 0xFF000000),
+            type: DanmakuItemType.scroll,
+          ),
+        );
+      }
+      i++;
+    }
+    _lastProcessedIndex = i;
+    _lastPositionSeconds = currentSeconds;
+  }
+
+  void _resetDanmakuCursor(double targetSeconds) {
+    Log.v(_tag, "_resetDanmakuCursor, targetSeconds: $targetSeconds");
+    _danmakuController?.clear();
+    _lastPositionSeconds = targetSeconds;
+    int newIndex = 0;
+    for (int i = 0; i < _rawDanmakus.length; i++) {
+      if (_rawDanmakus[i].time >= targetSeconds) {
+        newIndex = i;
+        break;
+      }
+    }
+    _lastProcessedIndex = newIndex;
+  }
+
+  bool _calculateSubtitleIndex(Duration position) {
+    Log.v(
+      _tag,
+      "_calculateSubtitleIndex, position: ${position.inMilliseconds}",
+    );
+    if (_subtitles.isEmpty) return false;
     final seconds = position.inMilliseconds / 1000.0;
     int index = -1;
     for (int i = 0; i < _subtitles.length; i++) {
@@ -276,20 +257,16 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
       }
       if (seconds >= _subtitles[i].from) index = i;
     }
+
     if (index != _currentSubtitleIndex) {
-      setState(() => _currentSubtitleIndex = index);
-      if (_autoScroll && index != -1) {
-        _itemScrollController.scrollTo(
-          index: index + 1,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          alignment: 0.35,
-        );
-      }
+      _currentSubtitleIndex = index;
+      return true;
     }
+    return false;
   }
 
   void _onSeekStart(double value) {
+    Log.v(_tag, "_onSeekStart, value: $value");
     setState(() {
       _isDragging = true;
       _dragValue = value;
@@ -301,6 +278,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   void _onSeekUpdate(double value) => setState(() => _dragValue = value);
 
   void _onSeekEnd(double value) {
+    Log.v(_tag, "_onSeekEnd, value: $value");
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final position = Duration(seconds: value.toInt());
     playerProvider.player.seek(position);
@@ -312,7 +290,6 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
     setState(() {
       _isDragging = false;
-      _position = position;
       _autoScroll = true;
     });
     _resetDanmakuCursor(value);
@@ -320,7 +297,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    Log.v(_tag, "build");
+    final playerProvider = Provider.of<PlayerProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final song = playerProvider.currentSong;
     if (song == null) return const SizedBox();
@@ -351,15 +329,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (isBlurMode)
-            _buildBlurredBackground(
-              song.coverUrl,
-              backgroundMode == 'gaussian_blur' ? 20.0 : 10.0,
-            )
-          else if (isNoneMode)
-            Container(
-              color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95),
-            )
+          if (isBlurMode || !isNoneMode)
+            PlayerBackground(coverUrl: song.coverUrl, mode: backgroundMode)
           else
             Container(
               color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95),
@@ -372,9 +343,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                 if (details.primaryDelta! > 10) widget.onBack();
               },
               onVerticalDragUpdate: (details) {
-                if (details.primaryDelta! > 10) {
-                  widget.onBack();
-                }
+                if (details.primaryDelta! > 10) widget.onBack();
               },
               child: Stack(
                 children: [
@@ -414,7 +383,37 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            _buildLyricsView(song, themeData),
+                            StreamBuilder<Duration>(
+                              stream: playerProvider.player.positionStream,
+                              builder: (context, snapshot) {
+                                final position = snapshot.data ?? Duration.zero;
+                                if (_hasSubtitles && !_isDragging) {
+                                  bool changed = _calculateSubtitleIndex(
+                                    position,
+                                  );
+                                  if (changed &&
+                                      _autoScroll &&
+                                      _currentSubtitleIndex != -1) {
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                          if (_itemScrollController
+                                              .isAttached) {
+                                            _itemScrollController.scrollTo(
+                                              index: _currentSubtitleIndex + 1,
+                                              duration: const Duration(
+                                                milliseconds: 300,
+                                              ),
+                                              curve: Curves.easeInOut,
+                                              alignment: 0.4,
+                                            );
+                                          }
+                                        });
+                                  }
+                                }
+
+                                return _buildLyricsView(song, themeData);
+                              },
+                            ),
                             _DanmakuPage(
                               isLoading: _isLoadingDanmaku,
                               hasDanmaku: _hasDanmaku,
@@ -428,33 +427,47 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
+
                       Padding(
                         padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                        child: PlayerControls(
-                          isPlaying: playerProvider.isPlaying,
-                          isLoading:
-                              playerProvider.player.processingState ==
-                              ProcessingState.buffering,
-                          duration: _duration,
-                          position: _isDragging
-                              ? Duration(seconds: _dragValue.toInt())
-                              : _position,
-                          loopMode: playerProvider.playMode,
-                          onSeek: _onSeekEnd,
-                          onSeekStart: _onSeekStart,
-                          onSeekUpdate: _onSeekUpdate,
-                          onPlayPause: playerProvider.togglePlayPause,
-                          onNext: playerProvider.hasNext
-                              ? () => playerProvider.playNext()
-                              : null,
-                          onPrevious: playerProvider.hasPrevious
-                              ? () => playerProvider.playPrevious()
-                              : null,
-                          onShuffle: playerProvider.togglePlayMode,
-                          onPlaylist: widget.onPlaylist,
-                          onLyrics: widget.onBack,
-                          hideExtraControls: false,
-                          showLyricsButtonOnly: true,
+                        child: StreamBuilder<Duration?>(
+                          stream: playerProvider.player.durationStream,
+                          builder: (context, durSnapshot) {
+                            final duration = durSnapshot.data ?? Duration.zero;
+                            return StreamBuilder<Duration>(
+                              stream: playerProvider.player.positionStream,
+                              builder: (context, posSnapshot) {
+                                final position =
+                                    posSnapshot.data ?? Duration.zero;
+                                return PlayerControls(
+                                  isPlaying: playerProvider.isPlaying,
+                                  isLoading:
+                                      playerProvider.player.processingState ==
+                                      ProcessingState.buffering,
+                                  duration: duration,
+                                  position: _isDragging
+                                      ? Duration(seconds: _dragValue.toInt())
+                                      : position,
+                                  loopMode: playerProvider.playMode,
+                                  onSeek: _onSeekEnd,
+                                  onSeekStart: _onSeekStart,
+                                  onSeekUpdate: _onSeekUpdate,
+                                  onPlayPause: playerProvider.togglePlayPause,
+                                  onNext: playerProvider.hasNext
+                                      ? () => playerProvider.playNext()
+                                      : null,
+                                  onPrevious: playerProvider.hasPrevious
+                                      ? () => playerProvider.playPrevious()
+                                      : null,
+                                  onShuffle: playerProvider.togglePlayMode,
+                                  onPlaylist: widget.onPlaylist,
+                                  onLyrics: widget.onBack,
+                                  hideExtraControls: false,
+                                  showLyricsButtonOnly: true,
+                                );
+                              },
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -481,39 +494,20 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildBlurredBackground(String coverUrl, double sigma) {
-    return RepaintBoundary(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(
-            coverUrl,
-            fit: BoxFit.cover,
-            cacheWidth: 100,
-            errorBuilder: (_, __, ___) => Container(color: Colors.black),
-          ),
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: Container(color: Colors.black.withValues(alpha: 0.5)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLyricsView(song, ThemeData theme) {
+  Widget _buildLyricsView(Song song, ThemeData theme) {
+    Log.v(_tag, "_buildLyricsView, song: ${song.title}, bvid: ${song.bvid}");
     if (_isLoadingSubtitles) {
       return Center(
         child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
     final baseTextStyle = theme.textTheme.bodyLarge?.copyWith(
-      color: theme.textTheme.bodyLarge?.color?.withOpacity(0.9),
+      color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.9),
     );
     final highlightColor = theme.colorScheme.primary;
-    final normalColor = theme.textTheme.bodyLarge?.color?.withOpacity(0.6);
+    final normalColor = theme.textTheme.bodyLarge?.color?.withValues(
+      alpha: 0.6,
+    );
 
     if (!_hasSubtitles) {
       if (song.lyrics.isNotEmpty) {
@@ -533,6 +527,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         child: Text(S.of(context).common_no_lyrics, style: baseTextStyle),
       );
     }
+
     return ScrollablePositionedList.builder(
       itemCount: _subtitles.length + 2,
       itemScrollController: _itemScrollController,
@@ -545,6 +540,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         final subtitleIndex = index - 1;
         final subtitle = _subtitles[subtitleIndex];
         final isActive = subtitleIndex == _currentSubtitleIndex;
+
         return GestureDetector(
           onTap: () {
             Provider.of<PlayerProvider>(context, listen: false).player.seek(
@@ -597,6 +593,7 @@ class _DanmakuPageState extends State<_DanmakuPage>
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build _DanmakuPage");
     super.build(context);
     if (widget.isLoading) {
       return Center(

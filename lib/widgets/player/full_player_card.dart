@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:marquee/marquee.dart';
@@ -7,18 +6,18 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
-import 'package:utopia_music/widgets/player/lyrics_card.dart';
-import 'package:utopia_music/widgets/player/player_content.dart';
-import 'package:utopia_music/widgets/player/player_controls.dart';
-import 'package:utopia_music/widgets/player/playlist_sheet.dart';
-import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
+import 'package:utopia_music/widgets/player/components/lyrics_card.dart';
+import 'package:utopia_music/widgets/player/components/player_content.dart';
+import 'package:utopia_music/widgets/player/components/player_controls.dart';
+import 'package:utopia_music/widgets/player/dialogs/playlist_sheet.dart';
+import 'package:utopia_music/widgets/player/components/swipeable_player_card.dart';
+import 'package:utopia_music/widgets/player/components/player_background.dart';
+import 'package:utopia_music/widgets/player/dialogs/timer_dialog.dart';
+import 'package:utopia_music/widgets/player/dialogs/quality_dialog.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
-import 'package:utopia_music/connection/audio/audio_stream.dart';
-import 'package:utopia_music/utils/quality_utils.dart';
-import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/widgets/video/favorite_sheet.dart';
@@ -27,7 +26,6 @@ import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "FULL_PLAYER_CARD";
-
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -50,9 +48,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   bool _isDragging = false;
   double _dragValue = 0.0;
-  Duration _duration = Duration.zero;
   bool _showLyrics = false;
-  Timer? _timer;
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
   bool _isDownloaded = false;
   double _dragAccumulator = 0.0;
@@ -61,22 +57,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   @override
   void initState() {
     super.initState();
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-
-    playerProvider.player.durationStream.listen((duration) {
-      if (mounted && duration != null) {
-        setState(() {
-          _duration = duration;
-        });
-      }
-    });
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-
     _checkDownloadStatus();
     _updatePalette();
   }
@@ -104,7 +84,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         });
       }
     } catch (e) {
-      print('Failed to extract color: $e');
+      Log.e(_tag, 'Failed to extract color', e);
     }
   }
 
@@ -118,12 +98,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         _isDownloaded = isDownloaded;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 
   void _onSeekStart(double value) {
@@ -203,7 +177,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        builder: (context) => const _TimerDialog(),
+        builder: (context) => const TimerDialog(),
       );
     }
   }
@@ -221,10 +195,13 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Text(
                   S.of(context).weight_player_select_speed,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               _buildSpeedOption(0.5, currentSpeed),
@@ -262,7 +239,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _QualityDialog(song: widget.song),
+      builder: (context) => QualityDialog(song: widget.song),
     );
   }
 
@@ -474,73 +451,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
   }
 
-  Widget _buildBackground(String mode, String coverUrl) {
-    switch (mode) {
-      case 'gradient':
-        return _buildGradientBackground();
-      case 'gaussian_blur':
-        return _buildBlurredBackground(coverUrl, 20.0);
-      case 'blur':
-        return _buildBlurredBackground(coverUrl, 10.0);
-      case 'none':
-      default:
-        return Container(color: Theme.of(context).scaffoldBackgroundColor);
-    }
-  }
-
-  Widget _buildGradientBackground() {
-    if (_extractedColorScheme == null) {
-      return Container(color: Theme.of(context).scaffoldBackgroundColor);
-    }
-    final color = _extractedColorScheme!.primaryContainer;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [
-                  color.withOpacity(0.6),
-                  Theme.of(context).scaffoldBackgroundColor,
-                ]
-              : [
-                  color.withOpacity(0.3),
-                  Theme.of(context).scaffoldBackgroundColor,
-                ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBlurredBackground(String coverUrl, double sigma) {
-    return RepaintBoundary(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(
-            coverUrl,
-            fit: BoxFit.cover,
-            cacheWidth: 100,
-            errorBuilder: (_, __, ___) => Container(color: Colors.black),
-          ),
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: Container(color: Colors.black.withValues(alpha: 0.5)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     Log.v(_tag, "build");
     final topPadding = MediaQuery.of(context).padding.top;
-    final playerProvider = Provider.of<PlayerProvider>(context,listen: false);
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final hasNext = playerProvider.hasNext;
     final hasPrevious = playerProvider.hasPrevious;
@@ -578,9 +493,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
-          if (didPop) {
-            return;
-          }
+          if (didPop) return;
           if (_showLyrics) {
             _toggleLyrics();
             return;
@@ -592,20 +505,23 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           body: Stack(
             fit: StackFit.expand,
             children: [
-              _buildBackground(backgroundMode, widget.song.coverUrl),
+              PlayerBackground(
+                coverUrl: widget.song.coverUrl,
+                mode: backgroundMode,
+                extractedColorScheme: _extractedColorScheme,
+              ),
 
               Column(
                 children: [
                   SizedBox(height: topPadding + 12),
+                  // --- Title Bar ---
                   SizedBox(
                     height: kToolbarHeight,
                     child: NavigationToolbar(
                       leading: IconButton(
                         icon: const Icon(Icons.keyboard_arrow_down),
                         onPressed: () {
-                          if (_showLyrics) {
-                            _toggleLyrics();
-                          }
+                          if (_showLyrics) _toggleLyrics();
                           widget.onCollapse();
                         },
                         tooltip: S.of(context).common_retract,
@@ -623,18 +539,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                   fontWeight: FontWeight.bold,
                                   color: themeData.textTheme.bodyLarge?.color,
                                 );
-                                final textSpan = TextSpan(
-                                  text: widget.song.title,
-                                  style: textStyle,
-                                );
-                                final textPainter = TextPainter(
-                                  text: textSpan,
-                                  textDirection: TextDirection.ltr,
-                                  maxLines: 1,
-                                );
-                                textPainter.layout();
-
-                                if (textPainter.width > constraints.maxWidth) {
+                                if (widget.song.title.length > 15) {
+                                  // Simple length check optimization
                                   return Marquee(
                                     text: widget.song.title,
                                     style: textStyle,
@@ -695,6 +601,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     ),
                   ),
 
+                  // --- Main Content (Swipeable) ---
                   Expanded(
                     child: SwipeablePlayerCard(
                       key: _swipeKey,
@@ -735,6 +642,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     ),
                   ),
 
+                  // --- Controls with StreamBuilder ---
                   GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onHorizontalDragStart: (details) {
@@ -761,39 +669,66 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                      child: StreamBuilder<Duration>(
-                        stream: playerProvider.player.positionStream,
-                        builder: (context, snapshot) {
-                          final position = snapshot.data ?? Duration.zero;
-                          return PlayerControls(
-                            isPlaying: playerProvider.isPlaying,
-                            isLoading:
-                                (playerProvider.player.processingState ==
-                                    ProcessingState.buffering ||
-                                playerProvider.player.processingState ==
-                                    ProcessingState.loading),
-                            duration: _duration,
-                            position: _isDragging
-                                ? Duration(seconds: _dragValue.toInt())
-                                : position,
-                            loopMode: playerProvider.playMode,
-                            onSeek: _onSeekEnd,
-                            onSeekStart: _onSeekStart,
-                            onSeekUpdate: _onSeekUpdate,
-                            onPlayPause: playerProvider.togglePlayPause,
-                            onNext: hasNext
-                                ? () => playerProvider.playNext()
-                                : null,
-                            onPrevious: hasPrevious
-                                ? () => playerProvider.playPrevious()
-                                : null,
-                            onShuffle: playerProvider.togglePlayMode,
-                            onPlaylist: _showPlaylist,
-                            onLyrics: _toggleLyrics,
-                            onTimer: _showTimerDialog,
-                            onComment: _showQualityDialog,
-                            onInfo: _showSpeedDialog,
-                            onMore: _showVideoDetail,
+                      // 局部刷新：仅进度条和时间变化时重绘
+                      child: StreamBuilder<Duration?>(
+                        stream: playerProvider.player.durationStream,
+                        builder: (context, durationSnapshot) {
+                          final duration =
+                              durationSnapshot.data ?? Duration.zero;
+
+                          return StreamBuilder<Duration>(
+                            stream: playerProvider.player.positionStream,
+                            builder: (context, positionSnapshot) {
+                              final position =
+                                  positionSnapshot.data ?? Duration.zero;
+
+                              return PlayerControls(
+                                isPlaying: playerProvider.isPlaying,
+                                isLoading:
+                                    (playerProvider.player.processingState ==
+                                        ProcessingState.buffering ||
+                                    playerProvider.player.processingState ==
+                                        ProcessingState.loading),
+                                duration: duration,
+                                position: _isDragging
+                                    ? Duration(seconds: _dragValue.toInt())
+                                    : position,
+                                loopMode: playerProvider.playMode,
+                                onShuffle: () {
+                                  if (playerProvider.recommendationAutoPlay) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          S
+                                              .of(context)
+                                              .weight_video_detail_replace_by_this_collection_recommend_alert,
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  } else {
+                                    playerProvider.togglePlayMode();
+                                  }
+                                },
+                                onSeek: _onSeekEnd,
+                                onSeekStart: _onSeekStart,
+                                onSeekUpdate: _onSeekUpdate,
+                                onPlayPause: playerProvider.togglePlayPause,
+                                onNext: hasNext
+                                    ? () => playerProvider.playNext()
+                                    : null,
+                                onPrevious: hasPrevious
+                                    ? () => playerProvider.playPrevious()
+                                    : null,
+                                onPlaylist: _showPlaylist,
+                                onLyrics: _toggleLyrics,
+                                onTimer: _showTimerDialog,
+                                onComment: _showQualityDialog,
+                                onInfo: _showSpeedDialog,
+                                onMore: _showVideoDetail,
+                              );
+                            },
                           );
                         },
                       ),
@@ -815,386 +750,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _TimerDialog extends StatefulWidget {
-  const _TimerDialog();
-
-  @override
-  State<_TimerDialog> createState() => _TimerDialogState();
-}
-
-class _TimerDialogState extends State<_TimerDialog>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  bool _stopAfterCurrent = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _setTimer(int minutes) {
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    playerProvider.setStopTimer(
-      Duration(minutes: minutes),
-      stopAfterCurrent: _stopAfterCurrent,
-    );
-    Navigator.pop(context);
-  }
-
-  void _showCustomTimerDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(S.of(context).weight_player_timer_custom),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: S.of(context).time_minute,
-            suffixText: 'min',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(S.of(context).common_cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              final minutes = int.tryParse(controller.text);
-              if (minutes != null && minutes > 0) {
-                _setTimer(minutes);
-                Navigator.pop(context);
-              }
-            },
-            child: Text(S.of(context).common_confirm),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: SizedBox(
-          height: 400,
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                value: _stopAfterCurrent,
-                onChanged: (value) {
-                  setState(() {
-                    _stopAfterCurrent = value ?? false;
-                  });
-                },
-                title: Text(
-                  S.of(context).weight_player_timer_stop_at_end_message,
-                ),
-              ),
-              TabBar(
-                controller: _tabController,
-                tabs: [
-                  Tab(text: S.of(context).weight_player_timer_discount_stop),
-                  Tab(text: S.of(context).weight_player_timer_timestemp_stop),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [_buildCountdownTab(), _buildSpecificTimeTab()],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCountdownTab() {
-    return ListView(
-      children: [
-        ListTile(
-          title: Text('15 ${S.of(context).time_minute}'),
-          onTap: () => _setTimer(15),
-        ),
-        ListTile(
-          title: Text('30 ${S.of(context).time_minute}'),
-          onTap: () => _setTimer(30),
-        ),
-        ListTile(
-          title: Text('60 ${S.of(context).time_minute}'),
-          onTap: () => _setTimer(60),
-        ),
-        ListTile(
-          title: Text('90 ${S.of(context).time_minute}'),
-          onTap: () => _setTimer(90),
-        ),
-        ListTile(
-          title: Text(S.of(context).common_custom),
-          onTap: _showCustomTimerDialog,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSpecificTimeTab() {
-    return Center(
-      child: FilledButton(
-        onPressed: () async {
-          final now = TimeOfDay.now();
-          final time = await showTimePicker(context: context, initialTime: now);
-          if (time != null) {
-            final nowDateTime = DateTime.now();
-            var selectedDateTime = DateTime(
-              nowDateTime.year,
-              nowDateTime.month,
-              nowDateTime.day,
-              time.hour,
-              time.minute,
-            );
-            if (selectedDateTime.isBefore(nowDateTime)) {
-              selectedDateTime = selectedDateTime.add(const Duration(days: 1));
-            }
-
-            if (mounted) {
-              final playerProvider = Provider.of<PlayerProvider>(
-                context,
-                listen: false,
-              );
-              playerProvider.setStopTime(
-                selectedDateTime,
-                stopAfterCurrent: _stopAfterCurrent,
-              );
-              Navigator.pop(context);
-            }
-          }
-        },
-        child: Text(S.of(context).weight_player_timer_select_time),
-      ),
-    );
-  }
-}
-
-class _QualityDialog extends StatefulWidget {
-  final Song song;
-
-  const _QualityDialog({required this.song});
-
-  @override
-  State<_QualityDialog> createState() => _QualityDialogState();
-}
-
-class _QualityDialogState extends State<_QualityDialog>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  AudioStreamInfo? _streamInfo;
-  final AudioStreamApi _audioApi = AudioStreamApi();
-  final SearchApi _searchApi = SearchApi();
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _loadStreamInfo();
-  }
-
-  Future<void> _loadStreamInfo() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-    }
-
-    try {
-      int cid = widget.song.cid;
-      if (cid == 0) {
-        print("CID is 0, fetching real CID for ${widget.song.bvid}...");
-        cid = await _searchApi.fetchCid(widget.song.bvid);
-        if (cid == 0) {
-          throw Exception("No CID fetched");
-        }
-      }
-
-      final info = await _audioApi.getAudioStream(widget.song.bvid, cid);
-
-      if (mounted) {
-        setState(() {
-          _streamInfo = info;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print("Failed to load stream info: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = e.toString();
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: SizedBox(
-          height: 400,
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              TabBar(
-                controller: _tabController,
-                tabs: [
-                  Tab(text: S.of(context).weight_player_audio_quilty_default),
-                  Tab(text: S.of(context).weight_player_audio_quilty_for_this),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildDefaultQualityTab(),
-                    _buildAvailableQualityTab(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultQualityTab() {
-    final settingsProvider = Provider.of<SettingsProvider>(context);
-    final qualities = QualityUtils.supportQualities;
-
-    return ListView.builder(
-      itemCount: qualities.length,
-      itemBuilder: (context, index) {
-        final quality = qualities[index];
-        final isSelected = settingsProvider.defaultAudioQuality == quality;
-        return ListTile(
-          title: Text(
-            QualityUtils.getQualityLabel(context, quality, detailed: true),
-          ),
-          trailing: isSelected
-              ? const Icon(Icons.check, color: Colors.blue)
-              : null,
-          onTap: () {
-            settingsProvider.setDefaultAudioQuality(quality);
-            Navigator.pop(context);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildAvailableQualityTab() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 36),
-            const SizedBox(height: 8),
-            Text(S.of(context).common_failed),
-            TextButton(
-              onPressed: _loadStreamInfo,
-              child: Text(S.of(context).common_retry),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_streamInfo == null || _streamInfo!.availableQualities.isEmpty) {
-      return Center(
-        child: Text(S.of(context).weight_player_audio_quilty_no_available),
-      );
-    }
-    final available = _streamInfo!.availableQualities;
-    final current = context.select<PlayerProvider, int>(
-      (p) => p.currentPlayingQuality,
-    );
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            S.of(context).weight_player_audio_quilty_for_this_message,
-            style: TextStyle(color: Colors.grey, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: available.length,
-            itemBuilder: (context, index) {
-              final quality = available[index];
-              final isCurrent = quality == current;
-
-              return ListTile(
-                title: Text(
-                  QualityUtils.getQualityLabel(
-                    context,
-                    quality,
-                    detailed: true,
-                  ),
-                ),
-                subtitle: isCurrent
-                    ? Text(
-                        S.of(context).weight_player_audio_quilty_for_this_using,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: 12,
-                        ),
-                      )
-                    : null,
-                trailing: isCurrent
-                    ? Icon(
-                        Icons.volume_up,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
-                    : null,
-                enabled: false,
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }

@@ -3,7 +3,7 @@ import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
+import 'package:utopia_music/widgets/player/components/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/utils/log.dart';
 

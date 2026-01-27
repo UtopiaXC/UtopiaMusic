@@ -26,7 +26,6 @@ class BiliAudioSource extends StreamAudioSource {
   final SearchApi _searchApi = SearchApi();
 
   StreamSubscription? _currentSubscription;
-  HttpClientResponse? _currentResponse;
   bool _isDisposed = false;
   int _realCid = 0;
 
@@ -51,44 +50,18 @@ class BiliAudioSource extends StreamAudioSource {
 
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
-    Log.v(_tag, "request, start: $start, end: $end");
-    // _isDisposed = false;
+    Log.v(_tag, "request range: $start - $end");
     final startOffset = start ?? 0;
 
     try {
       if (_realCid == 0) {
         try {
-          Log.i(_tag, "bvid: $bvid, cid: $initCid, illegal cid, fetching");
           _realCid = await _searchApi.fetchCid(bvid);
-          Log.i(_tag, "Solved bvid: $bvid, real cid is: $_realCid");
         } catch (e) {
           Log.e(_tag, "Failed to resolve CID", e);
         }
       }
       final targetCid = _realCid == 0 ? initCid : _realCid;
-      // final localRes = await _downloadManager.checkLocalResource(
-      //   bvid,
-      //   targetCid,
-      //   quality,
-      // );
-      // if (localRes != null && localRes.file != null) {
-      //   final file = localRes.file!;
-      //   final fileLen = await file.length();
-      //   int? contentLength;
-      //   if (end != null) {
-      //     contentLength = end - startOffset;
-      //   } else {
-      //     contentLength = fileLen - startOffset;
-      //   }
-      //   return StreamAudioResponse(
-      //     sourceLength: fileLen,
-      //     contentLength: contentLength,
-      //     offset: startOffset,
-      //     stream: file.openRead(startOffset, end),
-      //     contentType: 'audio/mp4',
-      //   );
-      // }
-
       final localRes = await _downloadManager.checkLocalResource(
         bvid,
         targetCid,
@@ -116,85 +89,45 @@ class BiliAudioSource extends StreamAudioSource {
         quality,
         start: startOffset,
       );
-      _currentResponse = response;
+
       int contentLength = response.contentLength;
-      int? totalLength;
+      int? sourceLength;
       if (response.statusCode == 206) {
         final rangeHeader = response.headers.value(
           HttpHeaders.contentRangeHeader,
         );
         if (rangeHeader != null) {
+          // bytes 0-1023/10000
           final parts = rangeHeader.split('/');
           if (parts.length == 2 && parts[1] != '*') {
-            totalLength = int.tryParse(parts[1]);
+            sourceLength = int.tryParse(parts[1]);
           }
         }
-      } else {
-        totalLength = contentLength;
       }
-      if (totalLength == null) totalLength = contentLength + startOffset;
+
+      if (sourceLength == null) {
+        if (startOffset == 0 && contentLength > 0) {
+          sourceLength = contentLength;
+        } else {
+          sourceLength = contentLength > 0
+              ? (contentLength + startOffset)
+              : null;
+        }
+      }
 
       Stream<List<int>> stream = response;
-      if (enableCache) {
-        bool isCachePromoting = false;
-        final tempPath = _downloadManager.getTempCachePath(bvid, targetCid);
-        final tempFile = File(tempPath);
-        if (!await tempFile.parent.exists()) {
-          await tempFile.parent.create(recursive: true);
-        }
-
-        final IOSink fileSink = tempFile.openWrite();
-
-        final controller = StreamController<List<int>>(
-          onCancel: () async {
-            if (isCachePromoting) return;
-            await fileSink.close();
-            // await _cleanupTempFile(tempFile);
-            _currentSubscription?.cancel();
-          },
-        );
-
-        _currentSubscription = stream.listen(
-          (data) {
-            if (!_isDisposed) {
-              fileSink.add(data);
-              controller.add(data);
-            }
-          },
-          onDone: () async {
-            isCachePromoting = true;
-            try {
-              await fileSink.flush();
-              await fileSink.close();
-              await controller.close();
-              // await _promoteTempFile(tempFile, targetCid, totalLength ?? 0);
-              _promoteTempFile(tempFile, targetCid, totalLength ?? 0);
-            } catch (e) {
-              Log.e(_tag, "Cache promotion failed", e);
-              await _cleanupTempFile(tempFile);
-            } finally {
-              isCachePromoting = false;
-            }
-          },
-          onError: (e) async {
-            isCachePromoting = false;
-            await fileSink.close();
-            controller.addError(e);
-            await _cleanupTempFile(tempFile);
-          },
-          cancelOnError: true,
-        );
-
-        return StreamAudioResponse(
-          sourceLength: totalLength,
-          contentLength: contentLength,
-          offset: startOffset,
-          stream: controller.stream,
-          contentType: 'audio/mp4',
+      if (enableCache && sourceLength != null && sourceLength > 0) {
+        return _handleCacheStream(
+          stream,
+          targetCid,
+          startOffset,
+          contentLength,
+          sourceLength,
+          bvid,
         );
       } else {
         return StreamAudioResponse(
-          sourceLength: totalLength,
+          sourceLength: sourceLength,
           contentLength: contentLength,
           offset: startOffset,
           stream: stream,
@@ -202,19 +135,101 @@ class BiliAudioSource extends StreamAudioSource {
         );
       }
     } catch (e) {
-      Log.e(_tag, "BiliAudioSource Request Failed", e);
-      if (e.toString().contains("Fatal Resource")) {
+      Log.e(_tag, "BiliAudioSource Request Failed: $e");
+      if (e.toString().contains("403") || e.toString().contains("404")) {
         onFatalError?.call(bvid, _realCid, e.toString());
       }
-      throw e;
+      rethrow;
     }
   }
 
-  Future<void> _promoteTempFile(File tempFile, int cid, int totalSize) async {
-    Log.v(
-      _tag,
-      "promoteTempFile, file: ${tempFile.path}, cid: $cid, totalSize: $totalSize",
+  StreamAudioResponse _handleCacheStream(
+    Stream<List<int>> input,
+    int cid,
+    int offset,
+    int contentLength,
+    int sourceLength,
+    String bvid,
+  ) {
+    final tempPath = _downloadManager.getTempCachePath(bvid, cid);
+    final tempFile = File(tempPath);
+    final StreamController<List<int>> outputController = StreamController();
+    IOSink? fileSink;
+    bool isWriting = false;
+    Future.microtask(() async {
+      try {
+        if (!await tempFile.parent.exists()) {
+          await tempFile.parent.create(recursive: true);
+        }
+        fileSink = tempFile.openWrite();
+        isWriting = true;
+      } catch (e) {
+        Log.w(
+          _tag,
+          "Failed to open temp file for writing, falling back to direct stream: $e",
+        );
+        isWriting = false;
+      }
+    });
+
+    _currentSubscription = input.listen(
+      (data) {
+        if (_isDisposed) return;
+        outputController.add(data);
+        if (isWriting && fileSink != null) {
+          try {
+            fileSink!.add(data);
+          } catch (e) {
+            Log.w(
+              _tag,
+              "Cache write error, stopping cache but continuing play: $e",
+            );
+            isWriting = false;
+            fileSink?.close();
+            fileSink = null;
+            _cleanupTempFile(tempFile);
+          }
+        }
+      },
+      onDone: () async {
+        await outputController.close();
+        if (isWriting && fileSink != null) {
+          try {
+            await fileSink!.flush();
+            await fileSink!.close();
+            if (_downloadManager.isCacheEnabled) {
+              _promoteTempFile(tempFile, cid, sourceLength);
+            } else {
+              Log.v(_tag, "Cache limit is 0, cleaning up temp file.");
+              _cleanupTempFile(tempFile);
+            }
+          } catch (_) {
+            _cleanupTempFile(tempFile);
+          }
+        }
+      },
+      onError: (e) {
+        outputController.addError(e);
+        if (isWriting) {
+          fileSink?.close();
+          _cleanupTempFile(tempFile);
+        }
+      },
+      cancelOnError: true,
     );
+
+    return StreamAudioResponse(
+      sourceLength: sourceLength,
+      contentLength: contentLength,
+      offset: offset,
+      stream: outputController.stream,
+      contentType: 'audio/mp4',
+    );
+  }
+
+  Future<void> _promoteTempFile(File tempFile, int cid, int totalSize) async {
+    Log.v(_tag, "_promoteTempFile, path: ${tempFile.path}");
+
     try {
       final staticPath = _downloadManager.getStaticCachePath(
         bvid,
@@ -222,16 +237,10 @@ class BiliAudioSource extends StreamAudioSource {
         quality,
       );
       final staticFile = File(staticPath);
-
-      if (!await staticFile.parent.exists()) {
+      if (!await staticFile.parent.exists())
         await staticFile.parent.create(recursive: true);
-      }
+      if (await staticFile.exists()) await staticFile.delete();
 
-      if (await staticFile.exists()) {
-        await staticFile.delete();
-      }
-
-      Log.i(_tag, "Promoting cache: ${tempFile.path} -> $staticPath");
       await tempFile.copy(staticPath);
       await tempFile.delete();
 
@@ -243,19 +252,16 @@ class BiliAudioSource extends StreamAudioSource {
         fileSize: totalSize,
         totalSize: totalSize,
       );
-      Log.i(_tag, "Cache Promoted Successfully!");
     } catch (e) {
-      Log.e(_tag, "Failed to promote cache", e);
+      Log.w(_tag, "Promote failed: $e");
       await _cleanupTempFile(tempFile);
     }
   }
 
   Future<void> _cleanupTempFile(File file) async {
-    Log.v(_tag, "cleanupTempFile, file: ${file.path}");
+    Log.v(_tag, "_cleanupTempFile, path: ${file.path}");
     try {
-      if (await file.exists()) {
-        await file.delete();
-      }
+      if (await file.exists()) await file.delete();
     } catch (_) {}
   }
 }

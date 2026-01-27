@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/models/song.dart';
 import 'dart:math';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "PLAYER_CONTENT";
 
 class PlayerContent extends StatelessWidget {
   final Song song;
@@ -9,6 +12,7 @@ class PlayerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     return LayoutBuilder(
       builder: (context, constraints) {
         double imageSize = min(300.0, constraints.maxHeight - 60);
@@ -29,7 +33,7 @@ class PlayerContent extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
