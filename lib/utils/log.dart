@@ -9,6 +9,7 @@ import 'package:talker_flutter/talker_flutter.dart';
 
 class _FileLoggerObserver extends TalkerObserver {
   final void Function(String record) onWrite;
+
   _FileLoggerObserver({required this.onWrite});
 
   @override
@@ -41,25 +42,39 @@ class Log {
   }
 
   static void d(dynamic classTag, [dynamic arg2]) {
+    if (_currentLevel == LogLevel.error ||
+        _currentLevel == LogLevel.info ||
+        _currentLevel == LogLevel.warning) {
+      return;
+    }
     if (LogLevel.debug.index < _currentLevel.index) return;
     final (tag, msg) = _parseArgs(classTag, arg2);
     LogService.instance.talker.debug(_formatMsg(tag, msg));
   }
 
   static void i(dynamic classTag, [dynamic arg2]) {
-    if (LogLevel.info.index < _currentLevel.index) return;
+    if (_currentLevel == LogLevel.error || _currentLevel == LogLevel.warning) {
+      return;
+    }
     final (tag, msg) = _parseArgs(classTag, arg2);
     LogService.instance.talker.info(_formatMsg(tag, msg));
   }
 
   static void w(dynamic classTag, [dynamic arg2]) {
-    if (LogLevel.warning.index < _currentLevel.index) return;
+    if (_currentLevel == LogLevel.error) {
+      return;
+    }
     final (tag, msg) = _parseArgs(classTag, arg2);
     LogService.instance.talker.warning(_formatMsg(tag, msg));
   }
 
   static void v(dynamic classTag, [dynamic arg2]) {
-    if (LogLevel.verbose.index < _currentLevel.index) return;
+    if (_currentLevel == LogLevel.error ||
+        _currentLevel == LogLevel.info ||
+        _currentLevel == LogLevel.debug ||
+        _currentLevel == LogLevel.warning) {
+      return;
+    }
     final (tag, msg) = _parseArgs(classTag, arg2);
     LogService.instance.talker.verbose(_formatMsg(tag, msg));
   }
@@ -90,6 +105,7 @@ class LogService {
 
   static final LogService instance = LogService._();
   late Talker _talker;
+
   Talker get talker => _talker;
   IOSink? _logSink;
   File? _currentLogFile;
@@ -179,6 +195,7 @@ class LogService {
       debugPrint("Init log file failed: $e");
     }
   }
+
   Future<void> _rotateLogFile() async {
     if (_isRotating) return;
     _isRotating = true;
@@ -244,10 +261,7 @@ class LogService {
       }
 
       await SharePlus.instance.share(
-        ShareParams(
-          text: 'UtopiaMusic Logs',
-          files: filesToShare,
-        ),
+        ShareParams(text: 'UtopiaMusic Logs', files: filesToShare),
       );
     } catch (e, stack) {
       _talker.handle(e, stack, 'Failed to export logs');
