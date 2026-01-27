@@ -5,7 +5,9 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
 
+const String _tag = "MINI_PLAYER_CARD";
 class MiniPlayer extends StatelessWidget {
   final Song song;
   final VoidCallback onTap;
@@ -28,6 +30,7 @@ class MiniPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     final colorScheme = Theme.of(context).colorScheme;
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
 

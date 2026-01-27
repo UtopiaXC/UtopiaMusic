@@ -117,6 +117,7 @@ class PlayerProvider extends ChangeNotifier {
       if (_isPlaying != newIsPlaying || _isBuffering != newIsBuffering) {
         _isPlaying = newIsPlaying;
         _isBuffering = newIsBuffering;
+        Log.v(_tag, "is playing or is buffering updated, notifyListeners");
         notifyListeners();
 
         if (_isPlaying) {
@@ -155,6 +156,7 @@ class PlayerProvider extends ChangeNotifier {
     _audioPlayerService.actualQualityStream.listen((quality) {
       if (_currentPlayingQuality != quality) {
         _currentPlayingQuality = quality;
+        Log.v(_tag, "_currentPlayingQuality changed, notifyListeners");
         notifyListeners();
       }
     });

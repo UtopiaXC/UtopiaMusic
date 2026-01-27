@@ -15,6 +15,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "LYRICS_CARD";
 
 class LyricsPage extends StatefulWidget {
   final VoidCallback onBack;
@@ -317,7 +320,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final playerProvider = Provider.of<PlayerProvider>(context);
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final song = playerProvider.currentSong;
     if (song == null) return const SizedBox();

@@ -131,7 +131,8 @@ class GeneralSettingsPage extends StatelessWidget {
                   if (value) {
                     _showDebugModeWarningDialog(context, settingsProvider);
                   } else {
-                    settingsProvider.setDebugMode(false);
+                    // settingsProvider.setDebugMode(false);
+                    settingsProvider.resetDebugMode();
                   }
                 },
               ),
@@ -226,7 +227,6 @@ class GeneralSettingsPage extends StatelessWidget {
               .of(context)
               .pages_settings_tag_general_development_log_level_warning,
         ),
-        // 警告内容
         content: Text(
           S.of(context).pages_settings_tag_general_development_enable_alert,
         ),

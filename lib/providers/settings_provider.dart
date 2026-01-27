@@ -15,10 +15,12 @@ class SettingsProvider extends ChangeNotifier {
   static const String _startPageKey = 'start_page';
   static const String _saveSearchHistoryKey = 'save_search_history';
   static const String _searchHistoryLimitKey = 'search_history_limit';
+
   //TODO: NEEDS TO REFACTOR FOR RETRY AND DELAY
   static const String _maxRetriesKey = 'max_retries';
   static const String maxRetriesKey = _maxRetriesKey;
   static const String _requestDelayKey = 'request_delay';
+
   // static const String requestDelayKey = _requestDelayKey;
 
   static const String _localeKey = 'locale';
@@ -458,5 +460,15 @@ class SettingsProvider extends ChangeNotifier {
     } catch (e) {
       print("Error listing directory ${dir.path}: $e");
     }
+  }
+
+  Future<void> resetDebugMode() async {
+    _debugMode = false;
+    _logLevel = LogLevel.warning;
+    Log.setLevel(_logLevel);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_logLevelKey, _logLevel.index);
+    await prefs.setBool(_debugModeKey, false);
   }
 }

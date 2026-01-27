@@ -24,7 +24,10 @@ import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/widgets/video/favorite_sheet.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
-import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "FULL_PLAYER_CARD";
+
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -535,8 +538,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     final topPadding = MediaQuery.of(context).padding.top;
-    final playerProvider = Provider.of<PlayerProvider>(context);
+    final playerProvider = Provider.of<PlayerProvider>(context,listen: false);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final hasNext = playerProvider.hasNext;
     final hasPrevious = playerProvider.hasPrevious;
