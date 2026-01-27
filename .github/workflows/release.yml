@@ -75,8 +75,18 @@ jobs:
           key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
       - name: Flutter pub get
         run: flutter pub get
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
       - name: Build split-per-abi APKs
+        env:
+          ANDROID_KEYSTORE_PATH: "upload-keystore.jks"
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: flutter build apk --release --split-per-abi --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+
       - name: Rename and Collect APKs
         run: |
           mkdir -p out
@@ -178,7 +188,11 @@ jobs:
           cp -R build/ios/Release-iphoneos/Runner.app dist/ios/Payload/Runner.app
           (cd dist/ios && zip -r "UtopiaMusic-${VERSION_NAME}-iOS-universal.ipa" Payload)
       - name: Build macOS app
-        run: flutter build macos --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+        run: flutter build macos --release --build-name $VERSION_NAME --build-number $BUILD_NUMBER --no-codesign
+      - name: Ad-hoc Sign macOS App
+        run: |
+          appPath=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n1)
+          codesign --force --deep --sign - "$appPath"
       - name: Create DMG
         run: |
           mkdir -p dist/mac
@@ -206,10 +220,18 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+      - name: Decode PFX Certificate
+        run: |
+          $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_PFX_BASE64 }}")
+          [IO.File]::WriteAllBytes("cert.pfx", $pfx_cert_byte)
       - name: Flutter pub get
         run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release --build-name $env:VERSION_NAME --build-number $env:BUILD_NUMBER
+      - name: Sign Main Executable
+        run: |
+          $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /f cert.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "build\windows\x64\runner\Release\*.exe"
       - name: Package portable zip
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
@@ -219,6 +241,8 @@ jobs:
           if (Test-Path "windows\installer.iss") {
             choco install innosetup -y
             iscc "windows\installer.iss" /DAppVersion=${env:VERSION_NAME} /O"out" /F"UtopiaMusic-${env:VERSION_NAME}-Windows-x64-setup"
+            $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
+            & $signtool.FullName sign /f cert.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "out\UtopiaMusic-${env:VERSION_NAME}-Windows-x64-setup.exe"
           }
       - uses: actions/upload-artifact@v4
         with:

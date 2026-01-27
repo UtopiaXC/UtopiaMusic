@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/connection/update/github_api.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/update/update_dialog.dart';
+import 'dart:ffi';
 
 class UpdateUtil {
   static Future<void> checkAndShow(BuildContext context, {bool isManualCheck = false}) async {
@@ -151,27 +151,41 @@ class UpdateUtil {
   }
 
   static Future<String?> _matchAndroid(List<dynamic> assets) async {
-    final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-    final List<String> abis = androidInfo.supportedAbis;
-    for (String abi in abis) {
+    final abi = Abi.current();
+    String? targetArch;
+
+    if (abi == Abi.androidArm64) {
+      targetArch = 'v8a';
+    } else if (abi == Abi.androidArm) {
+      targetArch = 'v7a';
+    } else if (abi == Abi.androidX64) {
+      targetArch = 'x86_64';
+    } else if (abi == Abi.androidIA32) {
+      targetArch = 'x86';
+    }
+    print("1111111111111111 $abi");
+    print("2222222222222222 $targetArch");
+
+    if (targetArch == null) {
+      print("Update: Unknown ABI $abi, falling back to browser.");
+      return null;
+    }
+
+    print("Update: Current App Arch is $targetArch, strict matching...");
+    try {
       final match = assets.firstWhere(
             (asset) {
           final name = asset['name'].toString().toLowerCase();
-          return name.contains('android') && name.contains(abi.toLowerCase()) && name.endsWith('.apk');
+          return name.contains('android') &&
+              name.contains(targetArch!.toLowerCase()) &&
+              name.endsWith('.apk');
         },
-        orElse: () => null,
       );
-      if (match != null) return match['browser_download_url'];
+      return match['browser_download_url'];
+    } catch (e) {
+      print("Update: No strict match found for $targetArch.");
+      return null;
     }
-    final genericMatch = assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('android') && name.endsWith('.apk');
-      },
-      orElse: () => null,
-    );
-    return genericMatch?['browser_download_url'];
   }
 
   static String? _matchWindows(List<dynamic> assets) {

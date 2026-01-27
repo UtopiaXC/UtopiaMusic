@@ -38,11 +38,34 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            val keystorePwd = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            val keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+            val keyPwd = System.getenv("ANDROID_KEY_PASSWORD")
+
+            if (!keystorePath.isNullOrEmpty() && file(keystorePath).exists()) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePwd
+                this.keyAlias = keyAlias
+                keyPassword = keyPwd
+            }
+        }
+    }
+
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            val isCI = System.getenv("CI") == "true"
+            if (!keystorePath.isNullOrEmpty() && file(keystorePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else if (isCI) {
+                throw GradleException("CI Build Error: Keystore path not found or invalid. Check your Secrets.")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
+            //isMinifyEnabled = true
         }
     }
 }
