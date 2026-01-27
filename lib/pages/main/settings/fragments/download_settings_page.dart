@@ -6,20 +6,20 @@ import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class DownloadSettingsPage extends StatefulWidget {
   const DownloadSettingsPage({super.key});
 
   @override
-  State<DownloadSettingsPage> createState() =>
-      _DownloadSettingsPageState();
+  State<DownloadSettingsPage> createState() => _DownloadSettingsPageState();
 }
 
 class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
   int _currentCacheSize = 200;
-  String _usedCacheSizeStr = '计算中...';
+  String _usedCacheSizeStr = "...";
   int _maxConcurrentDownloads = 3;
-  String _downloadSizeStr = '计算中...';
+  String _downloadSizeStr = '...';
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DownloadManager _downloadManager = DownloadManager();
 
@@ -87,16 +87,22 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空音乐缓存'),
-        content: const Text('确定要删除所有已缓存的歌曲文件并重置统计数据吗？\n这将需要重新下载所有歌曲。'),
+        title: Text(
+          S.of(context).pages_settings_tag_download_cache_clear_cache,
+        ),
+        content: Text(
+          S
+              .of(context)
+              .pages_settings_tag_download_cache_clear_cache_description,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -106,9 +112,15 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
       await Provider.of<PlayerProvider>(context, listen: false).clearAllCache();
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('缓存已清空')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              S
+                  .of(context)
+                  .pages_settings_tag_download_cache_clear_cache_cleared,
+            ),
+          ),
+        );
         await _loadSettings();
       }
     }
@@ -118,16 +130,22 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空全部下载'),
-        content: const Text('确定要删除所有已下载的歌曲文件吗？此操作不可恢复。'),
+        title: Text(
+          S.of(context).pages_settings_tag_download_download_clear_downloaded,
+        ),
+        content: Text(
+          S
+              .of(context)
+              .pages_settings_tag_download_download_clear_downloaded_description,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -136,9 +154,15 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     if (confirmed == true && mounted) {
       await _downloadManager.deleteAllDownloads();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('下载已清空')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              S
+                  .of(context)
+                  .pages_settings_tag_download_download_clear_downloaded_cleared,
+            ),
+          ),
+        );
         await _loadSettings();
       }
     }
@@ -151,7 +175,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('自定义缓存大小 (MB)'),
+        title: Text(S.of(context).common_custom),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -162,7 +186,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -172,7 +196,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
               }
               Navigator.pop(context);
             },
-            child: const Text('确定'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -183,34 +207,47 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('性能与下载')),
+      appBar: AppBar(
+        title: Text(S.of(context).pages_settings_tag_download_performance),
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
           _SettingsGroup(
-            title: '缓存',
+            title: S.of(context).pages_settings_tag_download_performance_cache,
             children: [
               ListTile(
-                title: const Text('音乐缓存上限'),
-                subtitle: const Text('缓存可减少流量消耗'),
+                title: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_download_performance_cache_limit,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_download_performance_cache_limit_description,
+                ),
                 trailing: DropdownButton<int>(
                   value:
-                  [
-                    0,
-                    10,
-                    50,
-                    100,
-                    200,
-                    500,
-                    1000,
-                    4096,
-                  ].contains(_currentCacheSize)
+                      [
+                        0,
+                        10,
+                        50,
+                        100,
+                        200,
+                        500,
+                        1000,
+                        4096,
+                      ].contains(_currentCacheSize)
                       ? _currentCacheSize
                       : -1,
                   underline: const SizedBox(),
                   alignment: Alignment.centerRight,
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('禁用缓存')),
+                  items: [
+                    DropdownMenuItem(
+                      value: 0,
+                      child: Text(S.of(context).common_disable),
+                    ),
                     DropdownMenuItem(value: 10, child: Text('10 MB')),
                     DropdownMenuItem(value: 50, child: Text('50 MB')),
                     DropdownMenuItem(value: 100, child: Text('100 MB')),
@@ -230,9 +267,13 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                 ),
               ),
               ListTile(
-                title: const Text('清空音乐缓存'),
-                subtitle: Text('当前占用：$_usedCacheSizeStr'),
-                trailing: const Icon(Icons.delete_outline, size: 20),
+                title: Text(
+                  S.of(context).pages_settings_tag_download_cache_clear_cache,
+                ),
+                subtitle: Text(
+                  '${S.of(context).pages_settings_tag_download_cache_used}: $_usedCacheSizeStr',
+                ),
+                trailing: Icon(Icons.delete_outline, size: 20),
                 onTap: _handleClearCache,
               ),
             ],
@@ -241,13 +282,12 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
             title: '下载',
             children: [
               ListTile(
-                title: const Text('最大同时下载数量'),
+                title: Text(S.of(context).pages_settings_tag_download),
                 trailing: DropdownButton<int>(
                   value: _maxConcurrentDownloads,
                   underline: const SizedBox(),
                   alignment: Alignment.centerRight,
-                  items:
-                  List.generate(5, (index) => index + 1).map((count) {
+                  items: List.generate(5, (index) => index + 1).map((count) {
                     return DropdownMenuItem<int>(
                       value: count,
                       child: Text('$count'),
@@ -261,17 +301,19 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                 ),
               ),
               ListTile(
-                title: const Text('默认下载音质'),
+                title: Text(
+                  S.of(context).pages_settings_tag_download_defult_quality,
+                ),
                 trailing: DropdownButton<int>(
                   value: settingsProvider.defaultDownloadQuality,
                   underline: const SizedBox(),
                   alignment: Alignment.centerRight,
-                  items:
-                  QualityUtils.supportQualities.map((quality) {
+                  items: QualityUtils.supportQualities.map((quality) {
                     return DropdownMenuItem<int>(
                       value: quality,
                       child: Text(
                         QualityUtils.getQualityLabel(
+                          context,
                           quality,
                           detailed: true,
                         ),
@@ -286,8 +328,10 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                 ),
               ),
               ListTile(
-                title: const Text('清空全部下载'),
-                subtitle: Text('当前占用：$_downloadSizeStr'),
+                title: Text(S.of(context).pages_settings_tag_download_clear),
+                subtitle: Text(
+                  '${S.of(context).pages_settings_tag_download_cache_used}: $_downloadSizeStr',
+                ),
                 trailing: const Icon(Icons.delete_forever_outlined, size: 20),
                 onTap: _handleClearDownloads,
               ),
@@ -330,9 +374,9 @@ class _SettingsGroup extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(
-                  alpha: 0.3,
-                ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
             child: Column(children: children),

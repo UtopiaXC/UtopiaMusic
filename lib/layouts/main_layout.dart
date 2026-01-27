@@ -1,6 +1,6 @@
-import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'package:utopia_music/layouts/desktop_layout.dart';
 import 'package:utopia_music/layouts/mobile_layout.dart';
 import 'package:utopia_music/pages/main/discover/discover_page.dart';
@@ -9,6 +9,8 @@ import 'package:utopia_music/pages/main/settings/settings_page.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/utils/update_util.dart';
+
+const String _tag = "MAIN_LAYOUT";
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -25,6 +27,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   void initState() {
+    Log.v(_tag, "initState");
     super.initState();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     _pages = [
@@ -33,6 +36,7 @@ class _MainLayoutState extends State<MainLayout> {
       const SettingsPage(),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      Log.v(_tag, "PostFrameCallback");
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
       if (!settingsProvider.isSettingsLoaded) {
         await Future.delayed(const Duration(milliseconds: 500));
@@ -45,6 +49,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   void didChangeDependencies() {
+    Log.v(_tag, "didChangeDependencies");
     super.didChangeDependencies();
     if (!_isInit) {
       final settingsProvider = Provider.of<SettingsProvider>(context);
@@ -60,6 +65,7 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _onItemTapped(int index) {
+    Log.v(_tag, "_onItemTapped");
     if (_selectedIndex == index && index == 0) {
       _discoverPageKey.currentState?.handleBottomTabReselect();
     }
@@ -75,6 +81,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
+    Log.v(_tag, "build");
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth > 600) {
         return DesktopLayout(

@@ -4,6 +4,7 @@ import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SubscribeFragment extends StatefulWidget {
   final ScrollController scrollController;
@@ -95,11 +96,11 @@ class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKee
               children: [
                 const Icon(Icons.no_accounts, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                const Text('用户未登录，无法查看关注列表'),
+                Text(S.of(context).pages_discover_subscribe_not_logged_in),
                 const SizedBox(height: 8),
                 FilledButton.tonal(
                   onPressed: _showLoginDialog,
-                  child: const Text('登录'),
+                  child: Text(S.of(context).pages_library_category_login),
                 ),
               ],
             ),
@@ -130,9 +131,9 @@ class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKee
                         child: Center(child: CircularProgressIndicator()),
                       );
                     } else if (!_hasMore) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: Text('到底了', style: TextStyle(color: Colors.grey))),
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Center(child: Text(S.of(context).common_at_bottom, style: const TextStyle(color: Colors.grey))),
                       );
                     } else {
                       return const SizedBox(height: 60);

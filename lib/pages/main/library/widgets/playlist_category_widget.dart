@@ -10,6 +10,7 @@ import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 enum PlaylistCategoryType {
   favorites,
@@ -147,7 +148,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = '加载失败: $e';
+          _errorMessage = '${S.of(context).common_failed}: $e';
         });
       }
     }
@@ -231,7 +232,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = '无网络或被风控，请尝试重新获取';
+          _errorMessage = S.of(context).pages_discover_error_network;
         });
       }
     }
@@ -353,7 +354,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
 
   Widget _buildCoverFlow() {
     if (_errorMessage == 'not_logged_in') {
-      return _buildErrorState('未登录，请登录后查看', '登录', () {
+      return _buildErrorState(S.of(context).pages_library_category_not_logged_in, S.of(context).pages_library_category_login, () {
         if (widget.onLoginTap != null) {
           widget.onLoginTap!();
         } else {
@@ -363,7 +364,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
     }
 
     if (_errorMessage != null) {
-      return _buildErrorState(_errorMessage!, '刷新', () => _loadData(forceRefresh: true));
+      return _buildErrorState(_errorMessage!, S.of(context).common_refresh, () => _loadData(forceRefresh: true));
     }
 
     if (_isLoading) {
@@ -375,9 +376,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
 
     if (_playlists.isEmpty) {
       if (widget.type == PlaylistCategoryType.local) {
-        return _buildEmptyState('当前无本地歌单', '创建', _handleCreateLocalPlaylist);
+        return _buildEmptyState(S.of(context).pages_library_category_empty_local, S.of(context).common_create, _handleCreateLocalPlaylist);
       } else {
-        return _buildEmptyState('当前没有${widget.title}，请前往Bilibili创建', '前往Bilibili', _launchBilibili);
+        return _buildEmptyState(S.of(context).pages_library_category_empty_online(widget.title), S.of(context).pages_library_category_go_bilibili, _launchBilibili);
       }
     }
 
@@ -512,9 +513,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
 
   Widget _buildExpandedList() {
     if (_playlists.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24.0),
-        child: Center(child: Text('无内容')),
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(child: Text(S.of(context).common_no_data)),
       );
     }
 
@@ -524,7 +525,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
-            title: const Text('新建歌单'),
+            title: Text(S.of(context).pages_library_category_create_local),
             onTap: _handleCreateLocalPlaylist,
           ),
           ReorderableListView.builder(
@@ -587,7 +588,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                     ),
                   ),
                   title: Text(playlist.title),
-                  subtitle: Text('${playlist.count}首'),
+                  subtitle: Text('${playlist.count}${S.of(context).common_count_of_songs}'),
                   trailing: ReorderableDragStartListener(
                     index: index,
                     child: const Icon(Icons.drag_handle),
@@ -651,7 +652,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                   ),
                 ),
                 title: Text(playlist.title),
-                subtitle: Text('${playlist.count}首'),
+                subtitle: Text('${playlist.count}${S.of(context).common_count_of_songs}'),
                 onTap: () => _handlePlaylistTap(playlist),
               );
             },

@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
-import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/widgets/video/video_detail_info.dart';
 import 'package:utopia_music/widgets/video/favorite_sheet.dart';
 import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
@@ -36,7 +35,8 @@ class VideoDetailPage extends StatefulWidget {
   State<VideoDetailPage> createState() => _VideoDetailPageState();
 }
 
-class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProviderStateMixin {
+class _VideoDetailPageState extends State<VideoDetailPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
   final UserApi _userApi = UserApi();
@@ -60,7 +60,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
 
     int tabCount = 0;
     if (!widget.simplified) {
@@ -82,7 +85,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _recommendationAutoPlay = prefs.getBool(_recommendationAutoPlayKey) ?? false;
+      _recommendationAutoPlay =
+          prefs.getBool(_recommendationAutoPlayKey) ?? false;
     });
   }
 
@@ -90,7 +94,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_recommendationAutoPlayKey, _recommendationAutoPlay);
     if (mounted) {
-      Provider.of<PlayerProvider>(context, listen: false).setRecommendationAutoPlay(_recommendationAutoPlay);
+      Provider.of<PlayerProvider>(
+        context,
+        listen: false,
+      ).setRecommendationAutoPlay(_recommendationAutoPlay);
     }
   }
 
@@ -109,7 +116,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
           if (!widget.simplified) {
             _loadRelatedVideos();
             _loadCollectionOrParts(detail);
-            final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+            final settingsProvider = Provider.of<SettingsProvider>(
+              context,
+              listen: false,
+            );
             if (settingsProvider.enableComments) {
               _loadComments();
             }
@@ -178,7 +188,11 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         });
       }
     } else {
-      final videos = await _videoDetailApi.getVideoCollection(context, widget.bvid, detail['aid'] ?? 0);
+      final videos = await _videoDetailApi.getVideoCollection(
+        context,
+        widget.bvid,
+        detail['aid'] ?? 0,
+      );
       if (mounted) {
         setState(() {
           _collectionVideos = videos;
@@ -200,7 +214,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     if (!_hasMoreComments) return;
 
     setState(() => _isLoadingComments = true);
-    final list = await _videoDetailApi.getVideoReplies(widget.bvid, page: _commentPage);
+    final list = await _videoDetailApi.getVideoReplies(
+      widget.bvid,
+      page: _commentPage,
+    );
     if (mounted) {
       if (list.isEmpty) {
         _hasMoreComments = false;
@@ -216,7 +233,11 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final comment = _comments[index];
     int currentPage = (comment['sub_reply_page'] ?? 1) + 1;
 
-    final subReplies = await _videoDetailApi.getReplyReplies(oid, rpid, page: currentPage);
+    final subReplies = await _videoDetailApi.getReplyReplies(
+      oid,
+      rpid,
+      page: currentPage,
+    );
     if (mounted) {
       setState(() {
         if (subReplies.isEmpty) {
@@ -237,16 +258,20 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('开启推荐连播'),
-          content: const Text('如果启动推荐视频自由连播，再切换到下一个视频的时候，将会自动获取下一个视频的推荐并替换播放列表，而不是播放本视频的推荐列表。\n\n本选项与循环模式冲突，当启用时，将禁用循环模式，并接管播放列表。'),
+          title: Text(
+            S.of(context).weight_video_detail_enable_auto_continue_title,
+          ),
+          content: Text(
+            S.of(context).weight_video_detail_enable_auto_continue_message,
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child: Text(S.of(context).common_cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('确认'),
+              child: Text(S.of(context).common_confirm),
             ),
           ],
         ),
@@ -257,7 +282,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
           _recommendationAutoPlay = true;
         });
         await _saveSettings();
-        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+        final playerProvider = Provider.of<PlayerProvider>(
+          context,
+          listen: false,
+        );
         if (_relatedVideos.isNotEmpty) {
           final currentSong = playerProvider.currentSong;
           if (currentSong != null && currentSong.bvid == widget.bvid) {
@@ -278,24 +306,28 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
   Future<void> _handleCollectionReplace() async {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    String content = '是否用该合集替换当前的播放列表？';
+    String content = S
+        .of(context)
+        .weight_video_detail_replace_by_this_collection_title;
     if (_recommendationAutoPlay) {
-      content += '\n\n注意：自由连播模式已启动，合集播放会被其接管，如果希望完整播放合集，请关闭自由连播。';
+      content += S
+          .of(context)
+          .weight_video_detail_replace_by_this_collection_recommend_alert;
     }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('替换播放列表'),
+        title: Text(S.of(context).common_replace_playlist),
         content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('替换'),
+            child: Text(S.of(context).common_replace),
           ),
         ],
       ),
@@ -305,15 +337,15 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       if (_collectionVideos.isNotEmpty) {
         Song? targetSong;
         if (_isParts) {
-           final currentSong = playerProvider.currentSong;
-           if (currentSong != null && currentSong.bvid == widget.bvid) {
-             for (var s in _collectionVideos) {
-               if (s.cid == currentSong.cid) {
-                 targetSong = s;
-                 break;
-               }
-             }
-           }
+          final currentSong = playerProvider.currentSong;
+          if (currentSong != null && currentSong.bvid == widget.bvid) {
+            for (var s in _collectionVideos) {
+              if (s.cid == currentSong.cid) {
+                targetSong = s;
+                break;
+              }
+            }
+          }
         } else {
           for (var s in _collectionVideos) {
             if (s.bvid == widget.bvid) {
@@ -322,7 +354,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
             }
           }
         }
-        
+
         targetSong ??= _collectionVideos.first;
 
         await playerProvider.setPlaylistAndPlay(_collectionVideos, targetSong);
@@ -343,12 +375,12 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('提示'),
-          content: const Text('请先登录'),
+          title: Text(S.of(context).common_tips),
+          content: Text(S.of(context).weight_video_detail_please_login_first),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('确定'),
+              child: Text(S.of(context).common_confirm),
             ),
           ],
         ),
@@ -401,7 +433,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
       playerProvider.setPlaylistAndPlay(contextList, song);
       Navigator.pop(context);
-
     } else if (widget.simplified && widget.contextList != null) {
       showModalBottomSheet(
         context: context,
@@ -444,7 +475,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
     final playerProvider = Provider.of<PlayerProvider>(context);
 
     bool showPlayButton = true;
-    if (playerProvider.currentSong != null && playerProvider.currentSong!.bvid == widget.bvid) {
+    if (playerProvider.currentSong != null &&
+        playerProvider.currentSong!.bvid == widget.bvid) {
       if (_isParts) {
         showPlayButton = false;
       } else {
@@ -452,18 +484,19 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       }
     }
 
-    String collectionTabTitle = '合集与分P';
+    String collectionTabTitle = S.of(context).common_collection_and_parts;
     if (_isParts) {
-      collectionTabTitle = '分P';
+      collectionTabTitle = S.of(context).common_parts;
     } else if (_hasCollection) {
-      collectionTabTitle = '合集';
+      collectionTabTitle = S.of(context).common_collection;
     }
 
     return NotificationListener<ScrollUpdateNotification>(
       onNotification: (notification) {
         if (_isClosing) return false;
 
-        if (notification.metrics.pixels < -80 && notification.dragDetails != null) {
+        if (notification.metrics.pixels < -80 &&
+            notification.dragDetails != null) {
           _isClosing = true;
           Navigator.pop(context);
           return true;
@@ -488,7 +521,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                     onPressed: () {
                       SchemeLauncher.launchVideo(context, widget.bvid);
                     },
-                    tooltip: '在Bilibili中打开',
+                    tooltip: S.of(context).common_open_in_bilibili,
                   ),
                 ],
               ),
@@ -496,60 +529,67 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
             if (_isLoadingDetail)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else if (_videoDetail == null)
-              const Expanded(child: Center(child: Text('无法加载视频详情')))
+              Expanded(
+                child: Center(
+                  child: Text(
+                    S.of(context).weight_video_detail_cannot_load_detail,
+                  ),
+                ),
+              )
             else if (widget.simplified)
-                Expanded(
-                  child: ListView(
-                    physics: _scrollPhysics,
-                    controller: widget.scrollController,
-                    children: [
-                      VideoDetailInfo(
-                        data: _videoDetail!,
-                        showPlayButton: showPlayButton,
-                        onPlay: () {
-                          if (_videoDetail != null) {
-                            _playVideo(_mapDetailToSong(_videoDetail!));
-                          }
-                        },
-                        onFav: _handleFav,
-                        onOpenSpace: _openSpace,
-                      ),
-                    ],
-                  ),
-                )
-              else ...[
-                  VideoDetailInfo(
-                    data: _videoDetail!,
-                    showPlayButton: showPlayButton,
-                    onPlay: () {
-                      if (_videoDetail != null) {
-                        _playVideo(_mapDetailToSong(_videoDetail!));
-                      }
-                    },
-                    onFav: _handleFav,
-                    onOpenSpace: _openSpace,
-                  ),
-
-                  TabBar(
-                    controller: _tabController,
-                    tabs: [
-                      const Tab(text: '推荐'),
-                      Tab(text: collectionTabTitle),
-                      if (settingsProvider.enableComments) const Tab(text: '评论'),
-                    ],
-                  ),
-
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildRelatedTab(),
-                        _buildCollectionTab(),
-                        if (settingsProvider.enableComments) _buildCommentsTab(),
-                      ],
+              Expanded(
+                child: ListView(
+                  physics: _scrollPhysics,
+                  controller: widget.scrollController,
+                  children: [
+                    VideoDetailInfo(
+                      data: _videoDetail!,
+                      showPlayButton: showPlayButton,
+                      onPlay: () {
+                        if (_videoDetail != null) {
+                          _playVideo(_mapDetailToSong(_videoDetail!));
+                        }
+                      },
+                      onFav: _handleFav,
+                      onOpenSpace: _openSpace,
                     ),
-                  ),
+                  ],
+                ),
+              )
+            else ...[
+              VideoDetailInfo(
+                data: _videoDetail!,
+                showPlayButton: showPlayButton,
+                onPlay: () {
+                  if (_videoDetail != null) {
+                    _playVideo(_mapDetailToSong(_videoDetail!));
+                  }
+                },
+                onFav: _handleFav,
+                onOpenSpace: _openSpace,
+              ),
+
+              TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(text: S.of(context).common_recommend),
+                  Tab(text: collectionTabTitle),
+                  if (settingsProvider.enableComments)
+                    Tab(text: S.of(context).common_comment),
                 ],
+              ),
+
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildRelatedTab(),
+                    _buildCollectionTab(),
+                    if (settingsProvider.enableComments) _buildCommentsTab(),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -562,28 +602,28 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         CheckboxListTile(
           value: _recommendationAutoPlay,
           onChanged: _handleRecommendationAutoPlay,
-          title: const Text('推荐连播'),
+          title: Text(S.of(context).play_control_mode_random_continue),
           controlAffinity: ListTileControlAffinity.leading,
         ),
         Expanded(
           child: _isLoadingRelated
               ? const Center(child: CircularProgressIndicator())
               : _relatedVideos.isEmpty
-              ? const Center(child: Text('暂无推荐'))
+              ? Center(child: Text(S.of(context).common_none))
               : ListView.builder(
-            physics: _scrollPhysics,
-            controller: widget.scrollController,
-            itemCount: _relatedVideos.length,
-            itemBuilder: (context, index) {
-              return SongListItem(
-                song: _relatedVideos[index],
-                contextList: _relatedVideos,
-                onPlayAction: () {
-                  Navigator.pop(context);
-                },
-              );
-            },
-          ),
+                  physics: _scrollPhysics,
+                  controller: widget.scrollController,
+                  itemCount: _relatedVideos.length,
+                  itemBuilder: (context, index) {
+                    return SongListItem(
+                      song: _relatedVideos[index],
+                      contextList: _relatedVideos,
+                      onPlayAction: () {
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -594,7 +634,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       return const Center(child: CircularProgressIndicator());
     }
     if (!_hasCollection || _collectionVideos.isEmpty) {
-      return const Center(child: Text('无所属合集或分P'));
+      return Center(child: Text(S.of(context).common_none));
     }
 
     return Column(
@@ -604,7 +644,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
           child: ElevatedButton.icon(
             onPressed: _handleCollectionReplace,
             icon: const Icon(Icons.playlist_play),
-            label: const Text('替换播放列表'),
+            label: Text(S.of(context).common_replace_playlist),
           ),
         ),
         Expanded(
@@ -616,18 +656,25 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
               final song = _collectionVideos[index];
               bool isCurrent = false;
               if (_isParts) {
-                 final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-                 if (playerProvider.currentSong != null && 
-                     playerProvider.currentSong!.bvid == widget.bvid &&
-                     playerProvider.currentSong!.cid == song.cid) {
-                   isCurrent = true;
-                 }
+                final playerProvider = Provider.of<PlayerProvider>(
+                  context,
+                  listen: false,
+                );
+                if (playerProvider.currentSong != null &&
+                    playerProvider.currentSong!.bvid == widget.bvid &&
+                    playerProvider.currentSong!.cid == song.cid) {
+                  isCurrent = true;
+                }
               } else {
-                 isCurrent = song.bvid == widget.bvid;
+                isCurrent = song.bvid == widget.bvid;
               }
-              
+
               return Container(
-                color: isCurrent ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) : null,
+                color: isCurrent
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withOpacity(0.3)
+                    : null,
                 child: SongListItem(
                   song: song,
                   contextList: _collectionVideos,
@@ -648,40 +695,47 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
       children: [
         Expanded(
           child: _comments.isEmpty && !_isLoadingComments
-              ? const Center(child: Text('无评论'))
+              ? Center(child: Text(S.of(context).common_no_comment))
               : NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
-                _loadComments();
-              }
-              return false;
-            },
-            child: ListView.separated(
-              physics: _scrollPhysics,
-              controller: widget.scrollController,
-              itemCount: _comments.length + 1,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                if (index == _comments.length) {
-                  if (_isLoadingComments) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  } else if (!_hasMoreComments) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Center(child: Text('到底了', style: TextStyle(color: Colors.grey))),
-                    );
-                  } else {
-                    return const SizedBox(height: 60);
-                  }
-                }
-                final comment = _comments[index];
-                return _buildCommentItem(comment, index);
-              },
-            ),
-          ),
+                  onNotification: (notification) {
+                    if (notification.metrics.pixels >=
+                        notification.metrics.maxScrollExtent - 200) {
+                      _loadComments();
+                    }
+                    return false;
+                  },
+                  child: ListView.separated(
+                    physics: _scrollPhysics,
+                    controller: widget.scrollController,
+                    itemCount: _comments.length + 1,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      if (index == _comments.length) {
+                        if (_isLoadingComments) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        } else if (!_hasMoreComments) {
+                          return Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(
+                              child: Text(
+                                S.of(context).common_at_bottom,
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          );
+                        } else {
+                          return const SizedBox(height: 60);
+                        }
+                      }
+                      final comment = _comments[index];
+                      return _buildCommentItem(comment, index);
+                    },
+                  ),
+                ),
         ),
       ],
     );
@@ -722,20 +776,33 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                   children: [
                     GestureDetector(
                       onTap: () => _openSpace(int.parse(mid)),
-                      child: Text(uname, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text(
+                        uname,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
-                    Text(_formatFullDate(ctime), style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      _formatFullDate(ctime),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(message),
-                if (replies != null && replies is List && replies.isNotEmpty) ...[
+                if (replies != null &&
+                    replies is List &&
+                    replies.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Column(
@@ -746,14 +813,24 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: GestureDetector(
-                            onTap: noMoreSubReplies ? null : () => _loadSubReplies(index, oid, rpid),
+                            onTap: noMoreSubReplies
+                                ? null
+                                : () => _loadSubReplies(index, oid, rpid),
                             behavior: HitTestBehavior.translucent,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8.0,
+                              ),
                               child: Text(
-                                noMoreSubReplies ? '到底了' : '查看更多回复 >',
+                                noMoreSubReplies
+                                    ? S.of(context).common_at_bottom
+                                    : S
+                                          .of(context)
+                                          .weight_video_detail_more_comments,
                                 style: TextStyle(
-                                  color: noMoreSubReplies ? Theme.of(context).disabledColor : Theme.of(context).colorScheme.primary,
+                                  color: noMoreSubReplies
+                                      ? Theme.of(context).disabledColor
+                                      : Theme.of(context).colorScheme.primary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -787,7 +864,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
         children: [
           RichText(
             text: TextSpan(
-              style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+                fontSize: 12,
+              ),
               children: [
                 WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
@@ -796,7 +876,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
                     onTap: () => _openSpace(int.parse(mid)),
                     child: Text(
                       '$uname: ',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -804,7 +887,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
               ],
             ),
           ),
-          Text(_formatFullDate(ctime), style: TextStyle(color: Theme.of(context).disabledColor, fontSize: 10)),
+          Text(
+            _formatFullDate(ctime),
+            style: TextStyle(
+              color: Theme.of(context).disabledColor,
+              fontSize: 10,
+            ),
+          ),
         ],
       ),
     );
@@ -812,14 +901,9 @@ class _VideoDetailPageState extends State<VideoDetailPage> with SingleTickerProv
 
   String _formatNumber(int num) {
     if (num >= 10000) {
-      return '${(num / 10000).toStringAsFixed(1)}万';
+      return '${(num / 10000).toStringAsFixed(1)} ${S.of(context).number_ten_thousand}';
     }
     return num.toString();
-  }
-
-  String _formatDate(int timestamp) {
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    return '${date.year}-${date.month}-${date.day} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatFullDate(int timestamp) {

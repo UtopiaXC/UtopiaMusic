@@ -41,7 +41,11 @@ class SearchHistory extends StatelessWidget {
                     context: context,
                     builder: (context) => AlertDialog(
                       title: Text(S.of(context).common_confirm_title),
-                      content: Text(S.of(context).weight_search_label_confirm_clean_history_message),
+                      content: Text(
+                        S
+                            .of(context)
+                            .weight_search_label_confirm_clean_history_message,
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
@@ -60,7 +64,10 @@ class SearchHistory extends StatelessWidget {
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   child: Icon(
                     Icons.delete_outline,
                     size: 18,
@@ -91,7 +98,10 @@ class SearchHistory extends StatelessWidget {
                       fontSize: 13,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.5),
                     side: BorderSide.none,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

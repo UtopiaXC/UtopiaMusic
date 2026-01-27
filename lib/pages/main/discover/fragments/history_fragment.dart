@@ -6,6 +6,7 @@ import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class HistoryFragment extends StatefulWidget {
   final ScrollController scrollController;
@@ -163,11 +164,11 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
               children: [
                 const Icon(Icons.history, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                const Text('用户未登录，无法查看历史记录'),
+                Text(S.of(context).pages_discover_history_not_logged_in),
                 const SizedBox(height: 8),
                 FilledButton.tonal(
                   onPressed: _showLoginDialog,
-                  child: const Text('登录'),
+                  child: Text(S.of(context).pages_library_category_login),
                 ),
               ],
             ),
@@ -188,9 +189,9 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
                     child: Center(child: CircularProgressIndicator()),
                   );
                 } else if (!_hasMore) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: Text('到底了', style: TextStyle(color: Colors.grey))),
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(child: Text(S.of(context).common_at_bottom, style: const TextStyle(color: Colors.grey))),
                   );
                 } else {
                   return const SizedBox(height: 60);

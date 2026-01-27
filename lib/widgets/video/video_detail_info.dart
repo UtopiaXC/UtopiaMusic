@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/models/song.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class VideoDetailInfo extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -69,25 +70,29 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
 
   Future<void> _handleDownload() async {
     if (_isDownloaded) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已下载')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(S.of(context).common_downloaded),
+        ),
+      );
       return;
     }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('下载确认'),
-        content: const Text('是否下载该曲目？'),
+        title: Text(S.of(context).common_confirm_title),
+        content: Text(
+          S.of(context).weight_video_detail_download_confirm_message,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('下载'),
+            child: Text(S.of(context).common_download),
           ),
         ],
       ),
@@ -109,7 +114,7 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('已加入下载队列')));
+        ).showSnackBar(SnackBar(content: Text(S.of(context).weight_video_detail_added_to_download_queue)));
       }
     }
   }
@@ -220,7 +225,7 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                               () => _isDescExpanded = !_isDescExpanded,
                             ),
                             child: Text(
-                              '简介：${desc.isEmpty ? "暂无" : desc}',
+                              '${S.of(context).common_intro}：${desc.isEmpty ? "${S.of(context).common_none}" : desc}',
                               style: Theme.of(context).textTheme.bodySmall,
                               maxLines: _isDescExpanded ? null : 1,
                               overflow: _isDescExpanded
@@ -278,13 +283,13 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                       children: [
                         Expanded(
                           child: Text(
-                            '播放: ${_formatNumber(view)}',
+                            '${S.of(context).common_play}: ${_formatNumber(view)}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
                         Expanded(
                           child: Text(
-                            '时间: ${_formatDate(pubdate)}',
+                            '${S.of(context).common_time}: ${_formatDate(pubdate)}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
@@ -295,7 +300,7 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
                       children: [
                         Expanded(
                           child: Text(
-                            '弹幕: ${_formatNumber(danmaku)}',
+                            '${S.of(context).common_danmuku}: ${_formatNumber(danmaku)}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),

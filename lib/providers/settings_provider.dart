@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
+import 'package:utopia_music/utils/log.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
@@ -31,6 +33,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _enableHistoryReportKey = 'enable_history_report';
   static const String _historyReportDelayKey = 'history_report_delay';
   static const String _playerBackgroundModeKey = 'player_background_mode_v2';
+  static const String _debugModeKey = 'debug_mode';
+  static const String _logLevelKey = 'log_level';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -53,6 +57,8 @@ class SettingsProvider extends ChangeNotifier {
   bool _enableHistoryReport = false;
   int _historyReportDelay = 3;
   String _playerBackgroundMode = 'gradient';
+  bool _debugMode = false;
+  LogLevel _logLevel = LogLevel.warning;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -95,6 +101,10 @@ class SettingsProvider extends ChangeNotifier {
   int get historyReportDelay => _historyReportDelay;
 
   String get playerBackgroundMode => _playerBackgroundMode;
+
+  bool get debugMode => _debugMode;
+
+  LogLevel get logLevel => _logLevel;
 
   SettingsProvider() {
     _loadSettings();
@@ -140,6 +150,15 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _playerBackgroundMode = mode;
     }
+
+    _debugMode = prefs.getBool(_debugModeKey) ?? false;
+    final logLevelIndex = prefs.getInt(_logLevelKey) ?? LogLevel.warning.index;
+    if (logLevelIndex >= 0 && logLevelIndex < LogLevel.values.length) {
+      _logLevel = LogLevel.values[logLevelIndex];
+    } else {
+      _logLevel = LogLevel.warning;
+    }
+    Log.setLevel(_logLevel);
 
     notifyListeners();
   }
@@ -286,6 +305,21 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setString(_playerBackgroundModeKey, value);
   }
 
+  Future<void> setDebugMode(bool value) async {
+    _debugMode = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_debugModeKey, value);
+  }
+
+  Future<void> setLogLevel(LogLevel level) async {
+    _logLevel = level;
+    Log.setLevel(level);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_logLevelKey, level.index);
+  }
+
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
@@ -307,6 +341,9 @@ class SettingsProvider extends ChangeNotifier {
     _enableHistoryReport = false;
     _historyReportDelay = 3;
     _playerBackgroundMode = 'gradient';
+    _debugMode = false;
+    _logLevel = LogLevel.warning;
+    Log.setLevel(_logLevel);
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -329,6 +366,8 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_enableHistoryReportKey);
     await prefs.remove(_historyReportDelayKey);
     await prefs.remove(_playerBackgroundModeKey);
+    await prefs.remove(_debugModeKey);
+    await prefs.remove(_logLevelKey);
   }
 
   Future<void> resetApp() async {
@@ -352,6 +391,8 @@ class SettingsProvider extends ChangeNotifier {
     _enableHistoryReport = false;
     _historyReportDelay = 3;
     _playerBackgroundMode = 'gradient';
+    _debugMode = false;
+    _logLevel = LogLevel.warning;
     notifyListeners();
     try {
       final audioService = AudioPlayerService();

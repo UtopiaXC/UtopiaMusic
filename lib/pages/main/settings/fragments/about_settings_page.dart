@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/utils/update_util.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class AboutSettingsPage extends StatefulWidget {
   const AboutSettingsPage({super.key});
@@ -35,9 +35,11 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri)) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${S.of(context).util_scheme_lauch_fail}: $url'),
+          ),
+        );
       }
     }
   }
@@ -57,7 +59,11 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
                   if (snapshot.hasData) {
                     return Markdown(data: snapshot.data!);
                   } else if (snapshot.hasError) {
-                    return Center(child: Text('加载失败: ${snapshot.error}'));
+                    return Center(
+                      child: Text(
+                        '${S.of(context).common_loaded_failed}: ${snapshot.error}',
+                      ),
+                    );
                   }
                   return const Center(child: CircularProgressIndicator());
                 },
@@ -76,11 +82,13 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
                     style: TextButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.error,
                     ),
-                    child: const Text('不同意并退出'),
+                    child: Text(
+                      S.of(context).pages_settings_about_disagree_and_exit,
+                    ),
                   ),
                   FilledButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('同意'),
+                    child: Text(S.of(context).pages_settings_about_agree),
                   ),
                 ],
               ),
@@ -105,7 +113,11 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
                   if (snapshot.hasData) {
                     return Markdown(data: snapshot.data!);
                   } else if (snapshot.hasError) {
-                    return Center(child: Text('加载失败: ${snapshot.error}'));
+                    return Center(
+                      child: Text(
+                        '${S.of(context).common_loaded_failed}: ${snapshot.error}',
+                      ),
+                    );
                   }
                   return const Center(child: CircularProgressIndicator());
                 },
@@ -117,7 +129,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
                 alignment: Alignment.centerRight,
                 child: FilledButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('关闭'),
+                  child: Text(S.of(context).common_close),
                 ),
               ),
             ),
@@ -130,7 +142,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('关于')),
+      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_about)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
@@ -151,9 +163,9 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          const Center(
+          Center(
             child: Text(
-              'Utopia Music',
+              S.of(context).common_title,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
@@ -168,7 +180,6 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           ),
           const SizedBox(height: 32),
 
-          // 使用统一的 _SettingsGroup 风格（这里虽然不需要标题，但为了卡片样式统一，可以直接用 Padding + Card 结构）
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Card(
@@ -187,41 +198,43 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
                 children: [
                   _buildItem(
                     context,
-                    title: '开发者',
+                    title: S.of(context).pages_settings_about_developer,
                     subtitle: 'UtopiaXC',
                     onTap: () => _launchUrl('https://github.com/UtopiaXC'),
                   ),
                   _buildItem(
                     context,
-                    title: 'GitHub',
+                    title: S.of(context).pages_settings_about_github,
                     subtitle: 'https://github.com/UtopiaXC/UtopiaMusic',
                     onTap: () =>
                         _launchUrl('https://github.com/UtopiaXC/UtopiaMusic'),
                   ),
                   _buildItem(
                     context,
-                    title: '检查更新',
+                    title: S.of(context).pages_settings_about_check_update,
                     onTap: () {
                       UpdateUtil.checkAndShow(context, isManualCheck: true);
                     },
                   ),
                   _buildItem(
                     context,
-                    title: '用户协议',
+                    title: S.of(context).pages_settings_about_eurl,
                     onTap: () => _showEulaDialog(context),
                   ),
                   _buildItem(
                     context,
-                    title: '常见问题',
+                    title: S.of(context).pages_settings_about_qa,
                     onTap: () => _showFaqDialog(context),
                   ),
                   _buildItem(
                     context,
-                    title: '开源许可证',
+                    title: S
+                        .of(context)
+                        .pages_settings_about_open_source_license,
                     onTap: () {
                       showLicensePage(
                         context: context,
-                        applicationName: 'Utopia Music',
+                        applicationName: S.of(context).common_title,
                         applicationVersion: _version,
                         applicationIcon: Padding(
                           padding: const EdgeInsets.all(8.0),

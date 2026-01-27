@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class LiveFragment extends StatelessWidget {
   final ScrollController scrollController;
@@ -12,6 +13,6 @@ class LiveFragment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('直播功能开发中'));
+    return Center(child: Text(S.of(context).pages_discover_live_developing));
   }
 }

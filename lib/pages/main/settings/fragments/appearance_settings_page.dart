@@ -1,4 +1,3 @@
-// Updated background mode to String
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
@@ -16,19 +15,19 @@ class AppearanceSettingsPage extends StatelessWidget {
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('外观')),
+      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_appearance)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
           _SettingsGroup(
-            title: '全局',
+            title: S.of(context).pages_settings_appearance_global,
             children: [
               _buildThemeModeItem(context, settingsProvider),
               _buildColorItem(context, settingsProvider),
             ],
           ),
           _SettingsGroup(
-            title: '页面',
+            title: S.of(context).pages_settings_appearance_pages,
             children: [
               _buildStartPageItem(context, settingsProvider),
               _buildLibraryOrderItem(context),
@@ -36,10 +35,8 @@ class AppearanceSettingsPage extends StatelessWidget {
             ],
           ),
           _SettingsGroup(
-            title: '播放器',
-            children: [
-              _buildPlayerBackgroundItem(context, settingsProvider),
-            ],
+            title: S.of(context).pages_settings_appearance_player,
+            children: [_buildPlayerBackgroundItem(context, settingsProvider)],
           ),
         ],
       ),
@@ -48,23 +45,27 @@ class AppearanceSettingsPage extends StatelessWidget {
 
   Widget _buildThemeModeItem(BuildContext context, SettingsProvider provider) {
     return ListTile(
-      title: const Text('深色模式'),
+      title: Text(S.of(context).pages_settings_appearance_dark_mode),
       trailing: DropdownButton<ThemeMode>(
         value: provider.themeMode,
         underline: const SizedBox(),
         alignment: Alignment.centerRight,
-        items: const [
+        items: [
           DropdownMenuItem(
             value: ThemeMode.system,
-            child: Text('跟随系统'),
+            child: Text(
+              S.of(context).pages_settings_appearance_dark_mode_system,
+            ),
           ),
           DropdownMenuItem(
             value: ThemeMode.light,
-            child: Text('始终浅色'),
+            child: Text(
+              S.of(context).pages_settings_appearance_dark_mode_light,
+            ),
           ),
           DropdownMenuItem(
             value: ThemeMode.dark,
-            child: Text('始终深色'),
+            child: Text(S.of(context).pages_settings_appearance_dark_mode_dark),
           ),
         ],
         onChanged: (value) {
@@ -76,7 +77,7 @@ class AppearanceSettingsPage extends StatelessWidget {
 
   Widget _buildColorItem(BuildContext context, SettingsProvider provider) {
     return ListTile(
-      title: const Text('主题颜色'),
+      title: Text(S.of(context).pages_settings_appearance_theme_color),
       trailing: GestureDetector(
         onTap: () => _showColorPicker(context, provider),
         child: Container(
@@ -94,7 +95,7 @@ class AppearanceSettingsPage extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
-              )
+              ),
             ],
           ),
         ),
@@ -102,30 +103,47 @@ class AppearanceSettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPlayerBackgroundItem(BuildContext context, SettingsProvider provider) {
+  Widget _buildPlayerBackgroundItem(
+    BuildContext context,
+    SettingsProvider provider,
+  ) {
     return ListTile(
-      title: const Text('播放器背景'),
-      subtitle: const Text('选择播放界面的背景样式'),
+      title: Text(S.of(context).pages_settings_appearance_player_background),
+      subtitle: Text(
+        S.of(context).pages_settings_appearance_player_background_description,
+      ),
       trailing: DropdownButton<String>(
         value: provider.playerBackgroundMode,
         underline: const SizedBox(),
         alignment: Alignment.centerRight,
-        items: const [
+        items: [
           DropdownMenuItem(
             value: 'none',
-            child: Text('无'),
+            child: Text(
+              S.of(context).pages_settings_appearance_player_background_none,
+            ),
           ),
           DropdownMenuItem(
             value: 'gradient',
-            child: Text('渐变'),
+            child: Text(
+              S
+                  .of(context)
+                  .pages_settings_appearance_player_background_gradient,
+            ),
           ),
           DropdownMenuItem(
             value: 'blur',
-            child: Text('模糊'),
+            child: Text(
+              S.of(context).pages_settings_appearance_player_background_blur,
+            ),
           ),
           DropdownMenuItem(
             value: 'gaussian_blur',
-            child: Text('高斯模糊'),
+            child: Text(
+              S
+                  .of(context)
+                  .pages_settings_appearance_player_background_gaussian_blur,
+            ),
           ),
         ],
         onChanged: (value) {
@@ -137,19 +155,23 @@ class AppearanceSettingsPage extends StatelessWidget {
 
   Widget _buildStartPageItem(BuildContext context, SettingsProvider provider) {
     return ListTile(
-      title: const Text('启动页'),
+      title: Text(S.of(context).pages_settings_appearance_startup_page),
       trailing: DropdownButton<int>(
         value: provider.startPageIndex,
         underline: const SizedBox(),
         alignment: Alignment.centerRight,
-        items: const [
+        items: [
           DropdownMenuItem(
             value: 0,
-            child: Text('首页'),
+            child: Text(
+              S.of(context).pages_settings_appearance_startup_page_discover,
+            ),
           ),
           DropdownMenuItem(
             value: 1,
-            child: Text('曲库'),
+            child: Text(
+              S.of(context).pages_settings_appearance_startup_page_library,
+            ),
           ),
         ],
         onChanged: (value) {
@@ -161,7 +183,9 @@ class AppearanceSettingsPage extends StatelessWidget {
 
   Widget _buildLibraryOrderItem(BuildContext context) {
     return ListTile(
-      title: const Text('曲库页面排序与显示'),
+      title: Text(
+        S.of(context).pages_settings_appearance_startup_page_library_order,
+      ),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: () => _showLibraryOrderDialog(context),
     );
@@ -169,7 +193,9 @@ class AppearanceSettingsPage extends StatelessWidget {
 
   Widget _buildDiscoverOrderItem(BuildContext context) {
     return ListTile(
-      title: const Text('发现页面排序与显示'),
+      title: Text(
+        S.of(context).pages_settings_appearance_startup_page_discover_order,
+      ),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: () => _showDiscoverOrderDialog(context),
     );
@@ -180,7 +206,7 @@ class AppearanceSettingsPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('选择颜色'),
+        title: Text(S.of(context).pages_settings_appearance_pickup_color),
         content: SingleChildScrollView(
           child: ColorPicker(
             pickerColor: pickerColor,
@@ -202,14 +228,14 @@ class AppearanceSettingsPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
               provider.setSeedColor(pickerColor);
               Navigator.pop(context);
             },
-            child: const Text('确定'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -262,12 +288,12 @@ class _SettingsGroup extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ],
       ),
@@ -294,10 +320,12 @@ class _LibraryOrderDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 0),
                 child: Text(
-                  '曲库页面排序与显示',
+                  S
+                      .of(context)
+                      .pages_settings_appearance_startup_page_library_order,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -316,17 +344,24 @@ class _LibraryOrderDialog extends StatelessWidget {
                         onReorder: libraryProvider.updateOrder,
                         itemBuilder: (context, index) {
                           final type = libraryProvider.categoryOrder[index];
-                          final isHidden = libraryProvider.hiddenCategories.contains(type);
+                          final isHidden = libraryProvider.hiddenCategories
+                              .contains(type);
                           String title = '';
                           switch (type) {
                             case PlaylistCategoryType.favorites:
-                              title = '收藏夹';
+                              title = S
+                                  .of(context)
+                                  .pages_settings_appearance_startup_page_library_order_folder;
                               break;
                             case PlaylistCategoryType.collections:
-                              title = '合集';
+                              title = S
+                                  .of(context)
+                                  .pages_settings_appearance_startup_page_library_order_collection;
                               break;
                             case PlaylistCategoryType.local:
-                              title = '本地歌单';
+                              title = S
+                                  .of(context)
+                                  .pages_settings_appearance_startup_page_library_order_songlist;
                               break;
                           }
                           return ListTile(
@@ -334,16 +369,29 @@ class _LibraryOrderDialog extends StatelessWidget {
                             title: Text(
                               title,
                               style: TextStyle(
-                                color: isHidden ? Theme.of(context).disabledColor : null,
-                                decoration: isHidden ? TextDecoration.lineThrough : null,
+                                color: isHidden
+                                    ? Theme.of(context).disabledColor
+                                    : null,
+                                decoration: isHidden
+                                    ? TextDecoration.lineThrough
+                                    : null,
                               ),
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
-                                  onPressed: () => _showVisibilityDialog(context, libraryProvider, type, isHidden),
+                                  icon: Icon(
+                                    isHidden
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
+                                  onPressed: () => _showVisibilityDialog(
+                                    context,
+                                    libraryProvider,
+                                    type,
+                                    isHidden,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
                                 const Icon(Icons.drag_handle),
@@ -365,7 +413,7 @@ class _LibraryOrderDialog extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('关闭'),
+                      child: Text(S.of(context).common_close),
                     ),
                   ],
                 ),
@@ -377,23 +425,44 @@ class _LibraryOrderDialog extends StatelessWidget {
     );
   }
 
-  void _showVisibilityDialog(BuildContext context, LibraryProvider provider, PlaylistCategoryType type, bool isHidden) {
+  void _showVisibilityDialog(
+    BuildContext context,
+    LibraryProvider provider,
+    PlaylistCategoryType type,
+    bool isHidden,
+  ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(isHidden ? '显示控件' : '隐藏控件'),
-        content: Text(isHidden ? '是否在曲库中恢复显示该控件？' : '是否在曲库中隐藏该控件？'),
+        title: Text(
+          isHidden
+              ? S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_library_order_show
+              : S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_library_order_hide,
+        ),
+        content: Text(
+          isHidden
+              ? S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_library_order_show_ask
+              : S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_library_order_hide_ask,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
               provider.toggleCategoryVisibility(type);
               Navigator.pop(dialogContext);
             },
-            child: const Text('确认'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -420,10 +489,12 @@ class _DiscoverOrderDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  '发现页面排序与显示',
+                  S
+                      .of(context)
+                      .pages_settings_appearance_startup_page_discover_order,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -442,7 +513,8 @@ class _DiscoverOrderDialog extends StatelessWidget {
                         onReorder: discoverProvider.updateOrder,
                         itemBuilder: (context, index) {
                           final type = discoverProvider.categoryOrder[index];
-                          final isHidden = discoverProvider.hiddenCategories.contains(type);
+                          final isHidden = discoverProvider.hiddenCategories
+                              .contains(type);
                           String title = _getCategoryTitle(context, type);
 
                           return ListTile(
@@ -450,16 +522,29 @@ class _DiscoverOrderDialog extends StatelessWidget {
                             title: Text(
                               title,
                               style: TextStyle(
-                                color: isHidden ? Theme.of(context).disabledColor : null,
-                                decoration: isHidden ? TextDecoration.lineThrough : null,
+                                color: isHidden
+                                    ? Theme.of(context).disabledColor
+                                    : null,
+                                decoration: isHidden
+                                    ? TextDecoration.lineThrough
+                                    : null,
                               ),
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
-                                  onPressed: () => _showVisibilityDialog(context, discoverProvider, type, isHidden),
+                                  icon: Icon(
+                                    isHidden
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
+                                  onPressed: () => _showVisibilityDialog(
+                                    context,
+                                    discoverProvider,
+                                    type,
+                                    isHidden,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
                                 const Icon(Icons.drag_handle),
@@ -481,7 +566,7 @@ class _DiscoverOrderDialog extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('关闭'),
+                      child: Text(S.of(context).common_close),
                     ),
                   ],
                 ),
@@ -496,13 +581,13 @@ class _DiscoverOrderDialog extends StatelessWidget {
   String _getCategoryTitle(BuildContext context, DiscoverCategoryType type) {
     switch (type) {
       case DiscoverCategoryType.recommend:
-        return S.of(context).pages_discover_tag_recommend;
+        return S.of(context).common_recommend;
       case DiscoverCategoryType.feed:
         return S.of(context).pages_discover_tag_feed;
       case DiscoverCategoryType.history:
-        return '历史';
+        return S.of(context).common_history;
       case DiscoverCategoryType.subscribe:
-        return '关注';
+        return S.of(context).common_subscribe;
       case DiscoverCategoryType.live:
         return S.of(context).pages_discover_tag_live;
       case DiscoverCategoryType.rank:
@@ -514,23 +599,44 @@ class _DiscoverOrderDialog extends StatelessWidget {
     }
   }
 
-  void _showVisibilityDialog(BuildContext context, DiscoverProvider provider, DiscoverCategoryType type, bool isHidden) {
+  void _showVisibilityDialog(
+    BuildContext context,
+    DiscoverProvider provider,
+    DiscoverCategoryType type,
+    bool isHidden,
+  ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(isHidden ? '显示控件' : '隐藏控件'),
-        content: Text(isHidden ? '是否在发现页中恢复显示该控件？' : '是否在发现页中隐藏该控件？'),
+        title: Text(
+          isHidden
+              ? S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_library_order_show
+              : S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_library_order_hide,
+        ),
+        content: Text(
+          isHidden
+              ? S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_discover_order_show_ask
+              : S
+                    .of(context)
+                    .pages_settings_appearance_startup_page_discover_order_hide_ask,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
               provider.toggleCategoryVisibility(type);
               Navigator.pop(dialogContext);
             },
-            child: const Text('确认'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),

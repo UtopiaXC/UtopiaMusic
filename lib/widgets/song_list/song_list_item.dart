@@ -67,8 +67,9 @@ class SongListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String optimizedCover =
-        song.coverUrl.isNotEmpty ? '${song.coverUrl}@100w_100h.webp' : '';
+    final String optimizedCover = song.coverUrl.isNotEmpty
+        ? '${song.coverUrl}@100w_100h.webp'
+        : '';
 
     return InkWell(
       onTap: () => _handleTap(context),
@@ -152,13 +153,13 @@ class SongListItem extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'add_to_local_playlist',
                     child: Row(
                       children: [
                         Icon(Icons.playlist_add, size: 20),
                         SizedBox(width: 12),
-                        Text('添加到本地歌单'),
+                        Text(S.of(context).weight_song_list_add_to_local),
                       ],
                     ),
                   ),

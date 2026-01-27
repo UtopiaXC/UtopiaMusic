@@ -89,15 +89,26 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
       isScrollControlled: true,
       builder: (context) => PlaylistFormSheet(
         onSubmit: (title, description) async {
-          final id = await DatabaseService().createLocalPlaylist(title, description);
-          final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+          final id = await DatabaseService().createLocalPlaylist(
+            title,
+            description,
+          );
+          final playerProvider = Provider.of<PlayerProvider>(
+            context,
+            listen: false,
+          );
           for (var song in playerProvider.playlist) {
             await DatabaseService().addSongToLocalPlaylist(id, song);
           }
           if (mounted) {
-            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
+            Provider.of<LibraryProvider>(
+              context,
+              listen: false,
+            ).refreshLibrary(localOnly: true);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('已保存为本地歌单')),
+              SnackBar(
+                content: Text(S.of(context).weight_player_saved_as_local),
+              ),
             );
           }
         },
@@ -125,7 +136,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
         builder: (context, playerProvider, child) {
           final playlist = playerProvider.playlist;
           final currentSong = playerProvider.currentSong ?? widget.currentSong;
-          
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -137,18 +148,20 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
                       '${S.of(context).weight_play_list_label_name} (${playlist.length})',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const Spacer(),
+                     Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.folder_special_outlined),
+                      icon: Icon(Icons.folder_special_outlined),
                       onPressed: _handleSavePlaylist,
-                      tooltip: '保存为歌单',
+                      tooltip: S
+                          .of(context)
+                          .weight_player_saved_as_local_playlist,
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline),
                       onPressed: _showClearConfirmation,
                       tooltip: S
                           .of(context)
-                          .weight_search_label_confirm_clean_history_title,
+                          .weight_play_list_label_confirm_clean_playlist_title,
                     ),
                   ],
                 ),

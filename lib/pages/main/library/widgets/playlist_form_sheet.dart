@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class PlaylistFormSheet extends StatefulWidget {
   final String? initialTitle;
@@ -48,24 +49,24 @@ class _PlaylistFormSheetState extends State<PlaylistFormSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.initialTitle == null ? '创建歌单' : '编辑歌单',
+            widget.initialTitle == null ? S.of(context).pages_library_playlist_create : S.of(context).pages_library_playlist_edit,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: '歌单名称',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: S.of(context).pages_library_playlist_name,
+              border: const OutlineInputBorder(),
             ),
             autofocus: true,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _descController,
-            decoration: const InputDecoration(
-              labelText: '描述 (可选)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: S.of(context).pages_library_playlist_desc,
+              border: const OutlineInputBorder(),
             ),
             maxLines: 3,
           ),
@@ -77,7 +78,7 @@ class _PlaylistFormSheetState extends State<PlaylistFormSheet> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('确认'),
+            child: Text(S.of(context).common_confirm),
           ),
           const SizedBox(height: 16),
         ],

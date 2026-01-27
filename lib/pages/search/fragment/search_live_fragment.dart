@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchLiveFragment extends StatelessWidget {
   final String keyword;
@@ -11,8 +12,8 @@ class SearchLiveFragment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (keyword.isEmpty) {
-      return const Center(child: Text('直播搜索功能开发中'));
+      return Center(child: Text(S.of(context).common_under_development));
     }
-    return const Center(child: Text('直播搜索功能开发中'));
+    return Center(child: Text(S.of(context).common_under_development));
   }
 }

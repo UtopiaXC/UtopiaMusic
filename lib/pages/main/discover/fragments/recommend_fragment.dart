@@ -123,11 +123,11 @@ class _RecommendFragmentState extends State<RecommendFragment>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('无网络或接口请求被风控，请重试\n排行榜对风控较严，如未登录可尝试登录后重试'),
+                  Text(S.of(context).pages_discover_error_rank_risk),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: _loadData,
-                    child: Text('重试'),
+                    child: Text(S.of(context).common_retry),
                   ),
                 ],
               ),
@@ -149,7 +149,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
           controller: widget.scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(height: 200),
+            const SizedBox(height: 200),
             Center(child: Text(S.of(context).common_no_data)),
           ],
         ),

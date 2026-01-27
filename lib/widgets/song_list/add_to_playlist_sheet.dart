@@ -4,6 +4,7 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class AddToPlaylistSheet extends StatefulWidget {
   final Song song;
@@ -53,7 +54,10 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
           await DatabaseService().createLocalPlaylist(title, description);
           _loadPlaylists();
           if (mounted) {
-             Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+            Provider.of<LibraryProvider>(
+              context,
+              listen: false,
+            ).refreshLibrary();
           }
         },
       ),
@@ -63,16 +67,22 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
   Future<void> _addToPlaylist(LocalPlaylist playlist) async {
     final songToAdd = widget.song.copyWith(
       title: _rename ? _titleController.text : widget.song.title,
-      originTitle: widget.song.originTitle.isEmpty ? widget.song.title : widget.song.originTitle,
+      originTitle: widget.song.originTitle.isEmpty
+          ? widget.song.title
+          : widget.song.originTitle,
     );
 
     await DatabaseService().addSongToLocalPlaylist(playlist.id, songToAdd);
-    
+
     if (mounted) {
       Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已添加到歌单 "${playlist.title}"')),
+        SnackBar(
+          content: Text(
+            '${S.of(context).weight_song_list_added_to_list} "${playlist.title}"',
+          ),
+        ),
       );
     }
   }
@@ -94,7 +104,7 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  '添加到歌单',
+                  S.of(context).weight_song_list_add_to_list,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -112,16 +122,19 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
                             });
                           },
                         ),
-                        const Text('在本地重命名标题'),
+                        Text(S.of(context).weight_song_list_rename_add),
                       ],
                     ),
                     if (_rename)
                       TextField(
                         controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: '新标题',
+                        decoration: InputDecoration(
+                          labelText: S.of(context).common_new_title,
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                       ),
                   ],
@@ -130,7 +143,7 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.add),
-                title: const Text('新建歌单'),
+                title: Text(S.of(context).weight_song_list_new_list),
                 onTap: _handleCreatePlaylist,
               ),
               Expanded(
@@ -147,7 +160,9 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
                               height: 40,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(4),
-                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
                                 image: playlist.coverUrl != null
                                     ? DecorationImage(
                                         image: NetworkImage(playlist.coverUrl!),
@@ -160,7 +175,9 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
                                   : null,
                             ),
                             title: Text(playlist.title),
-                            subtitle: Text('${playlist.songCount}首'),
+                            subtitle: Text(
+                              '${playlist.songCount}${S.of(context).common_count_of_songs}',
+                            ),
                             onTap: () => _addToPlaylist(playlist),
                           );
                         },

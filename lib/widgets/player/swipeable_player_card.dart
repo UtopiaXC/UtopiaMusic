@@ -23,7 +23,8 @@ class SwipeablePlayerCard extends StatefulWidget {
   State<SwipeablePlayerCard> createState() => SwipeablePlayerCardState();
 }
 
-class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTickerProviderStateMixin {
+class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   double _dragExtent = 0.0;
   double _width = 0.0;
@@ -60,14 +61,18 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
 
   void handleDragEnd(DragEndDetails details) {
     if (!widget.enableSwipe || _isAnimatingOut) return;
-    
+
     final velocity = details.primaryVelocity ?? 0;
     final threshold = _width * 0.1;
     const velocityThreshold = 100.0;
 
-    if (widget.onPrevious != null && _dragExtent > 0 && (_dragExtent > threshold || velocity > velocityThreshold)) {
+    if (widget.onPrevious != null &&
+        _dragExtent > 0 &&
+        (_dragExtent > threshold || velocity > velocityThreshold)) {
       _animateOut(1.0);
-    } else if (widget.onNext != null && _dragExtent < 0 && (_dragExtent < -threshold || velocity < -velocityThreshold)) {
+    } else if (widget.onNext != null &&
+        _dragExtent < 0 &&
+        (_dragExtent < -threshold || velocity < -velocityThreshold)) {
       _animateOut(-1.0);
     } else {
       _animateBack();
@@ -77,11 +82,12 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
   void _animateBack() {
     _controller.duration = const Duration(milliseconds: 300);
     final start = _dragExtent;
-    
+
     _controller.reset();
-    final animation = Tween<double>(begin: start, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    final animation = Tween<double>(
+      begin: start,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     animation.addListener(() {
       setState(() {
@@ -98,13 +104,14 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
     });
     final end = direction * _width * 1.5;
     final start = _dragExtent;
-    
+
     _controller.duration = const Duration(milliseconds: 200);
     _controller.reset();
-    
-    final animation = Tween<double>(begin: start, end: end).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+
+    final animation = Tween<double>(
+      begin: start,
+      end: end,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     animation.addListener(() {
       if (mounted) {
@@ -127,11 +134,11 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
   void didUpdateWidget(SwipeablePlayerCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_isAnimatingOut) {
-         _controller.stop();
-         setState(() {
-           _dragExtent = 0.0;
-           _isAnimatingOut = false;
-         });
+      _controller.stop();
+      setState(() {
+        _dragExtent = 0.0;
+        _isAnimatingOut = false;
+      });
     }
   }
 
@@ -141,12 +148,12 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard> with SingleTic
       builder: (context, constraints) {
         _width = constraints.maxWidth;
         if (_width.isInfinite) {
-           _width = MediaQuery.of(context).size.width;
+          _width = MediaQuery.of(context).size.width;
         }
-        
+
         final rotation = _dragExtent / _width * 0.05;
         final progress = min(_dragExtent.abs(), _width) / _width;
-        
+
         Widget? background;
         if (_dragExtent > 0) {
           background = widget.previousChild;

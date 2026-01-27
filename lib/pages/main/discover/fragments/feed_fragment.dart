@@ -5,6 +5,7 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class FeedFragment extends StatefulWidget {
   final ScrollController scrollController;
@@ -150,11 +151,11 @@ class _FeedFragmentState extends State<FeedFragment>
               children: [
                 const Icon(Icons.no_accounts, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                const Text('用户未登录，无法查看动态'),
+                Text(S.of(context).pages_discover_feed_not_logged_in),
                 const SizedBox(height: 8),
                 FilledButton.tonal(
                   onPressed: _showLoginDialog,
-                  child: const Text('登录'),
+                  child: Text(S.of(context).pages_library_category_login),
                 ),
               ],
             ),
@@ -179,10 +180,10 @@ class _FeedFragmentState extends State<FeedFragment>
                     child: Center(child: CircularProgressIndicator()),
                   );
                 } else {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Center(
-                      child: Text('到底了', style: TextStyle(color: Colors.grey)),
+                      child: Text(S.of(context).common_at_bottom, style: const TextStyle(color: Colors.grey)),
                     ),
                   );
                 }

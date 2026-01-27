@@ -9,6 +9,7 @@ import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
 import 'package:utopia_music/connection/user/user.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class MusicPage extends StatefulWidget {
   const MusicPage({super.key});
@@ -50,7 +51,10 @@ class _MusicPageState extends State<MusicPage> {
         onSubmit: (title, description) async {
           await DatabaseService().createLocalPlaylist(title, description);
           if (mounted) {
-            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
+            Provider.of<LibraryProvider>(
+              context,
+              listen: false,
+            ).refreshLibrary(localOnly: true);
           }
         },
       ),
@@ -69,16 +73,23 @@ class _MusicPageState extends State<MusicPage> {
       isScrollControlled: true,
       builder: (context) => _BilibiliPlaylistCreateSheet(
         onSubmit: (title, description, isPublic) async {
-          final success = await _userApi.createFavFolder(title, description, isPublic);
+          final success = await _userApi.createFavFolder(
+            title,
+            description,
+            isPublic,
+          );
           if (mounted) {
             if (success) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('创建成功')),
+                SnackBar(content: Text(S.of(context).common_succeed)),
               );
-              Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
+              Provider.of<LibraryProvider>(
+                context,
+                listen: false,
+              ).refreshLibrary();
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('创建失败')),
+                SnackBar(content: Text(S.of(context).common_failed)),
               );
             }
           }
@@ -111,12 +122,13 @@ class _MusicPageState extends State<MusicPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final isDesktop =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('曲库'),
+        title: Text(S.of(context).pages_tag_library),
         actions: [
           IconButton(
             icon: const Icon(Icons.download),
@@ -133,23 +145,25 @@ class _MusicPageState extends State<MusicPage> {
             },
             itemBuilder: (BuildContext context) {
               return [
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'create_bilibili',
                   child: Row(
                     children: [
                       Icon(Icons.folder_special_outlined, size: 20),
                       SizedBox(width: 12),
-                      Text('创建 B 站收藏夹'),
+                      Text(
+                        S.of(context).common_save_in_bilibili_favourite_folder,
+                      ),
                     ],
                   ),
                 ),
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'create_local',
                   child: Row(
                     children: [
                       Icon(Icons.add_circle_outline, size: 20),
                       SizedBox(width: 12),
-                      Text('创建本地歌单'),
+                      Text(S.of(context).pages_libiray_create_local_song_list),
                     ],
                   ),
                 ),
@@ -165,43 +179,43 @@ class _MusicPageState extends State<MusicPage> {
           builder: (context, libraryProvider, child) {
             final visibleCategories = libraryProvider.visibleCategories;
             final fullList = libraryProvider.categoryOrder;
-            
+
             return ReorderableListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 120),
               itemCount: visibleCategories.length,
               buildDefaultDragHandles: false,
               onReorder: (oldIndex, newIndex) {
-                 final oldType = visibleCategories[oldIndex];
-                 final fullOldIndex = fullList.indexOf(oldType);
-                 
-                 int fullNewIndex;
-                 
-                 if (oldIndex < newIndex) {
-                   final targetType = visibleCategories[newIndex - 1];
-                   final fullTargetIndex = fullList.indexOf(targetType);
-                   fullNewIndex = fullTargetIndex + 1;
-                 } else {
-                   final targetType = visibleCategories[newIndex];
-                   fullNewIndex = fullList.indexOf(targetType);
-                 }
-                 
-                 libraryProvider.updateOrder(fullOldIndex, fullNewIndex);
+                final oldType = visibleCategories[oldIndex];
+                final fullOldIndex = fullList.indexOf(oldType);
+
+                int fullNewIndex;
+
+                if (oldIndex < newIndex) {
+                  final targetType = visibleCategories[newIndex - 1];
+                  final fullTargetIndex = fullList.indexOf(targetType);
+                  fullNewIndex = fullTargetIndex + 1;
+                } else {
+                  final targetType = visibleCategories[newIndex];
+                  fullNewIndex = fullList.indexOf(targetType);
+                }
+
+                libraryProvider.updateOrder(fullOldIndex, fullNewIndex);
               },
               itemBuilder: (context, index) {
                 final type = visibleCategories[index];
                 String title = '';
                 switch (type) {
                   case PlaylistCategoryType.favorites:
-                    title = '收藏夹';
+                    title = S.of(context).common_favourite_folder;
                     break;
                   case PlaylistCategoryType.collections:
-                    title = '合集';
+                    title = S.of(context).common_collection;
                     break;
                   case PlaylistCategoryType.local:
-                    title = '本地歌单';
+                    title = S.of(context).common_local_song_list;
                     break;
                 }
-                
+
                 return ReorderableDelayedDragStartListener(
                   key: ValueKey(type),
                   index: index,
@@ -232,10 +246,12 @@ class _BilibiliPlaylistCreateSheet extends StatefulWidget {
   const _BilibiliPlaylistCreateSheet({required this.onSubmit});
 
   @override
-  State<_BilibiliPlaylistCreateSheet> createState() => _BilibiliPlaylistCreateSheetState();
+  State<_BilibiliPlaylistCreateSheet> createState() =>
+      _BilibiliPlaylistCreateSheetState();
 }
 
-class _BilibiliPlaylistCreateSheetState extends State<_BilibiliPlaylistCreateSheet> {
+class _BilibiliPlaylistCreateSheetState
+    extends State<_BilibiliPlaylistCreateSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
@@ -253,7 +269,11 @@ class _BilibiliPlaylistCreateSheetState extends State<_BilibiliPlaylistCreateShe
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await widget.onSubmit(_titleController.text, _descController.text, _isPublic);
+    await widget.onSubmit(
+      _titleController.text,
+      _descController.text,
+      _isPublic,
+    );
     if (mounted) {
       setState(() => _isLoading = false);
       Navigator.pop(context);
@@ -283,19 +303,21 @@ class _BilibiliPlaylistCreateSheetState extends State<_BilibiliPlaylistCreateShe
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '创建 B 站收藏夹',
+                          S
+                              .of(context)
+                              .pages_libiray_create_online_bilibili_folder,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 24),
                         TextFormField(
                           controller: _titleController,
-                          decoration: const InputDecoration(
-                            labelText: '标题',
+                          decoration: InputDecoration(
+                            labelText: S.of(context).common_new_title,
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return '请输入标题';
+                              return S.of(context).common_new_title_input;
                             }
                             return null;
                           },
@@ -303,15 +325,15 @@ class _BilibiliPlaylistCreateSheetState extends State<_BilibiliPlaylistCreateShe
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _descController,
-                          decoration: const InputDecoration(
-                            labelText: '简介',
+                          decoration: InputDecoration(
+                            labelText: S.of(context).common_intro,
                             border: OutlineInputBorder(),
                           ),
                           maxLines: 3,
                         ),
                         const SizedBox(height: 16),
                         SwitchListTile(
-                          title: const Text('公开收藏夹'),
+                          title: Text(S.of(context).common_public),
                           value: _isPublic,
                           onChanged: (value) {
                             setState(() {
@@ -324,7 +346,7 @@ class _BilibiliPlaylistCreateSheetState extends State<_BilibiliPlaylistCreateShe
                           width: double.infinity,
                           child: FilledButton(
                             onPressed: _handleSubmit,
-                            child: const Text('创建'),
+                            child: Text(S.of(context).common_create),
                           ),
                         ),
                       ],

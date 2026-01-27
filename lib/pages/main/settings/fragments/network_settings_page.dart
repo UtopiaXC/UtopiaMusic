@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class NetworkSettingsPage extends StatelessWidget {
   const NetworkSettingsPage({super.key});
@@ -10,16 +11,24 @@ class NetworkSettingsPage extends StatelessWidget {
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('网络')),
+      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_network)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
           _SettingsGroup(
-            title: '接口请求',
+            title: S.of(context).pages_settings_tag_network_interface_request,
             children: [
               ListTile(
-                title: const Text('请求重试次数'),
-                subtitle: const Text('网络错误或无法解析时重试的次数'),
+                title: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_network_interface_request_retry,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_network_interface_request_retry_description,
+                ),
                 trailing: DropdownButton<int>(
                   value: settingsProvider.maxRetries,
                   underline: const SizedBox(),
@@ -29,10 +38,9 @@ class NetworkSettingsPage extends StatelessWidget {
                       settingsProvider.setMaxRetries(newValue);
                     }
                   },
-                  items:
-                  [0, 1, 2, 3, 4, 5].map<DropdownMenuItem<int>>((
-                      int value,
-                      ) {
+                  items: [0, 1, 2, 3, 4, 5].map<DropdownMenuItem<int>>((
+                    int value,
+                  ) {
                     return DropdownMenuItem<int>(
                       value: value,
                       child: Text(value.toString()),
@@ -41,8 +49,14 @@ class NetworkSettingsPage extends StatelessWidget {
                 ),
               ),
               ListTile(
-                title: const Text('延迟请求'),
-                subtitle: const Text('降低风控风险'),
+                title: Text(
+                  S.of(context).pages_settings_tag_network_request_delay,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_network_request_delay_description,
+                ),
                 trailing: DropdownButton<int>(
                   value: settingsProvider.requestDelay,
                   underline: const SizedBox(),
@@ -52,25 +66,30 @@ class NetworkSettingsPage extends StatelessWidget {
                       settingsProvider.setRequestDelay(newValue);
                     }
                   },
-                  items:
-                  [0, 10, 50, 100, 200, 300, 400, 500].map<
-                      DropdownMenuItem<int>
-                  >((int value) {
-                    return DropdownMenuItem<int>(
-                      value: value,
-                      child: Text('$value ms'),
-                    );
-                  }).toList(),
+                  items: [0, 10, 50, 100, 200, 300, 400, 500]
+                      .map<DropdownMenuItem<int>>((int value) {
+                        return DropdownMenuItem<int>(
+                          value: value,
+                          child: Text('$value ms'),
+                        );
+                      })
+                      .toList(),
                 ),
               ),
             ],
           ),
           _SettingsGroup(
-            title: '历史记录',
+            title: S.of(context).pages_settings_tag_network_play_history,
             children: [
               SwitchListTile(
-                title: const Text('上报播放记录'),
-                subtitle: const Text('将播放历史同步到B站'),
+                title: Text(
+                  S.of(context).pages_settings_tag_network_play_history_report,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_network_play_history_report_description,
+                ),
                 value: settingsProvider.enableHistoryReport,
                 onChanged: (bool value) {
                   settingsProvider.setEnableHistoryReport(value);
@@ -78,9 +97,15 @@ class NetworkSettingsPage extends StatelessWidget {
               ),
               if (settingsProvider.enableHistoryReport)
                 ListTile(
-                  title: const Text('上报延迟'),
+                  title: Text(
+                    S
+                        .of(context)
+                        .pages_settings_tag_network_play_history_report_delay,
+                  ),
                   subtitle: Text(
-                    '为防止出现大量无效请求，在播放开始后的${settingsProvider.historyReportDelay}秒才会开始上报记录',
+                    S
+                        .of(context)
+                        .pages_settings_tag_network_play_history_report_delay_description,
                   ),
                   trailing: DropdownButton<int>(
                     value: settingsProvider.historyReportDelay,
@@ -91,13 +116,16 @@ class NetworkSettingsPage extends StatelessWidget {
                         settingsProvider.setHistoryReportDelay(newValue);
                       }
                     },
-                    items:
-                    [0, 1, 3, 5, 10].map<DropdownMenuItem<int>>((
-                        int value,
-                        ) {
+                    items: [0, 1, 3, 5, 10].map<DropdownMenuItem<int>>((
+                      int value,
+                    ) {
                       return DropdownMenuItem<int>(
                         value: value,
-                        child: Text(value == 0 ? '禁用' : '$value 秒'),
+                        child: Text(
+                          value == 0
+                              ? S.of(context).common_disable
+                              : '$value ${S.of(context).time_minute}',
+                        ),
                       );
                     }).toList(),
                   ),
@@ -141,9 +169,9 @@ class _SettingsGroup extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(
-                  alpha: 0.3,
-                ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
             child: Column(children: children),

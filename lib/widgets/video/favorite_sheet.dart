@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class FavoriteSheet extends StatefulWidget {
   final int aid;
@@ -32,7 +33,10 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
   Future<void> _loadFolders() async {
     setState(() => _isLoading = true);
     try {
-      final list = await _userApi.getUserCreatedFavFoldersAll(widget.mid, widget.aid);
+      final list = await _userApi.getUserCreatedFavFoldersAll(
+        widget.mid,
+        widget.aid,
+      );
 
       if (mounted) {
         setState(() {
@@ -57,8 +61,12 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
     if (_isSaving) return;
     setState(() => _isSaving = true);
 
-    final Set<int> toAdd = _selectedFolderIds.difference(_initialSelectedFolderIds);
-    final Set<int> toRemove = _initialSelectedFolderIds.difference(_selectedFolderIds);
+    final Set<int> toAdd = _selectedFolderIds.difference(
+      _initialSelectedFolderIds,
+    );
+    final Set<int> toRemove = _initialSelectedFolderIds.difference(
+      _selectedFolderIds,
+    );
 
     if (toAdd.isEmpty && toRemove.isEmpty) {
       Navigator.pop(context, _selectedFolderIds.isNotEmpty);
@@ -77,16 +85,16 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
         if (success) {
           Navigator.pop(context, _selectedFolderIds.isNotEmpty);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('操作失败')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(S.of(context).common_failed)));
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('网络错误')),
+          SnackBar(content: Text(S.of(context).common_network_error)),
         );
       }
     }
@@ -97,9 +105,7 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
     final double maxHeight = MediaQuery.of(context).size.height * 0.75;
 
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: maxHeight,
-      ),
+      constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
@@ -112,26 +118,37 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('收藏视频', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  S.of(context).common_favourite,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 TextButton(
                   onPressed: _isSaving ? null : _handleSave,
                   child: _isSaving
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('完成'),
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(S.of(context).common_done),
                 ),
               ],
             ),
           ),
           const Divider(height: 1),
           if (_isLoading)
-            const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+            const SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator()),
+            )
           else
             Flexible(
               child: NotificationListener<ScrollUpdateNotification>(
                 onNotification: (notification) {
                   if (_isClosing) return false;
 
-                  if (notification.metrics.pixels < -70 && notification.dragDetails != null) {
+                  if (notification.metrics.pixels < -70 &&
+                      notification.dragDetails != null) {
                     _isClosing = true;
                     Navigator.pop(context, _selectedFolderIds.isNotEmpty);
                     return true;
@@ -163,7 +180,7 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
                         });
                       },
                       title: Text(title),
-                      subtitle: Text('$count个内容'),
+                      subtitle: Text('$count${S.of(context).weight_video_detail_contants}'),
                       secondary: const Icon(Icons.folder),
                     );
                   },

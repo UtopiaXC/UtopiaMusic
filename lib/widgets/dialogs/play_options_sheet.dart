@@ -24,47 +24,61 @@ class PlayOptionsSheet extends StatelessWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.playlist_play),
-            title: Text(S.of(context).dialog_option_replace_play_list_by_song_list),
+            title: Text(
+              S.of(context).sheet_option_replace_play_list_by_song_list,
+            ),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<PlayerProvider>(context, listen: false)
-                  .setPlaylistAndPlay(contextList, song);
+              Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              ).setPlaylistAndPlay(contextList, song);
               onPlayAction?.call();
             },
           ),
           ListTile(
             leading: const Icon(Icons.playlist_add),
-            title: Text(S.of(context).dialog_option_insert_after),
+            title: Text(S.of(context).sheet_option_insert_after),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<PlayerProvider>(context, listen: false).insertNext(song);
+              Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              ).insertNext(song);
             },
           ),
           ListTile(
             leading: const Icon(Icons.play_arrow),
-            title: Text(S.of(context).dialog_option_insert_after_and_play),
+            title: Text(S.of(context).sheet_option_insert_after_and_play),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<PlayerProvider>(context, listen: false)
-                  .insertNextAndPlay(song);
+              Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              ).insertNextAndPlay(song);
               onPlayAction?.call();
             },
           ),
           ListTile(
             leading: const Icon(Icons.playlist_add_check),
-            title: Text(S.of(context).dialog_option_append_to_end),
+            title: Text(S.of(context).sheet_option_append_to_end),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<PlayerProvider>(context, listen: false).addToEnd(song);
+              Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              ).addToEnd(song);
             },
           ),
           ListTile(
             leading: const Icon(Icons.swap_calls),
-            title: Text(S.of(context).dialog_option_replace_by_single_song),
+            title: Text(S.of(context).sheet_option_replace_by_single_song),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<PlayerProvider>(context, listen: false)
-                  .replacePlaylistWithSong(song);
+              Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              ).replacePlaylistWithSong(song);
               onPlayAction?.call();
             },
           ),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:utopia_music/connection/user/login.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class LoginDialog extends StatefulWidget {
   const LoginDialog({super.key});
@@ -68,18 +69,20 @@ class _LoginDialogState extends State<LoginDialog>
         });
         _startPolling();
       } else {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _isLoading = false;
             _isExpired = true;
           });
+        }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
           _isExpired = true;
         });
+      }
     }
   }
 
@@ -106,9 +109,9 @@ class _LoginDialogState extends State<LoginDialog>
             ).login(type: 'qr');
             if (mounted) {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('登录成功')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(S.of(context).common_succeed)),
+              );
             }
           }
         } else if (code == 86038) {
@@ -133,12 +136,12 @@ class _LoginDialogState extends State<LoginDialog>
         Navigator.of(context).pop();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('登录成功')));
+        ).showSnackBar(SnackBar(content: Text(S.of(context).common_succeed)));
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('登录失败: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${S.of(context).common_failed}: $e')),
+      );
     }
   }
 
@@ -166,9 +169,9 @@ class _LoginDialogState extends State<LoginDialog>
                 const SizedBox(height: 48),
                 TabBar(
                   controller: _tabController,
-                  tabs: const [
-                    Tab(text: '扫码登录'),
-                    Tab(text: 'Cookie 登录'),
+                  tabs: [
+                    Tab(text: S.of(context).weight_login_scan_qr),
+                    Tab(text: S.of(context).weight_login_cookie),
                   ],
                 ),
                 Expanded(
@@ -185,7 +188,7 @@ class _LoginDialogState extends State<LoginDialog>
               child: IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).pop(),
-                tooltip: '取消',
+                tooltip: S.of(context).common_cancel,
               ),
             ),
           ],
@@ -213,21 +216,26 @@ class _LoginDialogState extends State<LoginDialog>
                     ),
                   const SizedBox(height: 16),
                   Text(
-                    '欢迎回来，${auth.userInfo?.name ?? "用户"}',
+                    '${S.of(context).weight_login_welcome_back} ${auth.userInfo?.name ?? S.of(context).pages_search_tag_user}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text('当前已登录，请尽情使用', style: TextStyle(color: Colors.grey)),
+                  Text(
+                    S.of(context).weight_login_over,
+                    style: TextStyle(color: Colors.grey),
+                  ),
                   const Spacer(),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: _handleLogout,
-                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text('退出登录'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      child: Text(S.of(context).weight_login_logout),
                     ),
                   ),
                 ],
@@ -239,7 +247,7 @@ class _LoginDialogState extends State<LoginDialog>
               child: IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).pop(),
-                tooltip: '关闭',
+                tooltip: S.of(context).common_close,
               ),
             ),
           ],
@@ -259,9 +267,12 @@ class _LoginDialogState extends State<LoginDialog>
             children: [
               const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
-              const Text('二维码已失效'),
+              Text(S.of(context).weight_login_qr_expired),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: _loadQrCode, child: const Text('刷新')),
+              ElevatedButton(
+                onPressed: _loadQrCode,
+                child: Text(S.of(context).common_refresh),
+              ),
             ],
           )
         else if (_qrUrl != null)
@@ -282,20 +293,23 @@ class _LoginDialogState extends State<LoginDialog>
               ),
               const SizedBox(height: 24),
               if (_isScanned)
-                const Column(
+                Column(
                   children: [
                     Icon(Icons.check_circle, color: Colors.green, size: 32),
                     SizedBox(height: 8),
                     Text(
-                      '扫描成功，请在手机上确认登录',
+                      S.of(context).weight_login_scan_confirm,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
                 )
               else
-                const Text('请截图并使用 哔哩哔哩客户端 扫码登录'),
+                Text(S.of(context).weight_login_screenshoot_to_qr_hint),
               const SizedBox(height: 8),
-              TextButton(onPressed: _loadQrCode, child: const Text('刷新二维码')),
+              TextButton(
+                onPressed: _loadQrCode,
+                child: Text(S.of(context).weight_login_refresh_qr),
+              ),
             ],
           ),
       ],
@@ -308,13 +322,13 @@ class _LoginDialogState extends State<LoginDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            '手动输入 Cookie',
+          Text(
+            S.of(context).weight_login_cookie_tips,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '请从浏览器中复制完整的 Cookie 字符串粘贴到下方。',
+          Text(
+            S.of(context).weight_login_cookie_hint,
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 16),
@@ -331,7 +345,7 @@ class _LoginDialogState extends State<LoginDialog>
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _handleManualLogin,
-            child: const Text('确认登录'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),

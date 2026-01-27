@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:utopia_music/generated/l10n.dart';
+
 class QualityUtils {
   QualityUtils._();
 
@@ -15,20 +18,36 @@ class QualityUtils {
     quality64k,
   ];
 
-  static String getQualityLabel(int quality, {bool detailed = false}) {
+  static String getQualityLabel(
+    BuildContext context,
+    int quality, {
+    bool detailed = false,
+  }) {
     switch (quality) {
       case qualityHiRes:
-        return detailed ? 'Hi-Res无损 (大会员)' : 'Hi-Res';
+        return detailed
+            ? S.of(context).util_audio_quality_hires_detail
+            : S.of(context).util_audio_quality_hires;
       case qualityDolby:
-        return detailed ? '杜比全景声 (大会员)' : '杜比全景声';
+        return detailed
+            ? S.of(context).util_audio_quality_dolby_detail
+            : S.of(context).util_audio_quality_dolby;
       case quality192k:
-        return detailed ? '高音质 (192k)' : '高音质';
+        return detailed
+            ? S.of(context).util_audio_quality_high_detail
+            : S.of(context).util_audio_quality_high;
       case quality132k:
-        return detailed ? '标准音质 (132K)' : '标准音质';
+        return detailed
+            ? S.of(context).util_audio_quality_middle_detail
+            : S.of(context).util_audio_quality_middle;
       case quality64k:
-        return detailed ? '低音质 (64k)' : '低音质';
+        return detailed
+            ? S.of(context).util_audio_quality_low_detail
+            : S.of(context).util_audio_quality_low;
       default:
-        return detailed ? '未知 ($quality)' : '未知';
+        return detailed
+            ? '${S.of(context).common_unknown} ($quality)'
+            : S.of(context).common_unknown;
     }
   }
 

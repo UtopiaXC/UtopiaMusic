@@ -24,6 +24,7 @@ import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/widgets/video/favorite_sheet.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class FullPlayerPage extends StatefulWidget {
   final Song song;
@@ -80,7 +81,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   @override
   void didUpdateWidget(FullPlayerPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.song.bvid != widget.song.bvid || oldWidget.song.cid != widget.song.cid) {
+    if (oldWidget.song.bvid != widget.song.bvid ||
+        oldWidget.song.cid != widget.song.cid) {
       _checkDownloadStatus();
       _updatePalette();
     }
@@ -104,7 +106,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   Future<void> _checkDownloadStatus() async {
-    final isDownloaded = await DownloadManager().isDownloaded(widget.song.bvid, widget.song.cid);
+    final isDownloaded = await DownloadManager().isDownloaded(
+      widget.song.bvid,
+      widget.song.cid,
+    );
     if (mounted) {
       setState(() {
         _isDownloaded = isDownloaded;
@@ -172,21 +177,21 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('关闭定时器'),
+          title: Text(S.of(context).weight_player_stop_timer),
           content: Text(
-            '当前停止时间为：${playerProvider.stopTime?.toString().split('.')[0]}\n是否关闭定时器？',
+            '${S.of(context).weight_player_timer_stop_at}: ${playerProvider.stopTime?.toString().split('.')[0]}\n是否关闭定时器？',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child: Text(S.of(context).common_cancel),
             ),
             TextButton(
               onPressed: () {
                 playerProvider.cancelTimer();
                 Navigator.pop(context);
               },
-              child: const Text('关闭'),
+              child: Text(S.of(context).common_close),
             ),
           ],
         ),
@@ -212,10 +217,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text(
-                  '选择倍速',
+                  S.of(context).weight_player_select_speed,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -279,24 +284,26 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   Future<void> _handleDownload() async {
     if (_isDownloaded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已下载')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(S.of(context).common_downloaded)));
       return;
     }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('下载确认'),
-        content: const Text('是否下载该曲目？'),
+        title: Text(S.of(context).common_confirm_title),
+        content: Text(
+          S.of(context).weight_video_detail_download_confirm_message,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('下载'),
+            child: Text(S.of(context).common_download),
           ),
         ],
       ),
@@ -305,7 +312,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       await DownloadManager().startDownload(widget.song);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已加入下载队列')),
+          SnackBar(
+            content: Text(
+              S.of(context).weight_video_detail_added_to_download_queue,
+            ),
+          ),
         );
       }
     }
@@ -318,12 +329,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('提示'),
-          content: const Text('请先登录'),
+          title: Text(S.of(context).common_tips),
+          content: Text(S.of(context).weight_video_detail_please_login_first),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('确定'),
+              child: Text(S.of(context).common_confirm),
             ),
           ],
         ),
@@ -345,14 +356,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('无法获取视频信息')),
+            SnackBar(
+              content: Text(S.of(context).weight_player_no_video_fetched),
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e')),
+          SnackBar(content: Text('${S.of(context).common_failed}: $e')),
         );
       }
     }
@@ -375,7 +388,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.open_in_new),
-              title: const Text('在 Bilibili 打开'),
+              title: Text(S.of(context).common_open_in_bilibili),
               onTap: () {
                 Navigator.pop(context);
                 SchemeLauncher.launchVideo(context, widget.song.bvid);
@@ -383,7 +396,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             ),
             ListTile(
               leading: const Icon(Icons.star_border),
-              title: const Text('添加到 B 站收藏夹'),
+              title: Text(
+                S.of(context).common_save_in_bilibili_favourite_folder,
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _handleAddToFav();
@@ -391,7 +406,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             ),
             ListTile(
               leading: const Icon(Icons.playlist_add),
-              title: const Text('添加到本地歌单'),
+              title: Text(S.of(context).weight_song_list_add_to_local),
               onTap: () {
                 Navigator.pop(context);
                 _handleAddToLocalPlaylist();
@@ -402,7 +417,11 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                 Icons.download,
                 color: _isDownloaded ? Colors.green : null,
               ),
-              title: Text(_isDownloaded ? '已下载' : '下载'),
+              title: Text(
+                _isDownloaded
+                    ? S.of(context).common_downloaded
+                    : S.of(context).common_download,
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _handleDownload();
@@ -438,16 +457,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             return;
           }
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('无法获取用户信息')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(S.of(context).weight_player_no_user_fetched)),
+        );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('获取信息失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${S.of(context).common_failed}: $e')),
+        );
       }
     }
   }
@@ -472,15 +491,21 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     }
     final color = _extractedColorScheme!.primaryContainer;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: isDark 
-            ? [color.withOpacity(0.6), Theme.of(context).scaffoldBackgroundColor]
-            : [color.withOpacity(0.3), Theme.of(context).scaffoldBackgroundColor],
+          colors: isDark
+              ? [
+                  color.withOpacity(0.6),
+                  Theme.of(context).scaffoldBackgroundColor,
+                ]
+              : [
+                  color.withOpacity(0.3),
+                  Theme.of(context).scaffoldBackgroundColor,
+                ],
         ),
       ),
     );
@@ -500,9 +525,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.5)),
             ),
           ),
         ],
@@ -519,7 +542,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     final hasPrevious = playerProvider.hasPrevious;
     final backgroundMode = settingsProvider.playerBackgroundMode;
 
-    final bool forceDark = backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
+    final bool forceDark =
+        backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
     final themeData = forceDark ? ThemeData.dark() : Theme.of(context);
 
     Song? previousSong;
@@ -527,7 +551,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
     final playlist = playerProvider.playlist;
     final currentIndex = playlist.indexWhere(
-          (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
+      (s) => s.bvid == widget.song.bvid && s.cid == widget.song.cid,
     );
 
     if (currentIndex != -1 && playlist.isNotEmpty) {
@@ -565,7 +589,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             fit: StackFit.expand,
             children: [
               _buildBackground(backgroundMode, widget.song.coverUrl),
-      
+
               Column(
                 children: [
                   SizedBox(height: topPadding + 12),
@@ -605,13 +629,14 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                   maxLines: 1,
                                 );
                                 textPainter.layout();
-      
+
                                 if (textPainter.width > constraints.maxWidth) {
                                   return Marquee(
                                     text: widget.song.title,
                                     style: textStyle,
                                     scrollAxis: Axis.horizontal,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     blankSpace: 20.0,
                                     velocity: 30.0,
                                     pauseAfterRound: const Duration(seconds: 1),
@@ -647,8 +672,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               ),
                               child: Text(
                                 widget.song.artist,
-                                style: themeData.textTheme.bodySmall
-                                    ?.copyWith(
+                                style: themeData.textTheme.bodySmall?.copyWith(
                                   decoration: TextDecoration.underline,
                                 ),
                                 maxLines: 1,
@@ -661,28 +685,30 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                       trailing: IconButton(
                         icon: const Icon(Icons.more_vert),
                         onPressed: _showMoreMenu,
-                        tooltip: '更多',
+                        tooltip: S.of(context).common_more,
                       ),
                       centerMiddle: true,
                     ),
                   ),
-      
+
                   Expanded(
                     child: SwipeablePlayerCard(
                       key: _swipeKey,
                       onNext: hasNext ? () => playerProvider.playNext() : null,
-                      onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                      onPrevious: hasPrevious
+                          ? () => playerProvider.playPrevious()
+                          : null,
                       previousChild: previousSong != null
                           ? GestureDetector(
-                        onHorizontalDragUpdate: (details) {},
-                        child: PlayerContent(song: previousSong),
-                      )
+                              onHorizontalDragUpdate: (details) {},
+                              child: PlayerContent(song: previousSong),
+                            )
                           : null,
                       nextChild: nextSong != null
                           ? GestureDetector(
-                        onHorizontalDragUpdate: (details) {},
-                        child: PlayerContent(song: nextSong),
-                      )
+                              onHorizontalDragUpdate: (details) {},
+                              child: PlayerContent(song: nextSong),
+                            )
                           : null,
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
@@ -704,7 +730,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                       ),
                     ),
                   ),
-      
+
                   GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onHorizontalDragStart: (details) {
@@ -737,17 +763,26 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           final position = snapshot.data ?? Duration.zero;
                           return PlayerControls(
                             isPlaying: playerProvider.isPlaying,
-                            isLoading: (playerProvider.player.processingState == ProcessingState.buffering ||
-                                playerProvider.player.processingState == ProcessingState.loading),
+                            isLoading:
+                                (playerProvider.player.processingState ==
+                                    ProcessingState.buffering ||
+                                playerProvider.player.processingState ==
+                                    ProcessingState.loading),
                             duration: _duration,
-                            position: _isDragging ? Duration(seconds: _dragValue.toInt()) : position,
+                            position: _isDragging
+                                ? Duration(seconds: _dragValue.toInt())
+                                : position,
                             loopMode: playerProvider.playMode,
                             onSeek: _onSeekEnd,
                             onSeekStart: _onSeekStart,
                             onSeekUpdate: _onSeekUpdate,
                             onPlayPause: playerProvider.togglePlayPause,
-                            onNext: hasNext ? () => playerProvider.playNext() : null,
-                            onPrevious: hasPrevious ? () => playerProvider.playPrevious() : null,
+                            onNext: hasNext
+                                ? () => playerProvider.playNext()
+                                : null,
+                            onPrevious: hasPrevious
+                                ? () => playerProvider.playPrevious()
+                                : null,
                             onShuffle: playerProvider.togglePlayMode,
                             onPlaylist: _showPlaylist,
                             onLyrics: _toggleLyrics,
@@ -762,7 +797,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   ),
                 ],
               ),
-      
+
               AnimatedSlide(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
@@ -818,17 +853,20 @@ class _TimerDialogState extends State<_TimerDialog>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('自定义倒计时'),
+        title: Text(S.of(context).weight_player_timer_custom),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: '分钟', suffixText: 'min'),
+          decoration: InputDecoration(
+            labelText: S.of(context).time_minute,
+            suffixText: 'min',
+          ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -838,7 +876,7 @@ class _TimerDialogState extends State<_TimerDialog>
                 Navigator.pop(context);
               }
             },
-            child: const Text('确定'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -862,13 +900,15 @@ class _TimerDialogState extends State<_TimerDialog>
                     _stopAfterCurrent = value ?? false;
                   });
                 },
-                title: const Text('播放完当前曲目后停止'),
+                title: Text(
+                  S.of(context).weight_player_timer_stop_at_end_message,
+                ),
               ),
               TabBar(
                 controller: _tabController,
-                tabs: const [
-                  Tab(text: '倒计时关闭'),
-                  Tab(text: '指定时间关闭'),
+                tabs: [
+                  Tab(text: S.of(context).weight_player_timer_discount_stop),
+                  Tab(text: S.of(context).weight_player_timer_timestemp_stop),
                 ],
               ),
               Expanded(
@@ -887,11 +927,26 @@ class _TimerDialogState extends State<_TimerDialog>
   Widget _buildCountdownTab() {
     return ListView(
       children: [
-        ListTile(title: const Text('15 分钟'), onTap: () => _setTimer(15)),
-        ListTile(title: const Text('30 分钟'), onTap: () => _setTimer(30)),
-        ListTile(title: const Text('60 分钟'), onTap: () => _setTimer(60)),
-        ListTile(title: const Text('90 分钟'), onTap: () => _setTimer(90)),
-        ListTile(title: const Text('自定义'), onTap: _showCustomTimerDialog),
+        ListTile(
+          title: Text('15 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(15),
+        ),
+        ListTile(
+          title: Text('30 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(30),
+        ),
+        ListTile(
+          title: Text('60 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(60),
+        ),
+        ListTile(
+          title: Text('90 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(90),
+        ),
+        ListTile(
+          title: Text(S.of(context).common_custom),
+          onTap: _showCustomTimerDialog,
+        ),
       ],
     );
   }
@@ -928,7 +983,7 @@ class _TimerDialogState extends State<_TimerDialog>
             }
           }
         },
-        child: const Text('选择时间'),
+        child: Text(S.of(context).weight_player_timer_select_time),
       ),
     );
   }
@@ -973,7 +1028,7 @@ class _QualityDialogState extends State<_QualityDialog>
         print("CID is 0, fetching real CID for ${widget.song.bvid}...");
         cid = await _searchApi.fetchCid(widget.song.bvid);
         if (cid == 0) {
-          throw Exception("无法获取有效的 CID");
+          throw Exception("No CID fetched");
         }
       }
 
@@ -1014,9 +1069,9 @@ class _QualityDialogState extends State<_QualityDialog>
               const SizedBox(height: 16),
               TabBar(
                 controller: _tabController,
-                tabs: const [
-                  Tab(text: '默认音质'),
-                  Tab(text: '该曲可用'),
+                tabs: [
+                  Tab(text: S.of(context).weight_player_audio_quilty_default),
+                  Tab(text: S.of(context).weight_player_audio_quilty_for_this),
                 ],
               ),
               Expanded(
@@ -1045,7 +1100,9 @@ class _QualityDialogState extends State<_QualityDialog>
         final quality = qualities[index];
         final isSelected = settingsProvider.defaultAudioQuality == quality;
         return ListTile(
-          title: Text(QualityUtils.getQualityLabel(quality, detailed: true)),
+          title: Text(
+            QualityUtils.getQualityLabel(context, quality, detailed: true),
+          ),
           trailing: isSelected
               ? const Icon(Icons.check, color: Colors.blue)
               : null,
@@ -1069,26 +1126,31 @@ class _QualityDialogState extends State<_QualityDialog>
           children: [
             const Icon(Icons.error_outline, color: Colors.red, size: 36),
             const SizedBox(height: 8),
-            const Text('加载失败'),
-            TextButton(onPressed: _loadStreamInfo, child: const Text('重试')),
+            Text(S.of(context).common_failed),
+            TextButton(
+              onPressed: _loadStreamInfo,
+              child: Text(S.of(context).common_retry),
+            ),
           ],
         ),
       );
     }
 
     if (_streamInfo == null || _streamInfo!.availableQualities.isEmpty) {
-      return const Center(child: Text('无可用音质信息'));
+      return Center(
+        child: Text(S.of(context).weight_player_audio_quilty_no_available),
+      );
     }
     final available = _streamInfo!.availableQualities;
     final current = context.select<PlayerProvider, int>(
-          (p) => p.currentPlayingQuality,
+      (p) => p.currentPlayingQuality,
     );
     return Column(
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(16.0),
           child: Text(
-            '可用的音质通过请求接口得到，基于您的登录状态、大会员情况、与音源因素共同决定，不代表该曲目只有以下音质。\n下载的曲目仅能使用下载时的音质。',
+            S.of(context).weight_player_audio_quilty_for_this_message,
             style: TextStyle(color: Colors.grey, fontSize: 12),
             textAlign: TextAlign.center,
           ),
@@ -1102,22 +1164,26 @@ class _QualityDialogState extends State<_QualityDialog>
 
               return ListTile(
                 title: Text(
-                  QualityUtils.getQualityLabel(quality, detailed: true),
+                  QualityUtils.getQualityLabel(
+                    context,
+                    quality,
+                    detailed: true,
+                  ),
                 ),
                 subtitle: isCurrent
                     ? Text(
-                  '当前使用',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 12,
-                  ),
-                )
+                        S.of(context).weight_player_audio_quilty_for_this_using,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 12,
+                        ),
+                      )
                     : null,
                 trailing: isCurrent
                     ? Icon(
-                  Icons.volume_up,
-                  color: Theme.of(context).colorScheme.primary,
-                )
+                        Icons.volume_up,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
                     : null,
                 enabled: false,
               );

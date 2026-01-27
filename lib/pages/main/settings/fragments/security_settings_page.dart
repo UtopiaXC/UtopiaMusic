@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SecuritySettingsPage extends StatelessWidget {
   const SecuritySettingsPage({super.key});
@@ -13,37 +14,50 @@ class SecuritySettingsPage extends StatelessWidget {
     final isWindows = !kIsWeb && Platform.isWindows;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('安全')),
+      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_security)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
           _SettingsGroup(
-            title: '锁定',
+            title: S.of(context).pages_settings_tag_security_lock,
             children: [
               SwitchListTile(
-                title: const Text('启用生物识别'),
-                subtitle: isWindows ? const Text('Windows平台不适用') : null,
+                title: Text(
+                  S.of(context).pages_settings_tag_security_biometrics,
+                ),
+                subtitle: isWindows
+                    ? Text(
+                        S
+                            .of(context)
+                            .pages_settings_tag_security_biometrics_windows_inapplicable,
+                      )
+                    : null,
                 value: securityProvider.biometricEnabled,
                 onChanged: isWindows
                     ? null
                     : (value) {
-                  securityProvider.setBiometricEnabled(value);
-                },
+                        securityProvider.setBiometricEnabled(value);
+                      },
               ),
               SwitchListTile(
-                title: const Text('多任务中模糊'),
+                title: Text(
+                  S.of(context).pages_settings_tag_security_hide_in_task,
+                ),
                 value: securityProvider.privacyScreenEnabled,
                 onChanged: securityProvider.biometricEnabled
                     ? null
                     : (value) {
-                  securityProvider.setPrivacyScreenEnabled(value);
-                },
+                        securityProvider.setPrivacyScreenEnabled(value);
+                      },
               ),
               if (securityProvider.biometricEnabled)
                 ListTile(
-                  title: const Text('锁定延迟'),
+                  title: Text(
+                    S.of(context).pages_settings_tag_security_lock_dely,
+                  ),
                   subtitle: Text(
                     _getLockDelayText(
+                      context,
                       securityProvider.lockDelayOption,
                       securityProvider.customLockDelayMinutes,
                     ),
@@ -61,19 +75,22 @@ class SecuritySettingsPage extends StatelessWidget {
                         }
                       }
                     },
-                    items: LockDelayOption.values.map<
-                        DropdownMenuItem<LockDelayOption>
-                    >((LockDelayOption value) {
-                      return DropdownMenuItem<LockDelayOption>(
-                        value: value,
-                        child: Text(
-                          _getLockDelayText(
-                            value,
-                            securityProvider.customLockDelayMinutes,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    items: LockDelayOption.values
+                        .map<DropdownMenuItem<LockDelayOption>>((
+                          LockDelayOption value,
+                        ) {
+                          return DropdownMenuItem<LockDelayOption>(
+                            value: value,
+                            child: Text(
+                              _getLockDelayText(
+                                context,
+                                value,
+                                securityProvider.customLockDelayMinutes,
+                              ),
+                            ),
+                          );
+                        })
+                        .toList(),
                   ),
                 ),
             ],
@@ -83,22 +100,26 @@ class SecuritySettingsPage extends StatelessWidget {
     );
   }
 
-  String _getLockDelayText(LockDelayOption option, int customMinutes) {
+  String _getLockDelayText(
+    BuildContext context,
+    LockDelayOption option,
+    int customMinutes,
+  ) {
     switch (option) {
       case LockDelayOption.immediate:
-        return '每次切换';
+        return S.of(context).pages_settings_tag_security_lock_dely_everytime;
       case LockDelayOption.oneMinute:
-        return '1 分钟';
+        return '1 ${S.of(context).time_minute}';
       case LockDelayOption.threeMinutes:
-        return '3 分钟';
+        return '3 ${S.of(context).time_minute}';
       case LockDelayOption.fiveMinutes:
-        return '5 分钟';
+        return '5 ${S.of(context).time_minute}';
       case LockDelayOption.tenMinutes:
-        return '10 分钟';
+        return '10 ${S.of(context).time_minute}';
       case LockDelayOption.thirtyMinutes:
-        return '30 分钟';
+        return '30 ${S.of(context).time_minute}';
       case LockDelayOption.custom:
-        return '自定义 ($customMinutes 分钟)';
+        return '${S.of(context).common_custom} ($customMinutes ${S.of(context).time_minute})';
     }
   }
 
@@ -110,21 +131,23 @@ class SecuritySettingsPage extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('自定义锁定延迟 (分钟)'),
+          title: Text(S.of(context).common_custom),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: '输入分钟数',
+            decoration: InputDecoration(
+              hintText: S
+                  .of(context)
+                  .pages_settings_tag_security_lock_dely_custom_inpit,
               border: OutlineInputBorder(),
-              suffixText: '分钟',
+              suffixText: S.of(context).time_minute,
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child: Text(S.of(context).common_cancel),
             ),
             TextButton(
               onPressed: () {
@@ -135,7 +158,7 @@ class SecuritySettingsPage extends StatelessWidget {
                   Navigator.pop(context);
                 }
               },
-              child: const Text('确定'),
+              child: Text(S.of(context).common_confirm),
             ),
           ],
         );
@@ -175,9 +198,9 @@ class _SettingsGroup extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(
-                  alpha: 0.3,
-                ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
             child: Column(children: children),

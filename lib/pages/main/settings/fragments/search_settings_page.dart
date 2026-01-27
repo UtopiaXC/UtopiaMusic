@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchSettingsPage extends StatelessWidget {
   const SearchSettingsPage({super.key});
@@ -10,25 +11,31 @@ class SearchSettingsPage extends StatelessWidget {
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('搜索')),
+      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_search)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
           _SettingsGroup(
-            title: '搜索历史',
+            title: S.of(context).weight_search_label_serach_history,
             children: [
               SwitchListTile(
-                title: const Text('本地搜索历史'),
+                title: Text(
+                  S.of(context).pages_settings_tag_search_local_history,
+                ),
                 value: settingsProvider.saveSearchHistory,
                 onChanged: (bool value) {
                   settingsProvider.setSaveSearchHistory(value);
                 },
               ),
               ListTile(
-                title: const Text('历史记录保存上限'),
-                subtitle: Text('当前上限: ${settingsProvider.searchHistoryLimit} 条'),
+                title: Text(
+                  S.of(context).pages_settings_tag_search_local_history_limit,
+                ),
+                subtitle: Text(
+                  '${S.of(context).pages_settings_tag_search_local_history_limit_now}: ${settingsProvider.searchHistoryLimit}',
+                ),
                 enabled: settingsProvider.saveSearchHistory,
-                trailing: const Icon(Icons.edit, size: 20), // 加个小图标提示可编辑
+                trailing: const Icon(Icons.edit, size: 20),
                 onTap: () {
                   _showLimitDialog(context, settingsProvider);
                 },
@@ -36,11 +43,15 @@ class SearchSettingsPage extends StatelessWidget {
             ],
           ),
           _SettingsGroup(
-            title: '联想推荐',
+            title: S.of(context).pages_settings_tag_search_suggest,
             children: [
               SwitchListTile(
-                title: const Text('显示搜索推荐'),
-                subtitle: const Text('输入时显示联想词'),
+                title: Text(
+                  S.of(context).pages_settings_tag_search_suggest_title,
+                ),
+                subtitle: Text(
+                  S.of(context).pages_settings_tag_search_suggest_hint,
+                ),
                 value: settingsProvider.showSearchSuggest,
                 onChanged: (bool value) {
                   settingsProvider.setShowSearchSuggest(value);
@@ -62,22 +73,24 @@ class SearchSettingsPage extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('设置历史记录上限'),
+          title: Text(
+            S.of(context).pages_settings_tag_search_local_history_limit,
+          ),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: const InputDecoration(
-              labelText: '上限数量',
-              hintText: '请输入数字',
+            decoration: InputDecoration(
+              labelText: S.of(context).common_limitation,
+              hintText:
+                  "${S.of(context).common_please_input}${S.of(context).common_int}",
               border: OutlineInputBorder(),
-              suffixText: '条',
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child: Text(S.of(context).common_cancel),
             ),
             TextButton(
               onPressed: () {
@@ -87,7 +100,7 @@ class SearchSettingsPage extends StatelessWidget {
                   Navigator.pop(context);
                 }
               },
-              child: const Text('确定'),
+              child: Text(S.of(context).common_confirm),
             ),
           ],
         );
@@ -96,7 +109,6 @@ class SearchSettingsPage extends StatelessWidget {
   }
 }
 
-// 复用的分组组件
 class _SettingsGroup extends StatelessWidget {
   final String title;
   final List<Widget> children;
@@ -128,12 +140,12 @@ class _SettingsGroup extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ],
       ),

@@ -14,16 +14,13 @@ import 'package:utopia_music/widgets/player/player_controls.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class LyricsPage extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onPlaylist;
 
-  const LyricsPage({
-    super.key,
-    required this.onBack,
-    required this.onPlaylist,
-  });
+  const LyricsPage({super.key, required this.onBack, required this.onPlaylist});
 
   @override
   State<LyricsPage> createState() => _LyricsPageState();
@@ -55,7 +52,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   String? _currentSongId;
 
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
   int _currentSubtitleIndex = -1;
   bool _autoScroll = true;
 
@@ -137,7 +135,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
     final double currentSeconds = position.inMilliseconds / 1000.0;
 
-    if (currentSeconds < _lastPositionSeconds || (currentSeconds - _lastPositionSeconds).abs() > 1.5) {
+    if (currentSeconds < _lastPositionSeconds ||
+        (currentSeconds - _lastPositionSeconds).abs() > 1.5) {
       _resetDanmakuCursor(currentSeconds);
       return;
     }
@@ -253,7 +252,13 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         _hasDanmaku = danmakus.isNotEmpty;
         _isLoadingDanmaku = false;
       });
-      _resetDanmakuCursor(Provider.of<PlayerProvider>(context, listen: false).player.position.inMilliseconds / 1000.0);
+      _resetDanmakuCursor(
+        Provider.of<PlayerProvider>(
+              context,
+              listen: false,
+            ).player.position.inMilliseconds /
+            1000.0,
+      );
     }
   }
 
@@ -272,10 +277,10 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
       setState(() => _currentSubtitleIndex = index);
       if (_autoScroll && index != -1) {
         _itemScrollController.scrollTo(
-          index: index + 1, // +1 因为头部有 Padding 占位
+          index: index + 1,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          alignment: 0.35, // 歌词高亮位置靠上
+          alignment: 0.35,
         );
       }
     }
@@ -297,7 +302,8 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     final position = Duration(seconds: value.toInt());
     playerProvider.player.seek(position);
 
-    if (!playerProvider.isPlaying || playerProvider.player.processingState == ProcessingState.completed) {
+    if (!playerProvider.isPlaying ||
+        playerProvider.player.processingState == ProcessingState.completed) {
       playerProvider.player.play();
     }
 
@@ -329,13 +335,13 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
     final topPadding = MediaQuery.of(context).padding.top;
     final backgroundMode = settingsProvider.playerBackgroundMode;
-    final isBlurMode = backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
+    final isBlurMode =
+        backgroundMode == 'gaussian_blur' || backgroundMode == 'blur';
     final isNoneMode = backgroundMode == 'none';
 
-    // --- 核心修改：主题与夜间模式适配 ---
     final themeData = Theme.of(context);
     final isDarkMode = themeData.brightness == Brightness.dark;
-    final bool useLightText = isDarkMode || isBlurMode; // 深色模式或模糊模式下，文字通常用白色
+    final bool useLightText = isDarkMode || isBlurMode;
 
     return Theme(
       data: themeData,
@@ -343,12 +349,18 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         fit: StackFit.expand,
         children: [
           if (isBlurMode)
-            _buildBlurredBackground(song.coverUrl, backgroundMode == 'gaussian_blur' ? 20.0 : 10.0)
+            _buildBlurredBackground(
+              song.coverUrl,
+              backgroundMode == 'gaussian_blur' ? 20.0 : 10.0,
+            )
           else if (isNoneMode)
-          // 修改：使用主题背景色，而不是写死白色
-            Container(color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95))
+            Container(
+              color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95),
+            )
           else
-            Container(color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95)),
+            Container(
+              color: themeData.scaffoldBackgroundColor.withValues(alpha: 0.95),
+            ),
 
           Scaffold(
             backgroundColor: Colors.transparent,
@@ -368,9 +380,9 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                       SizedBox(height: topPadding + 16),
                       Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        width: 200, height: 36,
+                        width: 200,
+                        height: 36,
                         decoration: BoxDecoration(
-                          // 修改：背景条颜色适配
                           color: useLightText
                               ? Colors.white.withValues(alpha: 0.1)
                               : Colors.black.withValues(alpha: 0.1),
@@ -384,12 +396,14 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                           ),
                           indicatorSize: TabBarIndicatorSize.tab,
                           labelColor: themeData.colorScheme.onPrimary,
-                          // 修改：未选中文字颜色适配
                           unselectedLabelColor: useLightText
                               ? Colors.white.withValues(alpha: 0.9)
                               : Colors.black54,
                           dividerColor: Colors.transparent,
-                          tabs: const [Tab(text: 'AI/字幕'), Tab(text: '弹幕')],
+                          tabs: [
+                            Tab(text: S.of(context).common_ai_subtitle),
+                            Tab(text: S.of(context).common_danmuku),
+                          ],
                         ),
                       ),
 
@@ -402,9 +416,11 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                               isLoading: _isLoadingDanmaku,
                               hasDanmaku: _hasDanmaku,
                               rawDanmakus: _rawDanmakus,
-                              onControllerCreated: (controller) => _danmakuController = controller,
-                              // 修改：弹幕文字颜色适配
-                              textColor: useLightText ? Colors.white : Colors.black,
+                              onControllerCreated: (controller) =>
+                                  _danmakuController = controller,
+                              textColor: useLightText
+                                  ? Colors.white
+                                  : Colors.black,
                             ),
                           ],
                         ),
@@ -413,16 +429,24 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                         padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
                         child: PlayerControls(
                           isPlaying: playerProvider.isPlaying,
-                          isLoading: playerProvider.player.processingState == ProcessingState.buffering,
+                          isLoading:
+                              playerProvider.player.processingState ==
+                              ProcessingState.buffering,
                           duration: _duration,
-                          position: _isDragging ? Duration(seconds: _dragValue.toInt()) : _position,
+                          position: _isDragging
+                              ? Duration(seconds: _dragValue.toInt())
+                              : _position,
                           loopMode: playerProvider.playMode,
                           onSeek: _onSeekEnd,
                           onSeekStart: _onSeekStart,
                           onSeekUpdate: _onSeekUpdate,
                           onPlayPause: playerProvider.togglePlayPause,
-                          onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
-                          onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+                          onNext: playerProvider.hasNext
+                              ? () => playerProvider.playNext()
+                              : null,
+                          onPrevious: playerProvider.hasPrevious
+                              ? () => playerProvider.playPrevious()
+                              : null,
                           onShuffle: playerProvider.togglePlayMode,
                           onPlaylist: widget.onPlaylist,
                           onLyrics: widget.onBack,
@@ -437,8 +461,12 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
                     left: 16,
                     child: IconButton(
                       onPressed: widget.onBack,
-                      icon: Icon(Icons.keyboard_arrow_down, color: themeData.iconTheme.color, size: 28),
-                      tooltip: '收起',
+                      icon: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: themeData.iconTheme.color,
+                        size: 28,
+                      ),
+                      tooltip: S.of(context).common_retract,
                     ),
                   ),
                 ],
@@ -464,9 +492,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.5)),
             ),
           ),
         ],
@@ -475,8 +501,14 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   Widget _buildLyricsView(song, ThemeData theme) {
-    if (_isLoadingSubtitles) return Center(child: CircularProgressIndicator(color: theme.colorScheme.primary));
-    final baseTextStyle = theme.textTheme.bodyLarge?.copyWith(color: theme.textTheme.bodyLarge?.color?.withOpacity(0.9));
+    if (_isLoadingSubtitles) {
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
+      );
+    }
+    final baseTextStyle = theme.textTheme.bodyLarge?.copyWith(
+      color: theme.textTheme.bodyLarge?.color?.withOpacity(0.9),
+    );
     final highlightColor = theme.colorScheme.primary;
     final normalColor = theme.textTheme.bodyLarge?.color?.withOpacity(0.6);
 
@@ -487,14 +519,16 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
             physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.all(32),
             child: Text(
-                song.lyrics,
-                textAlign: TextAlign.center,
-                style: baseTextStyle?.copyWith(height: 1.8, fontSize: 18)
+              song.lyrics,
+              textAlign: TextAlign.center,
+              style: baseTextStyle?.copyWith(height: 1.8, fontSize: 18),
             ),
           ),
         );
       }
-      return Center(child: Text('暂无字幕', style: baseTextStyle));
+      return Center(
+        child: Text(S.of(context).common_no_lyrics, style: baseTextStyle),
+      );
     }
     return ScrollablePositionedList.builder(
       itemCount: _subtitles.length + 2,
@@ -502,13 +536,17 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
       itemPositionsListener: _itemPositionsListener,
       physics: const ClampingScrollPhysics(),
       itemBuilder: (context, index) {
-        if (index == 0 || index == _subtitles.length + 1) return SizedBox(height: MediaQuery.of(context).size.height * 0.4);
+        if (index == 0 || index == _subtitles.length + 1) {
+          return SizedBox(height: MediaQuery.of(context).size.height * 0.4);
+        }
         final subtitleIndex = index - 1;
         final subtitle = _subtitles[subtitleIndex];
         final isActive = subtitleIndex == _currentSubtitleIndex;
         return GestureDetector(
           onTap: () {
-            Provider.of<PlayerProvider>(context, listen: false).player.seek(Duration(milliseconds: (subtitle.from * 1000).toInt()));
+            Provider.of<PlayerProvider>(context, listen: false).player.seek(
+              Duration(milliseconds: (subtitle.from * 1000).toInt()),
+            );
           },
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
@@ -549,14 +587,30 @@ class _DanmakuPage extends StatefulWidget {
   State<_DanmakuPage> createState() => _DanmakuPageState();
 }
 
-class _DanmakuPageState extends State<_DanmakuPage> with AutomaticKeepAliveClientMixin {
+class _DanmakuPageState extends State<_DanmakuPage>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (widget.isLoading) return Center(child: Text('弹幕装载中...', style: TextStyle(color: widget.textColor)));
-    if (!widget.hasDanmaku) return Center(child: Text('该视频暂无弹幕', style: TextStyle(color: widget.textColor)));
+    if (widget.isLoading) {
+      return Center(
+        child: Text(
+          S.of(context).weight_player_loading_danmuku,
+          style: TextStyle(color: widget.textColor),
+        ),
+      );
+    }
+    if (!widget.hasDanmaku) {
+      return Center(
+        child: Text(
+          S.of(context).weight_player_no_danmuku,
+          style: TextStyle(color: widget.textColor),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(top: 72.0),
       child: DanmakuScreen(

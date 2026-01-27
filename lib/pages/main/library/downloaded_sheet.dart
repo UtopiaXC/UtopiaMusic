@@ -10,6 +10,7 @@ import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class DownloadedSheet extends StatefulWidget {
   const DownloadedSheet({super.key});
@@ -122,16 +123,16 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('全部删除'),
-        content: const Text('确定要删除所有下载任务和文件吗？'),
+        title: Text(S.of(context).pages_library_download_delete_all),
+        content: Text(S.of(context).pages_library_download_delete_all_confirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
+            child: Text(S.of(context).pages_library_download_action_delete),
           ),
         ],
       ),
@@ -149,16 +150,16 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('暂停下载'),
-        content: const Text('确定要暂停所有正在进行的下载吗？'),
+        title: Text(S.of(context).pages_library_download_pause_all),
+        content: Text(S.of(context).pages_library_download_pause_all_confirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('暂停'),
+            child: Text(S.of(context).play_control_pause),
           ),
         ],
       ),
@@ -175,16 +176,16 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('继续下载'),
-        content: const Text('确定要继续所有下载吗？'),
+        title: Text(S.of(context).pages_library_download_resume_all),
+        content: Text(S.of(context).pages_library_download_resume_all_confirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('继续'),
+            child: Text(S.of(context).play_control_resume),
           ),
         ],
       ),
@@ -286,25 +287,25 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  '下载管理',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  S.of(context).pages_library_download_manager,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 if (_allDownloads.isNotEmpty)
                   TextButton(
                     onPressed: _handleDeleteAll,
-                    child: const Text('全部删除'),
+                    child: Text(S.of(context).pages_library_download_delete_all),
                   ),
                 if (hasDownloading)
                   TextButton(
                     onPressed: _handlePauseAll,
-                    child: const Text('暂停'),
+                    child: Text(S.of(context).play_control_pause),
                   )
                 else if (hasQueuedOrPaused)
                    TextButton(
                     onPressed: _handleResumeAll,
-                    child: const Text('继续'),
+                    child: Text(S.of(context).play_control_resume),
                   ),
               ],
             ),
@@ -314,7 +315,7 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _allDownloads.isEmpty
-                    ? const Center(child: Text('暂无下载内容'))
+                    ? Center(child: Text(S.of(context).pages_library_download_empty))
                     : ListView.builder(
                         itemCount: _allDownloads.length,
                         itemBuilder: (context, index) {
@@ -332,11 +333,11 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                           Widget? trailingInfo;
                           
                           if (status == 1) {
-                            statusText = '下载中: ${(progress * 100).toInt()}%';
+                            statusText = '${S.of(context).pages_library_download_status_downloading}: ${(progress * 100).toInt()}%';
                           } else if (status == 0) {
-                            statusText = '队列中';
+                            statusText = S.of(context).pages_library_download_status_queued;
                           } else if (status == 3) {
-                            statusText = '已下载';
+                            statusText = S.of(context).pages_library_download_status_completed;
                             final path = item['save_path'] as String;
                             final file = File(path);
                             trailingInfo = FutureBuilder<int>(
@@ -358,7 +359,7 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        QualityUtils.getQualityLabel(quality),
+                                        QualityUtils.getQualityLabel(context,quality),
                                         style: const TextStyle(fontSize: 10),
                                       ),
                                     ),
@@ -367,7 +368,7 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                               },
                             );
                           } else if (status == 4) {
-                            statusText = '下载失败';
+                            statusText = S.of(context).pages_library_download_status_failed;
                           }
 
                           return ListTile(
@@ -404,7 +405,7 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                                   IconButton(
                                     icon: const Icon(Icons.refresh),
                                     onPressed: () => _retryDownload(bvid, cid),
-                                    tooltip: '重试',
+                                    tooltip: S.of(context).common_retry,
                                   ),
                                 if (trailingInfo != null) trailingInfo,
                                 PopupMenuButton<String>(
@@ -440,26 +441,26 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                                   },
                                   itemBuilder: (context) => [
                                     if (status == 1 || status == 0)
-                                      const PopupMenuItem(
+                                      PopupMenuItem(
                                         value: 'cancel',
-                                        child: Text('取消下载'),
+                                        child: Text(S.of(context).pages_library_download_action_cancel),
                                       ),
                                     if (status == 3 || status == 4)
-                                      const PopupMenuItem(
+                                      PopupMenuItem(
                                         value: 'delete',
-                                        child: Text('删除'),
+                                        child: Text(S.of(context).pages_library_download_action_delete),
                                       ),
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'add_to_playlist',
-                                      child: Text('添加到播放列表'),
+                                      child: Text(S.of(context).pages_library_download_action_add_to_playlist),
                                     ),
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'add_to_sheet',
-                                      child: Text('添加到歌单'),
+                                      child: Text(S.of(context).pages_library_download_action_add_to_sheet),
                                     ),
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'detail',
-                                      child: Text('查看详细信息'),
+                                      child: Text(S.of(context).pages_library_download_action_detail),
                                     ),
                                   ],
                                 ),

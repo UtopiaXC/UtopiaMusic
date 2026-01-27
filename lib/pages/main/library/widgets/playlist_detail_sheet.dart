@@ -69,12 +69,12 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除歌单 "${_playlist.title}" 吗？'),
+        title: Text(S.of(context).common_confirm_title),
+        content: Text(S.of(context).pages_library_playlist_delete_confirm(_playlist.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -85,7 +85,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('删除'),
+            child: Text(S.of(context).pages_library_download_action_delete),
           ),
         ],
       ),
@@ -98,16 +98,16 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('下载确认'),
-        content: const Text('是否下载该列表？'),
+        title: Text(S.of(context).common_confirm_title),
+        content: Text(S.of(context).pages_library_playlist_download_confirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('下载'),
+            child: Text(S.of(context).common_download),
           ),
         ],
       ),
@@ -119,7 +119,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已全部加入下载队列')),
+          SnackBar(content: Text(S.of(context).pages_library_playlist_download_started)),
         );
       }
     }
@@ -133,8 +133,8 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('替换播放列表'),
-          content: const Text('当前播放列表不为空，是否替换？'),
+          title: Text(S.of(context).common_replace_playlist),
+          content: Text(S.of(context).pages_library_playlist_play_replace_confirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -142,7 +142,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('替换'),
+              child: Text(S.of(context).common_replace),
             ),
           ],
         ),
@@ -173,16 +173,16 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('重命名'),
+        title: Text(S.of(context).pages_library_playlist_rename_dialog_title),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: '标题'),
+          decoration: InputDecoration(labelText: S.of(context).pages_library_playlist_rename_dialog_label),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -197,7 +197,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('确认'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -257,7 +257,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _playlist.description.isEmpty ? '暂无描述' : _playlist.description,
+                                _playlist.description.isEmpty ? S.of(context).common_none : _playlist.description,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -289,24 +289,24 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                       child: FilledButton.icon(
                         onPressed: _handlePlay,
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('播放'),
+                        label: Text(S.of(context).common_play),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: _handleEdit,
                       icon: const Icon(Icons.edit),
-                      tooltip: '编辑信息',
+                      tooltip: S.of(context).pages_library_playlist_edit,
                     ),
                     IconButton(
                       onPressed: _handleDownload,
                       icon: const Icon(Icons.download),
-                      tooltip: '下载全部',
+                      tooltip: S.of(context).common_download,
                     ),
                     IconButton(
                       onPressed: _handleDelete,
                       icon: const Icon(Icons.delete),
-                      tooltip: '删除歌单',
+                      tooltip: S.of(context).pages_library_download_action_delete,
                     ),
                   ],
                 ),
@@ -323,7 +323,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                 Navigator.pop(context);
                               }
                             },
-                            child: const Center(child: Text('暂无歌曲')),
+                            child: Center(child: Text(S.of(context).pages_library_playlist_empty)),
                           )
                         : NotificationListener<ScrollNotification>(
                             onNotification: (notification) {
@@ -349,33 +349,33 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                     Navigator.pop(context);
                                   },
                                   menuItems: [
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'rename',
                                       child: Row(
                                         children: [
-                                          Icon(Icons.edit, size: 20),
-                                          SizedBox(width: 12),
-                                          Text('重命名'),
+                                          const Icon(Icons.edit, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text(S.of(context).pages_library_playlist_menu_rename),
                                         ],
                                       ),
                                     ),
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'reset_title',
                                       child: Row(
                                         children: [
-                                          Icon(Icons.restore, size: 20),
-                                          SizedBox(width: 12),
-                                          Text('重置为原标题'),
+                                          const Icon(Icons.restore, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text(S.of(context).pages_library_playlist_menu_reset_title),
                                         ],
                                       ),
                                     ),
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'remove_from_playlist',
                                       child: Row(
                                         children: [
-                                          Icon(Icons.delete, size: 20),
-                                          SizedBox(width: 12),
-                                          Text('从歌单中删除'),
+                                          const Icon(Icons.delete, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text(S.of(context).pages_library_playlist_menu_remove),
                                         ],
                                       ),
                                     ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SchemeLauncher {
   static Future<void> launchBilibili(
@@ -9,7 +10,7 @@ class SchemeLauncher {
     String webUrl = 'https://www.bilibili.com',
   }) async {
     final Uri uri = Uri.parse(webUrl);
-    
+
     if (Platform.isAndroid || Platform.isIOS) {
       final Uri appUri = Uri.parse('bilibili://$schemePath');
       try {
@@ -26,14 +27,16 @@ class SchemeLauncher {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('无法打开链接')),
+            SnackBar(content: Text(S.of(context).util_scheme_lauch_fail)),
           );
         }
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $e')),
+          SnackBar(
+            content: Text('${S.of(context).util_scheme_lauch_fail}: $e'),
+          ),
         );
       }
     }
@@ -54,7 +57,7 @@ class SchemeLauncher {
       webUrl: 'https://space.bilibili.com/$mid',
     );
   }
-  
+
   static Future<void> launchLive(BuildContext context, int roomId) async {
     await launchBilibili(
       context,

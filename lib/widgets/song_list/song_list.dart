@@ -64,7 +64,7 @@ class SongList extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '到底了',
+                      S.of(context).common_at_bottom,
                       style: TextStyle(
                         color: Theme.of(context).disabledColor,
                         fontSize: 12,

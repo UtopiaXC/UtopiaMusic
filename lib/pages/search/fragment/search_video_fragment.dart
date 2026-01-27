@@ -47,7 +47,8 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
   void didUpdateWidget(covariant SearchVideoFragment oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.keyword.isNotEmpty) {
-      if (widget.keyword != oldWidget.keyword || widget.searchTimestamp != oldWidget.searchTimestamp) {
+      if (widget.keyword != oldWidget.keyword ||
+          widget.searchTimestamp != oldWidget.searchTimestamp) {
         _doSearch(widget.keyword);
       }
     }
@@ -80,7 +81,11 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
     });
 
     try {
-      final songs = await _searchApi.searchVideos(context, keyword, page: _currentPage);
+      final songs = await _searchApi.searchVideos(
+        context,
+        keyword,
+        page: _currentPage,
+      );
 
       if (mounted) {
         setState(() {
@@ -108,7 +113,11 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
     });
 
     try {
-      final newSongs = await _searchApi.searchVideos(context, widget.keyword, page: _currentPage);
+      final newSongs = await _searchApi.searchVideos(
+        context,
+        widget.keyword,
+        page: _currentPage,
+      );
 
       if (mounted) {
         setState(() {
@@ -120,7 +129,6 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       if (mounted) {
         setState(() {
           _isLoadingMore = false;
-          // Don't set _hasError here, just stop loading more
         });
       }
     }
@@ -138,11 +146,11 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('无结果，有可能是无网络或接口请求被风控，请重试\n如未登录可尝试登录后重试'),
+            Text(S.of(context).pages_search_no_result),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => _doSearch(widget.keyword),
-              child: Text('重试'),
+              child: Text(S.of(context).common_retry),
             ),
           ],
         ),

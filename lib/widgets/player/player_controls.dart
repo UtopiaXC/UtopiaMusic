@@ -71,20 +71,20 @@ class PlayerControls extends StatelessWidget {
         return const Icon(Icons.repeat_one);
       case PlayMode.shuffle:
         return const Icon(Icons.shuffle);
-      }
+    }
   }
-  
+
   Color? _getLoopModeColor(BuildContext context) {
     if (loopMode == PlayMode.sequence) {
       return Theme.of(context).disabledColor;
     }
     return Theme.of(context).colorScheme.primary;
   }
-  
+
   Widget _getSpeedIcon(BuildContext context) {
     final playerProvider = Provider.of<PlayerProvider>(context);
     final speed = playerProvider.player.speed;
-    
+
     String text;
     if (speed == 1.0) {
       text = "1.0x";
@@ -101,7 +101,7 @@ class PlayerControls extends StatelessWidget {
     } else {
       text = "${speed}x";
     }
-    
+
     return SizedBox(
       width: 24,
       height: 24,
@@ -122,11 +122,14 @@ class PlayerControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxDuration = duration.inSeconds.toDouble();
     final currentPosition = position.inSeconds.toDouble();
-    final sliderValue = currentPosition > maxDuration ? maxDuration : currentPosition;
-    
-    final isCompleted = !isPlaying && duration > Duration.zero && position >= duration;
+    final sliderValue = currentPosition > maxDuration
+        ? maxDuration
+        : currentPosition;
+
+    final isCompleted =
+        !isPlaying && duration > Duration.zero && position >= duration;
     final showPlayIcon = !isPlaying || isCompleted;
-    
+
     final playerProvider = Provider.of<PlayerProvider>(context);
     final isTimerActive = playerProvider.isTimerActive;
 
@@ -140,37 +143,51 @@ class PlayerControls extends StatelessWidget {
               IconButton(
                 onPressed: onLyrics,
                 icon: const Icon(Icons.lyrics_outlined),
-                tooltip: '歌词',
+                tooltip: S.of(context).common_lyrics,
               ),
               if (!showLyricsButtonOnly) ...[
                 IconButton(
                   onPressed: onTimer,
                   icon: Icon(
                     Icons.timer_outlined,
-                    color: isTimerActive ? Theme.of(context).colorScheme.primary : null,
+                    color: isTimerActive
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                   tooltip: S.of(context).play_control_mode_timer_stop,
                 ),
                 IconButton(
                   onPressed: onComment,
                   icon: const Icon(Icons.high_quality),
-                  tooltip: '音质',
+                  tooltip: S.of(context).common_audio_quality,
                 ),
                 IconButton(
                   onPressed: onInfo,
                   icon: _getSpeedIcon(context),
-                  tooltip: '倍速',
+                  tooltip: S.of(context).common_audio_speed,
                 ),
                 IconButton(
                   onPressed: onMore,
                   icon: const Icon(Icons.info_outline),
-                  tooltip: '详情',
+                  tooltip: S.of(context).common_detail,
                 ),
               ] else ...[
-                const IconButton(onPressed: null, icon: Icon(Icons.timer_outlined, color: Colors.transparent)),
-                const IconButton(onPressed: null, icon: Icon(Icons.high_quality, color: Colors.transparent)),
-                const IconButton(onPressed: null, icon: Icon(Icons.speed, color: Colors.transparent)),
-                const IconButton(onPressed: null, icon: Icon(Icons.info_outline, color: Colors.transparent)),
+                const IconButton(
+                  onPressed: null,
+                  icon: Icon(Icons.timer_outlined, color: Colors.transparent),
+                ),
+                const IconButton(
+                  onPressed: null,
+                  icon: Icon(Icons.high_quality, color: Colors.transparent),
+                ),
+                const IconButton(
+                  onPressed: null,
+                  icon: Icon(Icons.speed, color: Colors.transparent),
+                ),
+                const IconButton(
+                  onPressed: null,
+                  icon: Icon(Icons.info_outline, color: Colors.transparent),
+                ),
               ],
             ],
           ),
@@ -188,24 +205,30 @@ class PlayerControls extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_formatDuration(position), style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                _formatDuration(position),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               if (isTimerActive && playerProvider.stopTime != null)
                 Consumer<PlayerProvider>(
                   builder: (context, provider, child) {
-                    final remaining = provider.stopTime!.difference(DateTime.now());
+                    final remaining = provider.stopTime!.difference(
+                      DateTime.now(),
+                    );
                     if (remaining.isNegative) return const SizedBox.shrink();
-                    
+
                     String text;
                     if (provider.stopAfterCurrent && remaining.inSeconds <= 0) {
-                       text = '本曲完播后停止';
+                      text = S.of(context).weight_player_timer_stop_at_end;
                     } else {
-                       final hours = remaining.inHours;
-                       final minutes = remaining.inMinutes % 60;
-                       final seconds = remaining.inSeconds % 60;
-                       text = '距离定时关闭还有${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                       if (provider.stopAfterCurrent) {
-                         text += ' (完播后)';
-                       }
+                      final hours = remaining.inHours;
+                      final minutes = remaining.inMinutes % 60;
+                      final seconds = remaining.inSeconds % 60;
+                      text =
+                          '${S.of(context).weight_player_timer_over_discount}${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+                      if (provider.stopAfterCurrent) {
+                        text += ' ${S.of(context).weight_player_timer_over_at}';
+                      }
                     }
                     return Text(
                       text,
@@ -216,7 +239,10 @@ class PlayerControls extends StatelessWidget {
                     );
                   },
                 ),
-              Text(_formatDuration(duration), style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                _formatDuration(duration),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
         ),
@@ -248,9 +274,7 @@ class PlayerControls extends StatelessWidget {
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
                       )
                     : Icon(
                         showPlayIcon ? Icons.play_arrow : Icons.pause,

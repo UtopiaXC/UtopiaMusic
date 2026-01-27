@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class SearchUserFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -17,7 +18,8 @@ class SearchUserFragment extends StatefulWidget {
   State<SearchUserFragment> createState() => _SearchUserFragmentState();
 }
 
-class _SearchUserFragmentState extends State<SearchUserFragment> with AutomaticKeepAliveClientMixin {
+class _SearchUserFragmentState extends State<SearchUserFragment>
+    with AutomaticKeepAliveClientMixin {
   final UserApi _userApi = UserApi();
   List<dynamic> _users = [];
   bool _isLoading = false;
@@ -72,12 +74,13 @@ class _SearchUserFragmentState extends State<SearchUserFragment> with AutomaticK
     super.build(context);
 
     if (_users.isEmpty && !_isLoading) {
-      return const Center(child: Text('未找到相关用户'));
+      return Center(child: Text(S.of(context).common_none));
     }
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+        if (notification.metrics.pixels >=
+            notification.metrics.maxScrollExtent - 200) {
           _loadData();
         }
         return false;
@@ -92,9 +95,14 @@ class _SearchUserFragmentState extends State<SearchUserFragment> with AutomaticK
                 child: Center(child: CircularProgressIndicator()),
               );
             } else if (!_hasMore) {
-              return const Padding(
+              return Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Center(child: Text('到底了', style: TextStyle(color: Colors.grey))),
+                child: Center(
+                  child: Text(
+                    S.of(context).common_at_bottom,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
               );
             } else {
               return const SizedBox(height: 60);
@@ -108,9 +116,7 @@ class _SearchUserFragmentState extends State<SearchUserFragment> with AutomaticK
           }
 
           return ListTile(
-            leading: CircleAvatar(
-              backgroundImage: NetworkImage(cover),
-            ),
+            leading: CircleAvatar(backgroundImage: NetworkImage(cover)),
             title: Text(user['uname'] ?? ''),
             subtitle: Text(user['usign'] ?? ''),
             onTap: () {

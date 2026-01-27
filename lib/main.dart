@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/app.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
@@ -15,7 +16,9 @@ import 'package:utopia_music/services/download_manager.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  Log.i("Starting UtopiaMusic APP");
   WidgetsFlutterBinding.ensureInitialized();
+  await LogService.instance.init();
   Request();
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.utopiaxc.utopia.music',

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/utils/update_util.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class UpdateDialog extends StatelessWidget {
   final Map<String, dynamic> releaseData;
@@ -18,7 +19,7 @@ class UpdateDialog extends StatelessWidget {
     final isPrerelease = releaseData['prerelease'] as bool;
 
     return AlertDialog(
-      title: const Text('发现新版本'),
+      title: Text(S.of(context).weight_update_new_version_found),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
@@ -30,25 +31,31 @@ class UpdateDialog extends StatelessWidget {
                 Text(tagName, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: isPrerelease ? Colors.orange : Colors.green,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    isPrerelease ? '测试版' : '正式版',
+                    isPrerelease
+                        ? S.of(context).weight_update_test_version
+                        : S.of(context).weight_update_release_version,
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text('版本来源: GitHub', style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              '${S.of(context).weight_update_from}: ${S.of(context).common_github}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: 16),
             Flexible(
-              child: SingleChildScrollView(
-                child: MarkdownBody(data: body),
-              ),
+              child: SingleChildScrollView(child: MarkdownBody(data: body)),
             ),
           ],
         ),
@@ -59,17 +66,18 @@ class UpdateDialog extends StatelessWidget {
           children: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child: Text(S.of(context).common_cancel),
             ),
             const SizedBox(width: 8),
             TextButton(
               onPressed: () => _showIgnoreDialog(context, tagName),
-              child: const Text('忽略本次'),
+              child: Text(S.of(context).weight_update_ignore_this_version),
             ),
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: () => UpdateUtil.performSmartDownload(context, releaseData),
-              child: const Text('下载'),
+              onPressed: () =>
+                  UpdateUtil.performSmartDownload(context, releaseData),
+              child: Text(S.of(context).common_download),
             ),
           ],
         ),
@@ -81,20 +89,23 @@ class UpdateDialog extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('忽略更新'),
-        content: const Text('将不会再检测该版本的更新，是否确认？'),
+        title: Text(S.of(context).weight_update_ignore_this_version),
+        content: Text(S.of(context).weight_update_ignore_this_version_message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () {
-              Provider.of<SettingsProvider>(context, listen: false).setIgnoredVersion(version);
+              Provider.of<SettingsProvider>(
+                context,
+                listen: false,
+              ).setIgnoredVersion(version);
               Navigator.pop(dialogContext);
               Navigator.pop(context);
             },
-            child: const Text('确认'),
+            child: Text(S.of(context).common_confirm),
           ),
         ],
       ),
@@ -106,7 +117,11 @@ class UpdateDialog extends StatelessWidget {
     if (!await launchUrl(uri)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $url')),
+          SnackBar(
+            content: Text(
+              '${S.of(context).util_scheme_lauch_fail}: $url',
+            ),
+          ),
         );
       }
     }

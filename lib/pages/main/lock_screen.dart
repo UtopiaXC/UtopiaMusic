@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -27,13 +28,19 @@ class _LockScreenState extends State<LockScreen> {
           children: [
             const Icon(Icons.lock, size: 64),
             const SizedBox(height: 16),
-            const Text('应用已锁定', style: TextStyle(fontSize: 24)),
+            Text(
+              S.of(context).pages_lock_screen_locked,
+              style: TextStyle(fontSize: 24),
+            ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                Provider.of<SecurityProvider>(context, listen: false).authenticate();
+                Provider.of<SecurityProvider>(
+                  context,
+                  listen: false,
+                ).authenticate();
               },
-              child: const Text('解锁'),
+              child: Text(S.of(context).pages_lock_screen_unlock),
             ),
           ],
         ),

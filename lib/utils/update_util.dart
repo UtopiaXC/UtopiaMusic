@@ -7,11 +7,18 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:utopia_music/connection/update/github_api.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/update/update_dialog.dart';
+import 'package:utopia_music/generated/l10n.dart';
 import 'dart:ffi';
 
 class UpdateUtil {
-  static Future<void> checkAndShow(BuildContext context, {bool isManualCheck = false}) async {
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+  static Future<void> checkAndShow(
+    BuildContext context, {
+    bool isManualCheck = false,
+  }) async {
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
 
     if (!isManualCheck && !settingsProvider.autoCheckUpdate) return;
 
@@ -22,16 +29,16 @@ class UpdateUtil {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
+        builder: (_) => Center(
           child: Card(
             child: Padding(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('正在检查更新...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(S.of(context).util_update_checking),
                 ],
               ),
             ),
@@ -66,7 +73,6 @@ class UpdateUtil {
       }
 
       if (cleanRemote != cleanLocal) {
-
         if (!isManualCheck && ignoredVersion == tagName) {
           return;
         }
@@ -78,11 +84,10 @@ class UpdateUtil {
       } else {
         if (isManualCheck) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('当前已是最新版本')),
+            SnackBar(content: Text(S.of(context).util_update_already_newest)),
           );
         }
       }
-
     } catch (e) {
       if (isManualCheck && context.mounted) {
         Navigator.pop(context);
@@ -93,12 +98,12 @@ class UpdateUtil {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('检查更新失败'),
+            title: Text(S.of(context).common_failed),
             content: Text(errorMessage),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('确定'),
+                child: Text(S.of(context).common_confirm),
               ),
             ],
           ),
@@ -116,7 +121,10 @@ class UpdateUtil {
     return null;
   }
 
-  static Future<void> performSmartDownload(BuildContext context, Map<String, dynamic> releaseData) async {
+  static Future<void> performSmartDownload(
+    BuildContext context,
+    Map<String, dynamic> releaseData,
+  ) async {
     final List<dynamic> assets = releaseData['assets'] ?? [];
     final String htmlUrl = releaseData['html_url'];
     showDialog(
@@ -163,8 +171,6 @@ class UpdateUtil {
     } else if (abi == Abi.androidIA32) {
       targetArch = 'x86';
     }
-    print("1111111111111111 $abi");
-    print("2222222222222222 $targetArch");
 
     if (targetArch == null) {
       print("Update: Unknown ABI $abi, falling back to browser.");
@@ -173,14 +179,12 @@ class UpdateUtil {
 
     print("Update: Current App Arch is $targetArch, strict matching...");
     try {
-      final match = assets.firstWhere(
-            (asset) {
-          final name = asset['name'].toString().toLowerCase();
-          return name.contains('android') &&
-              name.contains(targetArch!.toLowerCase()) &&
-              name.endsWith('.apk');
-        },
-      );
+      final match = assets.firstWhere((asset) {
+        final name = asset['name'].toString().toLowerCase();
+        return name.contains('android') &&
+            name.contains(targetArch!.toLowerCase()) &&
+            name.endsWith('.apk');
+      });
       return match['browser_download_url'];
     } catch (e) {
       print("Update: No strict match found for $targetArch.");
@@ -189,63 +193,47 @@ class UpdateUtil {
   }
 
   static String? _matchWindows(List<dynamic> assets) {
-    var match = assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('windows') && name.contains('setup') && name.endsWith('.exe');
-      },
-      orElse: () => null,
-    );
+    var match = assets.firstWhere((asset) {
+      final name = asset['name'].toString().toLowerCase();
+      return name.contains('windows') &&
+          name.contains('setup') &&
+          name.endsWith('.exe');
+    }, orElse: () => null);
 
-    match ??= assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('windows') && name.endsWith('.zip');
-      },
-      orElse: () => null,
-    );
+    match ??= assets.firstWhere((asset) {
+      final name = asset['name'].toString().toLowerCase();
+      return name.contains('windows') && name.endsWith('.zip');
+    }, orElse: () => null);
 
     return match?['browser_download_url'];
   }
 
   static String? _matchLinux(List<dynamic> assets) {
-    var match = assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('linux') && name.endsWith('.appimage');
-      },
-      orElse: () => null,
-    );
-    match ??= assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('linux') && name.endsWith('.deb');
-      },
-      orElse: () => null,
-    );
+    var match = assets.firstWhere((asset) {
+      final name = asset['name'].toString().toLowerCase();
+      return name.contains('linux') && name.endsWith('.appimage');
+    }, orElse: () => null);
+    match ??= assets.firstWhere((asset) {
+      final name = asset['name'].toString().toLowerCase();
+      return name.contains('linux') && name.endsWith('.deb');
+    }, orElse: () => null);
 
     return match?['browser_download_url'];
   }
 
   static String? _matchMac(List<dynamic> assets) {
-    final match = assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('macos') && name.endsWith('.dmg');
-      },
-      orElse: () => null,
-    );
+    final match = assets.firstWhere((asset) {
+      final name = asset['name'].toString().toLowerCase();
+      return name.contains('macos') && name.endsWith('.dmg');
+    }, orElse: () => null);
     return match?['browser_download_url'];
   }
 
   static String? _matchIos(List<dynamic> assets) {
-    final match = assets.firstWhere(
-          (asset) {
-        final name = asset['name'].toString().toLowerCase();
-        return name.contains('ios') && name.endsWith('.ipa');
-      },
-      orElse: () => null,
-    );
+    final match = assets.firstWhere((asset) {
+      final name = asset['name'].toString().toLowerCase();
+      return name.contains('ios') && name.endsWith('.ipa');
+    }, orElse: () => null);
     return match?['browser_download_url'];
   }
 
@@ -258,7 +246,9 @@ class UpdateUtil {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $e')),
+          SnackBar(
+            content: Text('${S.of(context).util_scheme_lauch_fail}: $e'),
+          ),
         );
       }
     }

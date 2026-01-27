@@ -79,12 +79,12 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('克隆歌单'),
-        content: Text('确定要将 "${_currentPlaylistInfo.title}" 克隆成本地歌单吗？'),
+        title: Text(S.of(context).pages_library_online_clone),
+        content: Text(S.of(context).pages_library_online_clone_confirm(_currentPlaylistInfo.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -111,7 +111,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
         setState(() => _isLoading = false);
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已克隆到本地歌单')),
+          SnackBar(content: Text(S.of(context).pages_library_online_clone_success)),
         );
         Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
       }
@@ -119,7 +119,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('克隆失败: $e')),
+          SnackBar(content: Text(S.of(context).pages_library_online_clone_failed(e.toString()))),
         );
       }
     }
@@ -131,16 +131,16 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('下载确认'),
-        content: const Text('是否下载该列表？'),
+        title: Text(S.of(context).common_confirm_title),
+        content: Text(S.of(context).pages_library_playlist_download_confirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('下载'),
+            child: Text(S.of(context).common_download),
           ),
         ],
       ),
@@ -152,7 +152,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已全部加入下载队列')),
+          SnackBar(content: Text(S.of(context).pages_library_playlist_download_started)),
         );
       }
     }
@@ -166,8 +166,8 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('替换播放列表'),
-          content: const Text('当前播放列表不为空，是否替换？'),
+          title: Text(S.of(context).common_replace_playlist),
+          content: Text(S.of(context).pages_library_playlist_play_replace_confirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -175,7 +175,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('替换'),
+              child: Text(S.of(context).common_replace),
             ),
           ],
         ),
@@ -225,16 +225,16 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('移除视频'),
-        content: Text('确定要将 "${song.title}" 从此收藏夹移除吗？'),
+        title: Text(S.of(context).pages_library_online_remove_video),
+        content: Text(S.of(context).pages_library_online_remove_video_confirm(song.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('移除'),
+            child: Text(S.of(context).pages_library_download_action_delete),
           ),
         ],
       ),
@@ -250,7 +250,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       if (aid == 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('无法获取视频信息')),
+            SnackBar(content: Text(S.of(context).weight_player_no_video_fetched)),
           );
         }
         return;
@@ -264,14 +264,14 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已移除')),
+            SnackBar(content: Text(S.of(context).pages_library_online_remove_success)),
           );
           _loadSongs();
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('移除失败')),
+            SnackBar(content: Text(S.of(context).pages_library_online_remove_failed)),
           );
         }
       }
@@ -359,7 +359,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  '${_currentPlaylistInfo.count}首',
+                                  '${_currentPlaylistInfo.count}${S.of(context).common_count_of_songs}',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: colorScheme.onSecondaryContainer,
                                         fontWeight: FontWeight.bold,
@@ -391,7 +391,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                       child: FilledButton.icon(
                         onPressed: _handlePlay,
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('播放'),
+                        label: Text(S.of(context).common_play),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -407,14 +407,14 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                       IconButton.filledTonal(
                         onPressed: _handleEdit,
                         icon: const Icon(Icons.edit),
-                        tooltip: '编辑',
+                        tooltip: S.of(context).pages_library_playlist_edit,
                       ),
                       const SizedBox(width: 8),
                     ],
                     IconButton.filledTonal(
                       onPressed: _handleDownload,
                       icon: const Icon(Icons.download),
-                      tooltip: '下载全部',
+                      tooltip: S.of(context).common_download,
                     ),
                   ],
                 ),
@@ -431,7 +431,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                                 Navigator.pop(context);
                               }
                             },
-                            child: const Center(child: Text('暂无歌曲')),
+                            child: Center(child: Text(S.of(context).pages_library_playlist_empty)),
                           )
                         : ListView.builder(
                             controller: scrollController,
@@ -446,13 +446,13 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                                 },
                                 menuItems: [
                                   if (!widget.isCollection)
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'remove',
                                       child: Row(
                                         children: [
-                                          Icon(Icons.delete_outline, size: 20),
-                                          SizedBox(width: 12),
-                                          Text('移除该视频'),
+                                          const Icon(Icons.delete_outline, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text(S.of(context).pages_library_online_remove_video),
                                         ],
                                       ),
                                     ),
@@ -535,11 +535,11 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
       if (success) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('修改成功')),
+          SnackBar(content: Text(S.of(context).pages_library_online_edit_success)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('修改失败')),
+          SnackBar(content: Text(S.of(context).pages_library_online_edit_failed)),
         );
       }
     }
@@ -549,16 +549,16 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除收藏夹'),
-        content: const Text('确定要删除此收藏夹吗？此操作不可恢复。'),
+        title: Text(S.of(context).pages_library_online_delete_fav),
+        content: Text(S.of(context).pages_library_online_delete_fav_confirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(S.of(context).common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
+            child: Text(S.of(context).pages_library_download_action_delete),
           ),
         ],
       ),
@@ -574,12 +574,12 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
           Navigator.pop(context); // Close edit sheet
           Navigator.pop(context); // Close detail sheet
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('删除成功')),
+            SnackBar(content: Text(S.of(context).pages_library_online_delete_success)),
           );
           Provider.of<LibraryProvider>(context, listen: false).refreshLibrary();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('删除失败')),
+            SnackBar(content: Text(S.of(context).pages_library_online_delete_failed)),
           );
         }
       }
@@ -619,26 +619,26 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '编辑收藏夹',
+                              S.of(context).pages_library_online_edit_fav,
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                             IconButton(
                               onPressed: _handleDelete,
                               icon: const Icon(Icons.delete_outline),
-                              tooltip: '删除收藏夹',
+                              tooltip: S.of(context).pages_library_online_delete_fav,
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
                         TextFormField(
                           controller: _titleController,
-                          decoration: const InputDecoration(
-                            labelText: '标题',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: S.of(context).pages_library_online_edit_title,
+                            border: const OutlineInputBorder(),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return '请输入标题';
+                              return S.of(context).common_please_input;
                             }
                             return null;
                           },
@@ -646,15 +646,15 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _descController,
-                          decoration: const InputDecoration(
-                            labelText: '简介',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: S.of(context).pages_library_online_edit_intro,
+                            border: const OutlineInputBorder(),
                           ),
                           maxLines: 3,
                         ),
                         const SizedBox(height: 16),
                         SwitchListTile(
-                          title: const Text('公开收藏夹'),
+                          title: Text(S.of(context).pages_library_online_edit_public),
                           value: _isPublic,
                           onChanged: (value) {
                             setState(() {
@@ -667,7 +667,7 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
                           width: double.infinity,
                           child: FilledButton(
                             onPressed: _handleSubmit,
-                            child: const Text('保存'),
+                            child: Text(S.of(context).pages_library_online_edit_save),
                           ),
                         ),
                       ],

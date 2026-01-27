@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class KichikuRankFragment extends StatefulWidget {
   final ScrollController scrollController;
@@ -85,11 +86,11 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('无网络或接口请求被风控，请重试。\n排行榜对风控较严，如未登录可尝试登录后重试'),
+                  Text(S.of(context).pages_discover_error_rank_risk),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: _loadData,
-                    child: Text('重试'),
+                    child: Text(S.of(context).common_retry),
                   ),
                 ],
               ),

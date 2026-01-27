@@ -116,7 +116,7 @@ class SettingsPage extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                _getVipLabel(userInfo.vipType),
+                                _getVipLabel(context,userInfo.vipType),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -162,28 +162,28 @@ class SettingsPage extends StatelessWidget {
     }
   }
 
-  String _getVipLabel(UserVipType type) {
+  String _getVipLabel(BuildContext context, UserVipType type) {
     switch (type) {
       case UserVipType.vip:
-        return '大会员';
+        return S.of(context).weight_user_space_vip;
       case UserVipType.annualVip:
-        return '年度大会员';
+        return  S.of(context).weight_user_space_annual_vip;
       default:
-        return '普通用户';
+        return  S.of(context).weight_user_space_normal;
     }
   }
 
   Widget _buildSettingsList(BuildContext context) {
     return Column(
       children: [
-        _buildSettingItem(context, '外观', Icons.palette_outlined, const AppearanceSettingsPage()),
-        _buildSettingItem(context, '搜索', Icons.search, const SearchSettingsPage()),
-        _buildSettingItem(context, '播放', Icons.play_circle_outline, const PlaySettingsPage()),
-        _buildSettingItem(context, '下载', Icons.download_outlined, const DownloadSettingsPage()),
-        _buildSettingItem(context, '网络', Icons.wifi, const NetworkSettingsPage()),
-        _buildSettingItem(context, '安全', Icons.security, const SecuritySettingsPage()),
-        _buildSettingItem(context, '通用', Icons.settings_outlined, const GeneralSettingsPage()),
-        _buildSettingItem(context, '关于', Icons.info_outline, const AboutSettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_appearance, Icons.palette_outlined, const AppearanceSettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_search, Icons.search, const SearchSettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_player, Icons.play_circle_outline, const PlaySettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_download, Icons.download_outlined, const DownloadSettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_network, Icons.wifi, const NetworkSettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_security, Icons.security, const SecuritySettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_general, Icons.settings_outlined, const GeneralSettingsPage()),
+        _buildSettingItem(context, S.of(context).pages_settings_tag_about, Icons.info_outline, const AboutSettingsPage()),
       ],
     );
   }
