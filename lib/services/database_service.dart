@@ -6,6 +6,9 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "DATABASE_SERVICE";
 
 class LocalPlaylist {
   final int id;
@@ -34,13 +37,16 @@ class DatabaseService {
   DatabaseService._internal();
 
   Future<Database> get database async {
+    Log.v(_tag, "database");
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
 
   Future<Database> _initDatabase() async {
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    Log.v(_tag, "_initDatabase");
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
@@ -64,6 +70,7 @@ class DatabaseService {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    Log.v(_tag, "_onCreate, version: $version");
     await db.execute('''
       CREATE TABLE playlist(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,6 +118,7 @@ class DatabaseService {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    Log.v(_tag, "_onUpgrade, oldVersion: $oldVersion, newVersion: $newVersion");
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE playlist ADD COLUMN origin_title TEXT');
       await db.execute('UPDATE playlist SET origin_title = title');
@@ -120,8 +128,12 @@ class DatabaseService {
     }
     if (oldVersion < 4) {
       try {
-        await db.execute('ALTER TABLE cache_meta ADD COLUMN file_size INTEGER DEFAULT 0');
-        await db.execute('ALTER TABLE cache_meta ADD COLUMN status INTEGER DEFAULT 1');
+        await db.execute(
+          'ALTER TABLE cache_meta ADD COLUMN file_size INTEGER DEFAULT 0',
+        );
+        await db.execute(
+          'ALTER TABLE cache_meta ADD COLUMN status INTEGER DEFAULT 1',
+        );
       } catch (_) {}
     }
     if (oldVersion < 5) {
@@ -129,7 +141,9 @@ class DatabaseService {
     }
     if (oldVersion < 6) {
       try {
-        await db.execute('ALTER TABLE cache_meta ADD COLUMN total_size INTEGER DEFAULT 0');
+        await db.execute(
+          'ALTER TABLE cache_meta ADD COLUMN total_size INTEGER DEFAULT 0',
+        );
         await db.execute('ALTER TABLE cache_meta ADD COLUMN session_id TEXT');
 
         await db.execute('DELETE FROM cache_meta');
@@ -138,6 +152,7 @@ class DatabaseService {
   }
 
   Future<void> _createCacheMetaTable(DatabaseExecutor db) async {
+    Log.v(_tag, "_createCacheMetaTable");
     await db.execute('''
       CREATE TABLE cache_meta(
         key TEXT PRIMARY KEY, 
@@ -155,6 +170,7 @@ class DatabaseService {
   }
 
   Future<void> _createDownloadsTable(DatabaseExecutor db) async {
+    Log.v(_tag, "_createDownloadsTable");
     await db.execute('''
       CREATE TABLE downloads(
         id TEXT PRIMARY KEY, 
@@ -173,22 +189,32 @@ class DatabaseService {
   }
 
   Future<List<Song>> getPlaylist({bool isShuffleMode = false}) async {
+    Log.v(_tag, "getPlaylist, isShuffleMode: $isShuffleMode");
     final db = await database;
-    final String orderBy = isShuffleMode ? 'shuffle_order ASC' : 'sequence_order ASC';
-    final List<Map<String, dynamic>> maps = await db.query('playlist', orderBy: orderBy);
-    return List.generate(maps.length, (i) => Song(
-      title: maps[i]['title'],
-      originTitle: maps[i]['origin_title'],
-      artist: maps[i]['artist'],
-      coverUrl: maps[i]['coverUrl'],
-      lyrics: maps[i]['lyrics'],
-      colorValue: maps[i]['colorValue'],
-      bvid: maps[i]['bvid'],
-      cid: maps[i]['cid'],
-    ));
+    final String orderBy = isShuffleMode
+        ? 'shuffle_order ASC'
+        : 'sequence_order ASC';
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlist',
+      orderBy: orderBy,
+    );
+    return List.generate(
+      maps.length,
+      (i) => Song(
+        title: maps[i]['title'],
+        originTitle: maps[i]['origin_title'],
+        artist: maps[i]['artist'],
+        coverUrl: maps[i]['coverUrl'],
+        lyrics: maps[i]['lyrics'],
+        colorValue: maps[i]['colorValue'],
+        bvid: maps[i]['bvid'],
+        cid: maps[i]['cid'],
+      ),
+    );
   }
 
   Future<void> replacePlaylist(List<Song> songs) async {
+    Log.v(_tag, "replacePlaylist, songs: $songs");
     final db = await database;
     List<int> shuffleIndices = List.generate(songs.length, (index) => index);
     shuffleIndices.shuffle(Random());
@@ -215,13 +241,25 @@ class DatabaseService {
   }
 
   Future<void> insertSong(Song song, {Song? afterSong}) async {
+    Log.v(_tag, "insertSong, song: $song, afterSong: $afterSong");
     final db = await database;
     await db.transaction((txn) async {
-      final existing = await txn.query('playlist', columns: ['id'], where: 'bvid = ? AND cid = ?', whereArgs: [song.bvid, song.cid]);
+      final existing = await txn.query(
+        'playlist',
+        columns: ['id'],
+        where: 'bvid = ? AND cid = ?',
+        whereArgs: [song.bvid, song.cid],
+      );
       if (existing.isNotEmpty) {
-        await txn.delete('playlist', where: 'bvid = ? AND cid = ?', whereArgs: [song.bvid, song.cid]);
+        await txn.delete(
+          'playlist',
+          where: 'bvid = ? AND cid = ?',
+          whereArgs: [song.bvid, song.cid],
+        );
       }
-      final maxRes = await txn.rawQuery('SELECT MAX(sequence_order) as max_seq, MAX(shuffle_order) as max_shuf FROM playlist');
+      final maxRes = await txn.rawQuery(
+        'SELECT MAX(sequence_order) as max_seq, MAX(shuffle_order) as max_shuf FROM playlist',
+      );
       int maxSeq = (maxRes.first['max_seq'] as int?) ?? -1;
       int maxShuf = (maxRes.first['max_shuf'] as int?) ?? -1;
       int newSeqOrder, newShufOrder;
@@ -230,7 +268,12 @@ class DatabaseService {
         newSeqOrder = maxSeq + 1;
         newShufOrder = maxShuf + 1;
       } else {
-        final currentRes = await txn.query('playlist', columns: ['sequence_order', 'shuffle_order'], where: 'bvid = ? AND cid = ?', whereArgs: [afterSong.bvid, afterSong.cid]);
+        final currentRes = await txn.query(
+          'playlist',
+          columns: ['sequence_order', 'shuffle_order'],
+          where: 'bvid = ? AND cid = ?',
+          whereArgs: [afterSong.bvid, afterSong.cid],
+        );
         if (currentRes.isEmpty) {
           newSeqOrder = maxSeq + 1;
           newShufOrder = maxShuf + 1;
@@ -239,8 +282,14 @@ class DatabaseService {
           final curShuf = currentRes.first['shuffle_order'] as int;
           newSeqOrder = curSeq + 1;
           newShufOrder = curShuf + 1;
-          await txn.rawUpdate('UPDATE playlist SET sequence_order = sequence_order + 1 WHERE sequence_order > ?', [curSeq]);
-          await txn.rawUpdate('UPDATE playlist SET shuffle_order = shuffle_order + 1 WHERE shuffle_order > ?', [curShuf]);
+          await txn.rawUpdate(
+            'UPDATE playlist SET sequence_order = sequence_order + 1 WHERE sequence_order > ?',
+            [curSeq],
+          );
+          await txn.rawUpdate(
+            'UPDATE playlist SET shuffle_order = shuffle_order + 1 WHERE shuffle_order > ?',
+            [curShuf],
+          );
         }
       }
       await txn.insert('playlist', {
@@ -259,15 +308,36 @@ class DatabaseService {
   }
 
   Future<void> removeSong(String bvid, int cid) async {
+    Log.v(_tag, "removeSong, bvid: $bvid, cid: $cid");
     final db = await database;
-    await db.delete('playlist', where: 'bvid = ? AND cid = ?', whereArgs: [bvid, cid]);
+    await db.delete(
+      'playlist',
+      where: 'bvid = ? AND cid = ?',
+      whereArgs: [bvid, cid],
+    );
   }
 
-  Future<void> reorderPlaylist(int oldIndex, int newIndex, bool isShuffleMode) async {
+  Future<void> reorderPlaylist(
+    int oldIndex,
+    int newIndex,
+    bool isShuffleMode,
+  ) async {
+    Log.v(
+      _tag,
+      "reorderPlaylist, oldIndex: $oldIndex, newIndex: $newIndex, isShuffleMode: $isShuffleMode",
+    );
     final db = await database;
     final column = isShuffleMode ? 'shuffle_order' : 'sequence_order';
-    final List<Map<String, dynamic>> maps = await db.query('playlist', columns: ['id', column], orderBy: '$column ASC');
-    if (oldIndex < 0 || oldIndex >= maps.length || newIndex < 0 || newIndex >= maps.length) return;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlist',
+      columns: ['id', column],
+      orderBy: '$column ASC',
+    );
+    if (oldIndex < 0 ||
+        oldIndex >= maps.length ||
+        newIndex < 0 ||
+        newIndex >= maps.length)
+      return;
     List<int> orderedIds = maps.map((m) => m['id'] as int).toList();
     final int removedId = orderedIds.removeAt(oldIndex);
     orderedIds.insert(newIndex, removedId);
@@ -276,18 +346,36 @@ class DatabaseService {
       int start = min(oldIndex, newIndex);
       int end = max(oldIndex, newIndex);
       for (int i = start; i <= end; i++) {
-        batch.update('playlist', {column: i}, where: 'id = ?', whereArgs: [orderedIds[i]]);
+        batch.update(
+          'playlist',
+          {column: i},
+          where: 'id = ?',
+          whereArgs: [orderedIds[i]],
+        );
       }
       await batch.commit(noResult: true);
     });
   }
 
   Future<void> clearPlaylist() async {
+    Log.v(_tag, "clearPlaylist");
     final db = await database;
     await db.delete('playlist');
   }
 
-  Future<void> recordCacheAccess(String bvid, int cid, int quality, {int fileSize = 0, int totalSize = 0, int? status, String? sessionId}) async {
+  Future<void> recordCacheAccess(
+    String bvid,
+    int cid,
+    int quality, {
+    int fileSize = 0,
+    int totalSize = 0,
+    int? status,
+    String? sessionId,
+  }) async {
+    Log.v(
+      _tag,
+      "recordCacheAccess, bvid: $bvid, cid: $cid, quality: $quality, fileSize: $fileSize, totalSize: $totalSize, status: $status, sessionId: $sessionId",
+    );
     final db = await database;
     final key = '${bvid}_${cid}_$quality';
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -314,7 +402,8 @@ class DatabaseService {
           'session_id': sessionId,
         });
       } else {
-        String sql = 'UPDATE cache_meta SET hit_count = hit_count + 1, last_access_time = ?';
+        String sql =
+            'UPDATE cache_meta SET hit_count = hit_count + 1, last_access_time = ?';
         List<dynamic> args = [now];
 
         if (fileSize > 0) {
@@ -342,33 +431,45 @@ class DatabaseService {
     });
   }
 
-  Future<Map<String, dynamic>?> getCacheMeta(String bvid, int cid, int quality) async {
+  Future<Map<String, dynamic>?> getCacheMeta(
+    String bvid,
+    int cid,
+    int quality,
+  ) async {
+    Log.v(_tag, "getCacheMeta, bvid: $bvid, cid: $cid, quality: $quality");
     final db = await database;
     final key = '${bvid}_${cid}_$quality';
-    final res = await db.query('cache_meta', where: 'key = ?', whereArgs: [key]);
+    final res = await db.query(
+      'cache_meta',
+      where: 'key = ?',
+      whereArgs: [key],
+    );
     return res.isNotEmpty ? res.first : null;
   }
 
   Future<List<Map<String, dynamic>>> getCompletedCacheMeta() async {
+    Log.v(_tag, "getCompletedCacheMeta");
     final db = await database;
-    return await db.query(
-      'cache_meta',
-      where: 'status = ?',
-      whereArgs: [1],
-    );
+    return await db.query('cache_meta', where: 'status = ?', whereArgs: [1]);
   }
 
   Future<void> removeCacheMeta(String key) async {
+    Log.v(_tag, "removeCacheMeta, key: $key");
     final db = await database;
     await db.delete('cache_meta', where: 'key = ?', whereArgs: [key]);
   }
 
   Future<void> clearCacheMetaTable() async {
+    Log.v(_tag, "clearCacheMetaTable");
     final db = await database;
     await db.delete('cache_meta');
   }
 
   Future<int> createLocalPlaylist(String title, String description) async {
+    Log.v(
+      _tag,
+      "createLocalPlaylist, title: $title, description: $description",
+    );
     final db = await database;
     return await db.insert('local_playlists', {
       'title': title,
@@ -378,33 +479,77 @@ class DatabaseService {
   }
 
   Future<void> deleteLocalPlaylist(int id) async {
+    Log.v(_tag, "deleteLocalPlaylist, id: $id");
     final db = await database;
     await db.delete('local_playlists', where: 'id = ?', whereArgs: [id]);
-    await db.delete('local_playlist_songs', where: 'playlist_id = ?', whereArgs: [id]);
+    await db.delete(
+      'local_playlist_songs',
+      where: 'playlist_id = ?',
+      whereArgs: [id],
+    );
   }
 
-  Future<void> updateLocalPlaylist(int id, String title, String description) async {
+  Future<void> updateLocalPlaylist(
+    int id,
+    String title,
+    String description,
+  ) async {
+    Log.v(
+      _tag,
+      "updateLocalPlaylist, id: $id, title: $title, description: $description",
+    );
     final db = await database;
-    await db.update('local_playlists', {'title': title, 'description': description}, where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'local_playlists',
+      {'title': title, 'description': description},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<List<LocalPlaylist>> getLocalPlaylists() async {
+    Log.v(_tag, "getLocalPlaylists");
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('local_playlists', orderBy: 'create_time DESC');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'local_playlists',
+      orderBy: 'create_time DESC',
+    );
     List<LocalPlaylist> playlists = [];
     for (var map in maps) {
       final int id = map['id'];
-      final List<Map<String, dynamic>> songs = await db.query('local_playlist_songs', columns: ['cover_url'], where: 'playlist_id = ?', whereArgs: [id], orderBy: 'sort_order ASC', limit: 1);
-      final countResult = await db.rawQuery('SELECT COUNT(*) as count FROM local_playlist_songs WHERE playlist_id = ?', [id]);
+      final List<Map<String, dynamic>> songs = await db.query(
+        'local_playlist_songs',
+        columns: ['cover_url'],
+        where: 'playlist_id = ?',
+        whereArgs: [id],
+        orderBy: 'sort_order ASC',
+        limit: 1,
+      );
+      final countResult = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM local_playlist_songs WHERE playlist_id = ?',
+        [id],
+      );
       final int count = Sqflite.firstIntValue(countResult) ?? 0;
-      playlists.add(LocalPlaylist(id: id, title: map['title'], description: map['description'], coverUrl: songs.isNotEmpty ? songs.first['cover_url'] : null, songCount: count));
+      playlists.add(
+        LocalPlaylist(
+          id: id,
+          title: map['title'],
+          description: map['description'],
+          coverUrl: songs.isNotEmpty ? songs.first['cover_url'] : null,
+          songCount: count,
+        ),
+      );
     }
     return playlists;
   }
 
   Future<void> addSongToLocalPlaylist(int playlistId, Song song) async {
+    Log.v(_tag, "addSongToLocalPlaylist, playlistId: $playlistId, song: $song");
     final db = await database;
-    final List<Map<String, dynamic>> maxResult = await db.rawQuery('SELECT MAX(sort_order) as max_order FROM local_playlist_songs WHERE playlist_id = ?', [playlistId]);
+    final List<Map<String, dynamic>> maxResult = await db.rawQuery(
+      'SELECT MAX(sort_order) as max_order FROM local_playlist_songs WHERE playlist_id = ?',
+      [playlistId],
+    );
     int maxOrder = (maxResult.first['max_order'] as int?) ?? -1;
     await db.insert('local_playlist_songs', {
       'playlist_id': playlistId,
@@ -420,50 +565,117 @@ class DatabaseService {
     });
   }
 
-  Future<void> removeSongFromLocalPlaylist(int playlistId, String bvid, int cid) async {
+  Future<void> removeSongFromLocalPlaylist(
+    int playlistId,
+    String bvid,
+    int cid,
+  ) async {
+    Log.v(
+      _tag,
+      "removeSongFromLocalPlaylist, playlistId: $playlistId, bvid: $bvid, cid: $cid",
+    );
     final db = await database;
-    await db.delete('local_playlist_songs', where: 'playlist_id = ? AND bvid = ? AND cid = ?', whereArgs: [playlistId, bvid, cid]);
+    await db.delete(
+      'local_playlist_songs',
+      where: 'playlist_id = ? AND bvid = ? AND cid = ?',
+      whereArgs: [playlistId, bvid, cid],
+    );
   }
 
   Future<List<Song>> getLocalPlaylistSongs(int playlistId) async {
+    Log.v(_tag, "getLocalPlaylistSongs, playlistId: $playlistId");
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('local_playlist_songs', where: 'playlist_id = ?', whereArgs: [playlistId], orderBy: 'sort_order ASC');
-    return List.generate(maps.length, (i) => Song(
-      title: maps[i]['title'],
-      originTitle: maps[i]['origin_title'],
-      artist: maps[i]['artist'],
-      coverUrl: maps[i]['cover_url'],
-      lyrics: maps[i]['lyrics'],
-      colorValue: maps[i]['color_value'],
-      bvid: maps[i]['bvid'],
-      cid: maps[i]['cid'],
-    ));
+    final List<Map<String, dynamic>> maps = await db.query(
+      'local_playlist_songs',
+      where: 'playlist_id = ?',
+      whereArgs: [playlistId],
+      orderBy: 'sort_order ASC',
+    );
+    return List.generate(
+      maps.length,
+      (i) => Song(
+        title: maps[i]['title'],
+        originTitle: maps[i]['origin_title'],
+        artist: maps[i]['artist'],
+        coverUrl: maps[i]['cover_url'],
+        lyrics: maps[i]['lyrics'],
+        colorValue: maps[i]['color_value'],
+        bvid: maps[i]['bvid'],
+        cid: maps[i]['cid'],
+      ),
+    );
   }
 
-  Future<void> updateLocalPlaylistSongOrder(int playlistId, int oldIndex, int newIndex) async {
+  Future<void> updateLocalPlaylistSongOrder(
+    int playlistId,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    Log.v(
+      _tag,
+      "updateLocalPlaylistSongOrder, playlistId: $playlistId, oldIndex: $oldIndex, newIndex: $newIndex",
+    );
     final db = await database;
     final songs = await getLocalPlaylistSongs(playlistId);
-    if (oldIndex < 0 || oldIndex >= songs.length || newIndex < 0 || newIndex >= songs.length) return;
+    if (oldIndex < 0 ||
+        oldIndex >= songs.length ||
+        newIndex < 0 ||
+        newIndex >= songs.length)
+      return;
     final song = songs.removeAt(oldIndex);
     songs.insert(newIndex, song);
     await db.transaction((txn) async {
       for (int i = 0; i < songs.length; i++) {
-        await txn.update('local_playlist_songs', {'sort_order': i}, where: 'playlist_id = ? AND bvid = ? AND cid = ?', whereArgs: [playlistId, songs[i].bvid, songs[i].cid]);
+        await txn.update(
+          'local_playlist_songs',
+          {'sort_order': i},
+          where: 'playlist_id = ? AND bvid = ? AND cid = ?',
+          whereArgs: [playlistId, songs[i].bvid, songs[i].cid],
+        );
       }
     });
   }
 
-  Future<void> updateLocalPlaylistSongTitle(int playlistId, String bvid, int cid, String newTitle) async {
+  Future<void> updateLocalPlaylistSongTitle(
+    int playlistId,
+    String bvid,
+    int cid,
+    String newTitle,
+  ) async {
+    Log.v(
+      _tag,
+      "updateLocalPlaylistSongTitle, playlistId: $playlistId, bvid: $bvid, cid: $cid, newTitle: $newTitle",
+    );
     final db = await database;
-    await db.update('local_playlist_songs', {'title': newTitle}, where: 'playlist_id = ? AND bvid = ? AND cid = ?', whereArgs: [playlistId, bvid, cid]);
+    await db.update(
+      'local_playlist_songs',
+      {'title': newTitle},
+      where: 'playlist_id = ? AND bvid = ? AND cid = ?',
+      whereArgs: [playlistId, bvid, cid],
+    );
   }
 
-  Future<void> resetLocalPlaylistSongTitle(int playlistId, String bvid, int cid) async {
+  Future<void> resetLocalPlaylistSongTitle(
+    int playlistId,
+    String bvid,
+    int cid,
+  ) async {
+    Log.v(
+      _tag,
+      "resetLocalPlaylistSongTitle, playlistId: $playlistId, bvid: $bvid, cid: $cid",
+    );
     final db = await database;
-    await db.rawUpdate('UPDATE local_playlist_songs SET title = origin_title WHERE playlist_id = ? AND bvid = ? AND cid = ?', [playlistId, bvid, cid]);
+    await db.rawUpdate(
+      'UPDATE local_playlist_songs SET title = origin_title WHERE playlist_id = ? AND bvid = ? AND cid = ?',
+      [playlistId, bvid, cid],
+    );
   }
 
   Future<void> insertDownload(Song song, String savePath, int quality) async {
+    Log.v(
+      _tag,
+      "insertDownload, song: $song, savePath: $savePath, quality: $quality",
+    );
     final db = await database;
     final id = '${song.bvid}_${song.cid}';
 
@@ -482,7 +694,16 @@ class DatabaseService {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> updateDownloadStatus(String bvid, int cid, int status, {double? progress}) async {
+  Future<void> updateDownloadStatus(
+    String bvid,
+    int cid,
+    int status, {
+    double? progress,
+  }) async {
+    Log.v(
+      _tag,
+      "updateDownloadStatus, bvid: $bvid, cid: $cid, status: $status, progress: $progress",
+    );
     final db = await database;
     final id = '${bvid}_${cid}';
     final Map<String, dynamic> values = {'status': status};
@@ -493,11 +714,13 @@ class DatabaseService {
   }
 
   Future<List<Map<String, dynamic>>> getAllDownloads() async {
+    Log.v(_tag, "getAllDownloads");
     final db = await database;
     return await db.query('downloads', orderBy: 'create_time DESC');
   }
 
   Future<Map<String, dynamic>?> getDownload(String bvid, int cid) async {
+    Log.v(_tag, "getDownload, bvid: $bvid, cid: $cid");
     final db = await database;
     final id = '${bvid}_${cid}';
     final res = await db.query('downloads', where: 'id = ?', whereArgs: [id]);
@@ -505,12 +728,14 @@ class DatabaseService {
   }
 
   Future<void> deleteDownload(String bvid, int cid) async {
+    Log.v(_tag, "deleteDownload, bvid: $bvid, cid: $cid");
     final db = await database;
     final id = '${bvid}_${cid}';
     await db.delete('downloads', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<bool> isDownloaded(String bvid, int cid) async {
+    Log.v(_tag, "isDownloaded, bvid: $bvid, cid: $cid");
     final db = await database;
     final id = '${bvid}_${cid}';
     final List<Map<String, dynamic>> res = await db.query(
@@ -523,6 +748,7 @@ class DatabaseService {
   }
 
   Future<List<String>> getDownloadedIds(List<String> ids) async {
+    Log.v(_tag, "getDownloadedIds, ids: $ids");
     if (ids.isEmpty) return [];
     final db = await database;
     final placeholders = List.filled(ids.length, '?').join(',');
@@ -535,7 +761,11 @@ class DatabaseService {
     return res.map((e) => e['id'] as String).toList();
   }
 
-  Future<Map<String, dynamic>?> getCompletedDownload(String bvid, int cid) async {
+  Future<Map<String, dynamic>?> getCompletedDownload(
+    String bvid,
+    int cid,
+  ) async {
+    Log.v(_tag, "getCompletedDownload, bvid: $bvid, cid: $cid");
     final db = await database;
     final id = '${bvid}_${cid}';
     final List<Map<String, dynamic>> res = await db.query(
@@ -547,32 +777,35 @@ class DatabaseService {
   }
 
   Future<void> clearStaticCacheMeta() async {
+    Log.v(_tag, "clearStaticCacheMeta");
     final db = await database;
     await db.delete('cache_meta', where: 'status = ?', whereArgs: [1]);
   }
 
   Future<void> updateCid(String bvid, int newCid) async {
+    Log.v(_tag, "updateCid, bvid: $bvid, newCid: $newCid");
     final db = await database;
     try {
       await db.update(
-          'playlist',
-          {'cid': newCid},
-          where: 'bvid = ?',
-          whereArgs: [bvid]
+        'playlist',
+        {'cid': newCid},
+        where: 'bvid = ?',
+        whereArgs: [bvid],
       );
       await db.update(
-          'local_playlist_songs',
-          {'cid': newCid},
-          where: 'bvid = ?',
-          whereArgs: [bvid]
+        'local_playlist_songs',
+        {'cid': newCid},
+        where: 'bvid = ?',
+        whereArgs: [bvid],
       );
-      print('DatabaseService: Updated CID for $bvid to $newCid');
+      Log.i(_tag, 'DatabaseService: Updated CID for $bvid to $newCid');
     } catch (e) {
-      print('DatabaseService: Failed to update CID: $e');
+      Log.e(_tag, 'Failed to update CID', e);
     }
   }
 
   Future<void> deleteDatabaseFile() async {
+    Log.v(_tag, "deleteDatabaseFile");
     try {
       if (_database != null && _database!.isOpen) {
         await _database!.close();
@@ -583,9 +816,9 @@ class DatabaseService {
       if (await file.exists()) {
         await file.delete();
       }
-      print('Database file deleted.');
+      Log.i(_tag, 'Database file deleted.');
     } catch (e) {
-      print('Error deleting database: $e');
+      Log.e(_tag, "Error deleting database", e);
     }
   }
 }

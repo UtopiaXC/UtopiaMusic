@@ -5,6 +5,9 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/search.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "BILI_AUDIO_SOURCE";
 
 typedef FatalErrorCallback =
     void Function(String bvid, int cid, String message);
@@ -48,17 +51,18 @@ class BiliAudioSource extends StreamAudioSource {
 
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
+    Log.v(_tag, "request, start: $start, end: $end");
     _isDisposed = false;
     final startOffset = start ?? 0;
 
     try {
       if (_realCid == 0) {
         try {
-          print("BiliAudioSource: CID is 0, fetching...");
+          Log.i(_tag, "bvid: $bvid, cid: $initCid, illegal cid, fetching");
           _realCid = await _searchApi.fetchCid(bvid);
-          print("BiliAudioSource: Resolved CID: $_realCid");
+          Log.i(_tag, "Solved bvid: $bvid, real cid is: $_realCid");
         } catch (e) {
-          print("BiliAudioSource: Failed to resolve CID: $e");
+          Log.e(_tag, "Failed to resolve CID", e);
         }
       }
       final targetCid = _realCid == 0 ? initCid : _realCid;
@@ -145,7 +149,7 @@ class BiliAudioSource extends StreamAudioSource {
               await controller.close();
               await _promoteTempFile(tempFile, targetCid, totalLength ?? 0);
             } catch (e) {
-              print("Cache promotion failed: $e");
+              Log.e(_tag, "Cache promotion failed", e);
               await _cleanupTempFile(tempFile);
             } finally {
               isCachePromoting = false;
@@ -177,7 +181,7 @@ class BiliAudioSource extends StreamAudioSource {
         );
       }
     } catch (e) {
-      print("BiliAudioSource Request Failed: $e");
+      Log.e(_tag, "BiliAudioSource Request Failed", e);
       if (e.toString().contains("Fatal Resource")) {
         onFatalError?.call(bvid, _realCid, e.toString());
       }
@@ -186,6 +190,10 @@ class BiliAudioSource extends StreamAudioSource {
   }
 
   Future<void> _promoteTempFile(File tempFile, int cid, int totalSize) async {
+    Log.v(
+      _tag,
+      "promoteTempFile, file: ${tempFile.path}, cid: $cid, totalSize: $totalSize",
+    );
     try {
       final staticPath = _downloadManager.getStaticCachePath(
         bvid,
@@ -202,7 +210,7 @@ class BiliAudioSource extends StreamAudioSource {
         await staticFile.delete();
       }
 
-      print("Promoting cache: ${tempFile.path} -> $staticPath");
+      Log.i(_tag, "Promoting cache: ${tempFile.path} -> $staticPath");
       await tempFile.copy(staticPath);
       await tempFile.delete();
 
@@ -214,14 +222,15 @@ class BiliAudioSource extends StreamAudioSource {
         fileSize: totalSize,
         totalSize: totalSize,
       );
-      print("Cache Promoted Successfully!");
+      Log.i(_tag, "Cache Promoted Successfully!");
     } catch (e) {
-      print("Failed to promote cache: $e");
+      Log.e(_tag, "Failed to promote cache", e);
       await _cleanupTempFile(tempFile);
     }
   }
 
   Future<void> _cleanupTempFile(File file) async {
+    Log.v(_tag, "cleanupTempFile, file: ${file.path}");
     try {
       if (await file.exists()) {
         await file.delete();

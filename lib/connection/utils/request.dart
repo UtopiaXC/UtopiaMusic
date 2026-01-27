@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:talker_dio_logger/talker_dio_logger_interceptor.dart';
+import 'package:talker_dio_logger/talker_dio_logger_settings.dart';
 import 'package:utopia_music/connection/error/error_code.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
@@ -17,7 +19,7 @@ import 'package:utopia_music/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
-import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/utils/log.dart';
 
 enum ResponseType { data, response }
 
@@ -67,13 +69,32 @@ class Request {
 
     _dio = Dio(options);
     _dio.interceptors.add(CookieManager(_cookieJar));
+    _dio.interceptors.add(
+      TalkerDioLogger(
+        talker: LogService.instance.talker,
+        settings: TalkerDioLoggerSettings(
+          printRequestData: true,
+          printRequestHeaders: false,
+          printResponseHeaders: false,
+          printResponseData: true,
+          printResponseMessage: true,
+          requestFilter: (RequestOptions options) => false,
+          responseFilter: (Response response) {
+            final statusCode = response.statusCode ?? 0;
+            if (statusCode >= 200 && statusCode < 400) {
+              return false;
+            }
+            return true;
+          },
+        ),
+      ),
+    );
 
     await _loadSettings();
     await _checkCookies();
   }
 
   Future<void> _loadSettings() async {
-
     final prefs = await SharedPreferences.getInstance();
     _maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
   }
@@ -86,7 +107,7 @@ class Request {
         await fetchGuestCookies();
       } else {
         _isUserLoggedIn = cookies.any(
-              (c) => c.name == 'DedeUserID' && c.value.isNotEmpty,
+          (c) => c.name == 'DedeUserID' && c.value.isNotEmpty,
         );
       }
     } catch (e) {
@@ -143,7 +164,7 @@ class Request {
     try {
       final cookies = await _cookieJar.loadForRequest(Uri.parse(Api.urlBase));
       final biliJct = cookies.firstWhere(
-            (c) => c.name == 'bili_jct',
+        (c) => c.name == 'bili_jct',
         orElse: () => Cookie('bili_jct', ''),
       );
       return biliJct.value;
@@ -153,14 +174,14 @@ class Request {
   }
 
   Future<dynamic> get(
-      String path, {
-        String baseUrl = Api.urlBase,
-        Map<String, dynamic>? params,
-        bool useWbi = false,
-        ResponseType responseType = ResponseType.data,
-        Options? options,
-        bool suppressErrorDialog = false,
-      }) async {
+    String path, {
+    String baseUrl = Api.urlBase,
+    Map<String, dynamic>? params,
+    bool useWbi = false,
+    ResponseType responseType = ResponseType.data,
+    Options? options,
+    bool suppressErrorDialog = true,
+  }) async {
     return _request(
       method: 'GET',
       path: path,
@@ -174,15 +195,15 @@ class Request {
   }
 
   Future<dynamic> post(
-      String path, {
-        String baseUrl = Api.urlBase,
-        dynamic data,
-        Map<String, dynamic>? params,
-        bool useWbi = false,
-        ResponseType responseType = ResponseType.data,
-        Options? options,
-        bool suppressErrorDialog = false,
-      }) async {
+    String path, {
+    String baseUrl = Api.urlBase,
+    dynamic data,
+    Map<String, dynamic>? params,
+    bool useWbi = false,
+    ResponseType responseType = ResponseType.data,
+    Options? options,
+    bool suppressErrorDialog = true,
+  }) async {
     return _request(
       method: 'POST',
       path: path,
@@ -209,42 +230,46 @@ class Request {
   }) async {
     await _initWait;
 
-    return _requestWithRetry(() async {
-      Map<String, dynamic> finalParams = params ?? {};
-      if (useWbi) {
-        finalParams = await WbiUtil.signParams(finalParams);
-      }
+    return _requestWithRetry(
+      () async {
+        Map<String, dynamic> finalParams = params ?? {};
+        if (useWbi) {
+          finalParams = await WbiUtil.signParams(finalParams);
+        }
 
-      final url = _buildUrl(baseUrl, path);
+        final url = _buildUrl(baseUrl, path);
 
-      Response response;
-      if (method == 'GET') {
-        response = await _dio.get(
-          url,
-          queryParameters: finalParams,
-          options: options,
-        );
-      } else {
-        response = await _dio.post(
-          url,
-          data: data,
-          queryParameters: finalParams,
-          options: options,
-        );
-      }
+        Response response;
+        if (method == 'GET') {
+          response = await _dio.get(
+            url,
+            queryParameters: finalParams,
+            options: options,
+          );
+        } else {
+          response = await _dio.post(
+            url,
+            data: data,
+            queryParameters: finalParams,
+            options: options,
+          );
+        }
 
-      if (responseType == ResponseType.response) {
-        return response;
-      }
-      return response.data;
-    }, retryCount: 0, suppressErrorDialog: suppressErrorDialog);
+        if (responseType == ResponseType.response) {
+          return response;
+        }
+        return response.data;
+      },
+      retryCount: 0,
+      suppressErrorDialog: suppressErrorDialog,
+    );
   }
 
   Future<dynamic> _requestWithRetry(
-      Future<dynamic> Function() requestFunc, {
-        int retryCount = 0,
-        required bool suppressErrorDialog,
-      }) async {
+    Future<dynamic> Function() requestFunc, {
+    int retryCount = 0,
+    required bool suppressErrorDialog,
+  }) async {
     try {
       final result = await requestFunc();
 
@@ -303,7 +328,8 @@ class Request {
           }
         } else if (code != 0) {
           if (code == ErrorCode.notFound || suppressErrorDialog) {
-            if (kDebugMode) print("Request: Suppressed error dialog for code $code.");
+            if (kDebugMode)
+              print("Request: Suppressed error dialog for code $code.");
             return result;
           }
 
@@ -318,13 +344,15 @@ class Request {
               suppressErrorDialog: suppressErrorDialog,
             );
           } else {
-            if (!_isUserLoggedIn && code == ErrorCode.notLoggedIn)
+            if (!_isUserLoggedIn && code == ErrorCode.notLoggedIn) {
               return result;
+            }
             if (ErrorCode.isDefined(code)) {
               _showErrorDialog(code, message);
             } else {
-              if (kDebugMode)
+              if (kDebugMode) {
                 print("Request: Ignored undefined error code: $code");
+              }
             }
           }
         }
@@ -333,7 +361,11 @@ class Request {
     } on DioException catch (e) {
       if (e.type != DioExceptionType.cancel && retryCount < _maxRetries) {
         await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
-        return await _requestWithRetry(requestFunc, retryCount: retryCount + 1, suppressErrorDialog: suppressErrorDialog);
+        return await _requestWithRetry(
+          requestFunc,
+          retryCount: retryCount + 1,
+          suppressErrorDialog: suppressErrorDialog,
+        );
       }
       if (retryCount >= _maxRetries) {
         if (!suppressErrorDialog) {
@@ -344,7 +376,11 @@ class Request {
     } catch (e) {
       if (retryCount < _maxRetries) {
         await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
-        return await _requestWithRetry(requestFunc, retryCount: retryCount + 1, suppressErrorDialog: suppressErrorDialog);
+        return await _requestWithRetry(
+          requestFunc,
+          retryCount: retryCount + 1,
+          suppressErrorDialog: suppressErrorDialog,
+        );
       }
       rethrow;
     }

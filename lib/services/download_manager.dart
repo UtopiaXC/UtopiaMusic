@@ -8,6 +8,9 @@ import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/connection/video/search.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "DOWNLOAD_MANAGER";
 
 enum CacheStatus {
   localStored(0),
@@ -97,6 +100,7 @@ class DownloadManager {
   Stream<DownloadUpdate> get downloadUpdateStream => _progressController.stream;
 
   Future<void> init() async {
+    Log.v(_tag, "init");
     await _initDirs();
     final prefs = await SharedPreferences.getInstance();
     int mb = prefs.getInt(_maxCacheSizeKey) ?? 500;
@@ -109,6 +113,7 @@ class DownloadManager {
   }
 
   Future<void> _initDirs() async {
+    Log.v(_tag, "_initDirs");
     if (_cacheDir != null && _downloadDir != null) return;
 
     final tempDir = await getTemporaryDirectory();
@@ -129,6 +134,10 @@ class DownloadManager {
     int initCid,
     int quality,
   ) async {
+    Log.v(
+      _tag,
+      "checkLocalResource, bvid: $bvid, cid: $initCid, quality: $quality",
+    );
     await _initDirs();
 
     int cid = initCid;
@@ -170,19 +179,23 @@ class DownloadManager {
     int quality, {
     int start = 0,
   }) async {
+    Log.v(
+      _tag,
+      "getNetworkStream, bvid: $bvid, cid: $initCid, quality: $quality",
+    );
     int cid = initCid;
     if (cid == 0) {
-      print("DownloadManager: CID is 0, fetching cid for $bvid...");
+      Log.w(_tag, "bvid: $bvid, cid is 0, fetching cid...");
       try {
         cid = await _searchApi.fetchCid(bvid);
-        print("DownloadManager: Resolved CID: $cid");
+        Log.i(_tag, "Resolved CID: $cid");
       } catch (e) {
-        throw ResourceException("无法获取CID，视频可能已失效: $e");
+        Log.w(_tag, "Fetch cid failed, source may be invalid");
       }
     }
 
     if (cid == 0) {
-      throw ResourceException("CID 解析失败 (0)");
+      throw ResourceException("Fetch CID failed");
     }
 
     final streamInfo = await _audioStreamApi.getAudioStream(
@@ -192,7 +205,9 @@ class DownloadManager {
     );
 
     if (streamInfo == null) {
-      throw ResourceException("无法获取音频流地址(资源可能失效或受限)");
+      throw ResourceException(
+        "Can't resolve stream info, maybe source is invalid",
+      );
     }
 
     try {
@@ -230,15 +245,21 @@ class DownloadManager {
   }
 
   String getStaticCachePath(String bvid, int cid, int quality) {
+    Log.v(
+      _tag,
+      "getStaticCachePath, bvid: $bvid, cid: $cid, quality: $quality",
+    );
     final fileName = _getStaticCacheFileName(bvid, cid, quality);
     return '$_cacheDir/$fileName';
   }
 
   String getTempCachePath(String bvid, int cid) {
+    Log.v(_tag, "getTempCachePath, bvid: $bvid, cid: $cid");
     return '$_cacheDir/temp_${bvid}_${cid}.tmp';
   }
 
   Future<void> _cleanTempFiles() async {
+    Log.v(_tag, "_cleanTempFiles");
     if (_cacheDir == null) return;
     try {
       final dir = Directory(_cacheDir!);
@@ -258,11 +279,13 @@ class DownloadManager {
       'song_${bvid}_${cid}_$quality.audio';
 
   Future<int> getMaxCacheSize() async {
+    Log.v(_tag, "getMaxCacheSize");
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_maxCacheSizeKey) ?? 500;
   }
 
   Future<void> setMaxCacheSize(int mb) async {
+    Log.v(_tag, "setMaxCacheSize, mb: $mb");
     _maxCacheSize = mb * 1024 * 1024;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_maxCacheSizeKey, mb);
@@ -270,6 +293,7 @@ class DownloadManager {
   }
 
   Future<int> getUsedCacheSize() async {
+    Log.v(_tag, "getUsedCacheSize");
     if (_cacheDir == null) await _initDirs();
     final dir = Directory(_cacheDir!);
     if (!await dir.exists()) return 0;
@@ -283,6 +307,7 @@ class DownloadManager {
   }
 
   Future<void> clearAllCache() async {
+    Log.v(_tag, "clearAllCache");
     if (_cacheDir == null) await _initDirs();
     final dir = Directory(_cacheDir!);
     if (await dir.exists()) {
@@ -295,13 +320,14 @@ class DownloadManager {
           }
         }
       } catch (e) {
-        print("Clear static cache error: $e");
+        Log.e(_tag, "Fail to clear static cache", e);
       }
     }
     await _dbService.clearStaticCacheMeta();
   }
 
   Future<void> startDownload(Song song, {int? quality}) async {
+    Log.v(_tag, "startDownload, bvid: ${song.bvid}, cid: ${song.cid}");
     await _initDirs();
     int cid = song.cid;
     if (cid == 0) cid = await _searchApi.fetchCid(song.bvid);
@@ -328,6 +354,7 @@ class DownloadManager {
   }
 
   Future<int> _resolveBestQuality(Song song) async {
+    Log.v(_tag, "_resolveBestQuality, bvid: ${song.bvid}, cid: ${song.cid}");
     final prefs = await SharedPreferences.getInstance();
     int targetQuality = prefs.getInt(_defaultDownloadQualityKey) ?? 30280;
     try {
@@ -355,6 +382,7 @@ class DownloadManager {
   }
 
   void _processQueue() {
+    Log.v(_tag, "_processQueue");
     if (_maxConcurrentDownloads == 0) return;
     while (_activeDownloads < _maxConcurrentDownloads && _queue.isNotEmpty) {
       _activeDownloads++;
@@ -370,6 +398,10 @@ class DownloadManager {
   }
 
   Future<void> _executeDownload(_DownloadTask task) async {
+    Log.v(
+      _tag,
+      "_executeDownload, bvid: ${task.song.bvid}, cid: ${task.song.cid}",
+    );
     final id = '${task.song.bvid}_${task.song.cid}';
     try {
       if (!_activeTaskIds.containsKey(id)) return;
@@ -444,6 +476,7 @@ class DownloadManager {
   }
 
   Future<void> pauseDownload(String bvid, int cid) async {
+    Log.v(_tag, "pauseDownload, bvid: $bvid, cid: $cid");
     final id = '${bvid}_${cid}';
     if (_activeTaskIds.containsKey(id)) {
       _activeTaskIds.remove(id);
@@ -455,6 +488,7 @@ class DownloadManager {
   }
 
   Future<void> retryDownload(String bvid, int cid) async {
+    Log.v(_tag, "retryDownload, bvid: $bvid, cid: $cid");
     final record = await _dbService.getDownload(bvid, cid);
     if (record != null) {
       await _dbService.updateDownloadStatus(bvid, cid, 0);
@@ -475,6 +509,7 @@ class DownloadManager {
   }
 
   Future<void> deleteDownload(String bvid, int cid) async {
+    Log.v(_tag, "deleteDownload, bvid: $bvid, cid: $cid");
     await pauseDownload(bvid, cid);
     await _dbService.deleteDownload(bvid, cid);
     _queue.removeWhere((t) => t.song.bvid == bvid && t.song.cid == cid);
@@ -492,6 +527,7 @@ class DownloadManager {
   }
 
   Future<void> _performSmartCleanup() async {
+    Log.v(_tag, "_performSmartCleanup");
     if (_cacheDir == null) return;
     try {
       final metas = await _dbService.getCompletedCacheMeta();
@@ -527,6 +563,7 @@ class DownloadManager {
   }
 
   double _calculateScore(Map<String, dynamic> meta, int now) {
+    Log.v(_tag, "_calculateScore, meta: $meta, now: $now");
     int hits = meta['hit_count'] ?? 0;
     int lastAccess = meta['last_access_time'] ?? 0;
     double hoursDiff = (now - lastAccess) / (1000 * 3600);
@@ -535,6 +572,7 @@ class DownloadManager {
   }
 
   Future<void> _resumePendingDownloads() async {
+    Log.v(_tag, "_resumePendingDownloads");
     final downloads = await _dbService.getAllDownloads();
     for (var d in downloads) {
       if (d['status'] == 0 || d['status'] == 1) {
@@ -555,6 +593,7 @@ class DownloadManager {
   }
 
   Future<void> setMaxConcurrentDownloads(int count) async {
+    Log.v(_tag, "setMaxConcurrentDownloads, count: $count");
     if (count < 0) count = 0;
     _maxConcurrentDownloads = count;
     final prefs = await SharedPreferences.getInstance();
@@ -578,11 +617,13 @@ class DownloadManager {
   }
 
   Future<int> getMaxConcurrentDownloads() async {
+    Log.v(_tag, "getMaxConcurrentDownloads");
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_concurrentDownloadsKey) ?? 3;
   }
 
   Future<int> getUsedDownloadSize() async {
+    Log.v(_tag, "getUsedDownloadSize");
     if (_downloadDir == null) await _initDirs();
     final dir = Directory(_downloadDir!);
     if (!await dir.exists()) return 0;
@@ -596,6 +637,7 @@ class DownloadManager {
   }
 
   Future<void> deleteAllDownloads() async {
+    Log.v(_tag, "deleteAllDownloads");
     final downloads = await _dbService.getAllDownloads();
     for (var d in downloads) {
       final bvid = d['bvid'] as String;
@@ -605,6 +647,7 @@ class DownloadManager {
   }
 
   Future<bool> isDownloaded(String bvid, int cid) async {
+    Log.v(_tag, "isDownloaded, bvid: $bvid, cid: $cid");
     return await _dbService.isDownloaded(bvid, cid);
   }
 }

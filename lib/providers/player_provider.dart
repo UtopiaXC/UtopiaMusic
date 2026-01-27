@@ -13,6 +13,9 @@ import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/services/download_manager.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "PLAYER_PROVIDER";
 
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
@@ -100,6 +103,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _bindPlayerEvents() {
+    Log.v(_tag, "_bindPlayerEvents");
     player.playerStateStream.listen((state) {
       final playing = state.playing;
       final processingState = state.processingState;
@@ -157,6 +161,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    Log.v(_tag, "_init");
     await DownloadManager().init();
     await _loadSettings();
     await _reloadPlaylistFromDb();
@@ -164,6 +169,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _loadSettings() async {
+    Log.v(_tag, "_loadSettings");
     final prefs = await SharedPreferences.getInstance();
 
     int modeIndex = prefs.getInt(_playModeKey) ?? 0;
@@ -185,6 +191,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _onSongChanged(Song newSong) async {
+    Log.v(_tag, "_onSongChanged, newSong: ${newSong.toString()}");
     _currentSong = newSong;
     final context = navigatorKey.currentContext;
     if (context != null) {
@@ -211,6 +218,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _handlePlaybackError(Map<String, dynamic> error) async {
+    Log.v(_tag, "_handlePlaybackError, error: $error");
     if (!_autoSkipInvalid) return;
     await Future.delayed(const Duration(milliseconds: 300));
     final String bvid = error['bvid'] ?? '';
@@ -240,6 +248,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _handleRecommendationAutoPlay(Song currentSong) async {
+    Log.v(_tag, "_handleRecommendationAutoPlay, currentSong: ${currentSong.toString()}");
     if (_isRecommendationLoading) return;
     if (_playlist.isEmpty) return;
 
@@ -289,12 +298,14 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _reloadPlaylistFromDb() async {
+    Log.v(_tag, "_reloadPlaylistFromDb");
     bool shuffle = _playMode == PlayMode.shuffle;
     _playlist = await _databaseService.getPlaylist(isShuffleMode: shuffle);
     notifyListeners();
   }
 
   Future<void> playSong(Song song) async {
+    Log.v(_tag, "playSong, song: ${song.toString()}");
     int index = _playlist.indexWhere(
       (s) => s.bvid == song.bvid && s.cid == song.cid,
     );
@@ -311,6 +322,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setPlaylistAndPlay(List<Song> songs, Song initialSong) async {
+    Log.v(_tag, "setPlaylistAndPlay, songs: ${songs.toString()}, initialSong: ${initialSong.toString()}");
     try {
       List<Song> newSongs = List.from(songs);
 
@@ -346,6 +358,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> insertNext(Song song) async {
+    Log.v(_tag, "insertNext, song: ${song.toString()}");
     if (_playlist.isEmpty) {
       await setPlaylistAndPlay([song], song);
       return;
@@ -356,6 +369,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> insertNextAndPlay(Song song) async {
+    Log.v(_tag, "insertNextAndPlay, song: ${song.toString()}");
     await insertNext(song);
     if (hasNext) {
       await playNext();
@@ -363,6 +377,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> addToEnd(Song song) async {
+    Log.v(_tag, "addToEnd, song: ${song.toString()}");
     if (_playlist.isEmpty) {
       await setPlaylistAndPlay([song], song);
       return;
@@ -373,10 +388,12 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> replacePlaylistWithSong(Song song) async {
+    Log.v(_tag, "replacePlaylistWithSong, song: ${song.toString()}");
     await setPlaylistAndPlay([song], song);
   }
 
   Future<void> removeSong(int index) async {
+    Log.v(_tag, "removeSong, index: $index");
     if (index < 0 || index >= _playlist.length) return;
     Song songToRemove = _playlist[index];
 
@@ -409,6 +426,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> reorderPlaylist(int oldIndex, int newIndex) async {
+    Log.v(_tag, "reorderPlaylist, oldIndex: $oldIndex, newIndex: $newIndex");
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
@@ -430,11 +448,13 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> clearPlaylist() async {
+    Log.v(_tag, "clearPlaylist");
     await _databaseService.clearPlaylist();
     await closePlayer();
   }
 
   Future<void> _syncPlayerQueue() async {
+    Log.v(_tag, "_syncPlayerQueue");
     if (_currentSong == null) return;
     int currentIndex = _playlist.indexWhere(
       (s) => s.bvid == _currentSong!.bvid && s.cid == _currentSong!.cid,
@@ -447,6 +467,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _startPlay(int index) async {
+    Log.v(_tag, "_startPlay, index: $index");
     _currentSong = _playlist[index];
 
     final context = navigatorKey.currentContext;
@@ -462,6 +483,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> togglePlayMode() async {
+    Log.v(_tag, "togglePlayMode");
     if (_recommendationAutoPlay) {
       final context = navigatorKey.currentContext;
       if (context != null) {
@@ -501,6 +523,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _setPlayerLoopMode() async {
+    Log.v(_tag, "_setPlayerLoopMode");
     await player.setShuffleModeEnabled(false);
     switch (_playMode) {
       case PlayMode.single:
@@ -517,6 +540,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setRecommendationAutoPlay(bool value) async {
+    Log.v(_tag, "setRecommendationAutoPlay, value: $value");
     _recommendationAutoPlay = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_recommendationAutoPlayKey, value);
@@ -527,6 +551,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _startProgressTimer() {
+    Log.v(_tag, "_startProgressTimer");
     _stopProgressTimer();
 
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 1), (
@@ -563,11 +588,13 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _stopProgressTimer() {
+    Log.v(_tag, "_stopProgressTimer");
     _progressSaveTimer?.cancel();
     _progressSaveTimer = null;
   }
 
   Future<void> setSaveProgress(bool value) async {
+    Log.v(_tag, "setSaveProgress, value: $value");
     _saveProgress = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_saveProgressKey, value);
@@ -580,6 +607,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setAutoPlay(bool value) async {
+    Log.v(_tag, "setAutoPlay, value: $value");
     _autoPlay = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_autoPlayKey, value);
@@ -587,6 +615,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setAutoSkipInvalid(bool value) async {
+    Log.v(_tag, "setAutoSkipInvalid, value: $value");
     _autoSkipInvalid = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_autoSkipInvalidKey, value);
@@ -595,10 +624,12 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void setDecoderType(int type) {
+    Log.v(_tag, "setDecoderType, type: ${type}");
     notifyListeners();
   }
 
   Future<void> _saveCurrentProgress() async {
+    Log.v(_tag, "_saveCurrentProgress");
     if (_currentSong == null) return;
     final position = player.position.inMilliseconds;
     final prefs = await SharedPreferences.getInstance();
@@ -606,6 +637,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> _restoreLastPlaybackState() async {
+    Log.v(_tag, "_restoreLastPlaybackState");
     if (_playlist.isEmpty) return;
 
     final prefs = await SharedPreferences.getInstance();
@@ -614,12 +646,16 @@ class PlayerProvider extends ChangeNotifier {
     final lastPosition = prefs.getInt(_lastPlayedPositionKey) ?? 0;
 
     int initialIndex = 0;
+    Log.v(
+      _tag,
+      "_restoreLastPlaybackState, lastBvid: $lastBvid, lastCid: $lastCid",
+    );
     if (lastBvid != null) {
       initialIndex = _playlist.indexWhere(
         (s) => s.bvid == lastBvid && s.cid == lastCid,
       );
     }
-
+    Log.v(_tag, "_restoreLastPlaybackState, initialIndex: $initialIndex");
     if (initialIndex == -1) {
       int savedIndex = prefs.getInt(_lastPlayedIndexKey) ?? 0;
       if (savedIndex >= 0 && savedIndex < _playlist.length) {
@@ -657,6 +693,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> seek(Duration position) async => await player.seek(position);
 
   void expandPlayer() {
+    Log.v(_tag, "expandPlayer");
     _expandTimer?.cancel();
     _showFullPlayer = true;
     notifyListeners();
@@ -667,6 +704,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void collapsePlayer() {
+    Log.v(_tag, "collapsePlayer");
     _expandTimer?.cancel();
     _isPlayerExpanded = false;
     notifyListeners();
@@ -679,6 +717,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void togglePlayerExpansion() {
+    Log.v(_tag, "togglePlayerExpansion");
     if (_isPlayerExpanded) {
       collapsePlayer();
     } else {
@@ -687,6 +726,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> closePlayer() async {
+    Log.v(_tag, "closePlayer");
     await _audioPlayerService.stop();
     _currentSong = null;
     _playlist = [];
@@ -706,6 +746,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void setStopTimer(Duration duration, {bool stopAfterCurrent = false}) {
+    Log.v(_tag, "setStopTimer, duration: $duration");
     cancelStopTimer();
     _stopTime = DateTime.now().add(duration);
     _stopAfterCurrent = stopAfterCurrent;
@@ -732,6 +773,7 @@ class PlayerProvider extends ChangeNotifier {
   void cancelTimer() => cancelStopTimer();
 
   void cancelStopTimer() {
+    Log.v(_tag, "cancelStopTimer");
     _stopTimer?.cancel();
     _stopTimer = null;
     _stopTime = null;
@@ -740,16 +782,19 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> clearAllCache() async {
+    Log.v(_tag, "clearAllCache");
     await _audioPlayerService.clearCache();
   }
 
   Future<void> resetToDefaults() async {
+    Log.v(_tag, "resetToDefaults");
     _playMode = PlayMode.sequence;
     _saveProgress = true;
     _autoPlay = false;
     _autoSkipInvalid = true;
     _recommendationAutoPlay = false;
 
+    Log.i(_tag, "Reset for shared preferences");
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_playModeKey, _playMode.index);
     await prefs.setBool(_saveProgressKey, _saveProgress);
@@ -757,6 +802,7 @@ class PlayerProvider extends ChangeNotifier {
     await prefs.setBool(_autoSkipInvalidKey, _autoSkipInvalid);
     await prefs.setBool(_recommendationAutoPlayKey, _recommendationAutoPlay);
 
+    Log.i(_tag, "Reset for audio player");
     _audioPlayerService.setAutoSkipInvalid(_autoSkipInvalid);
     _audioPlayerService.setPreferredQuality(30280);
 
@@ -764,12 +810,14 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   bool get hasNext {
+    Log.v(_tag, "get hasNext");
     if (_playlist.isEmpty || _currentSong == null) return false;
     int index = _playlist.indexOf(_currentSong!);
     return index < _playlist.length - 1;
   }
 
   bool get hasPrevious {
+    Log.v(_tag, "get hasPrevious");
     if (_playlist.isEmpty || _currentSong == null) return false;
     int index = _playlist.indexOf(_currentSong!);
     return index > 0;
@@ -777,6 +825,7 @@ class PlayerProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    Log.v(_tag, "dispose");
     _stopProgressTimer();
     _stopTimer?.cancel();
     _expandTimer?.cancel();
