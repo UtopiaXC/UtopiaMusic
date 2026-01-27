@@ -52,7 +52,7 @@ class BiliAudioSource extends StreamAudioSource {
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
     Log.v(_tag, "request, start: $start, end: $end");
-    _isDisposed = false;
+    // _isDisposed = false;
     final startOffset = start ?? 0;
 
     try {
@@ -66,6 +66,29 @@ class BiliAudioSource extends StreamAudioSource {
         }
       }
       final targetCid = _realCid == 0 ? initCid : _realCid;
+      // final localRes = await _downloadManager.checkLocalResource(
+      //   bvid,
+      //   targetCid,
+      //   quality,
+      // );
+      // if (localRes != null && localRes.file != null) {
+      //   final file = localRes.file!;
+      //   final fileLen = await file.length();
+      //   int? contentLength;
+      //   if (end != null) {
+      //     contentLength = end - startOffset;
+      //   } else {
+      //     contentLength = fileLen - startOffset;
+      //   }
+      //   return StreamAudioResponse(
+      //     sourceLength: fileLen,
+      //     contentLength: contentLength,
+      //     offset: startOffset,
+      //     stream: file.openRead(startOffset, end),
+      //     contentType: 'audio/mp4',
+      //   );
+      // }
+
       final localRes = await _downloadManager.checkLocalResource(
         bvid,
         targetCid,
@@ -74,20 +97,17 @@ class BiliAudioSource extends StreamAudioSource {
       if (localRes != null && localRes.file != null) {
         final file = localRes.file!;
         final fileLen = await file.length();
-        int? contentLength;
-        if (end != null) {
-          contentLength = end - startOffset;
-        } else {
-          contentLength = fileLen - startOffset;
-        }
         return StreamAudioResponse(
           sourceLength: fileLen,
-          contentLength: contentLength,
+          contentLength: end != null
+              ? (end - startOffset)
+              : (fileLen - startOffset),
           offset: startOffset,
           stream: file.openRead(startOffset, end),
           contentType: 'audio/mp4',
         );
       }
+
       final bool enableCache = (startOffset == 0 && targetCid != 0);
 
       final response = await _downloadManager.getNetworkStream(
@@ -129,7 +149,7 @@ class BiliAudioSource extends StreamAudioSource {
           onCancel: () async {
             if (isCachePromoting) return;
             await fileSink.close();
-            await _cleanupTempFile(tempFile);
+            // await _cleanupTempFile(tempFile);
             _currentSubscription?.cancel();
           },
         );
@@ -147,7 +167,8 @@ class BiliAudioSource extends StreamAudioSource {
               await fileSink.flush();
               await fileSink.close();
               await controller.close();
-              await _promoteTempFile(tempFile, targetCid, totalLength ?? 0);
+              // await _promoteTempFile(tempFile, targetCid, totalLength ?? 0);
+              _promoteTempFile(tempFile, targetCid, totalLength ?? 0);
             } catch (e) {
               Log.e(_tag, "Cache promotion failed", e);
               await _cleanupTempFile(tempFile);
