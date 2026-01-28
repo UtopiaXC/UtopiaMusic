@@ -144,7 +144,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
         return detail['cid'] as int;
       }
     } catch (e) {
-      debugPrint('LyricsPage: Failed to fetch CID: $e');
+      Log.w(_tag, 'Failed to fetch CID: $e');
     }
     return 0;
   }

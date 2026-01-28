@@ -21,6 +21,8 @@ import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/utils/log.dart';
 
+const String _tag = "REQUEST";
+
 enum ResponseType { data, response }
 
 class Request {
@@ -111,19 +113,19 @@ class Request {
         );
       }
     } catch (e) {
-      print("Request: Failed to ensure cookies: $e");
+      Log.w(_tag, "Failed to ensure cookies: $e");
     }
   }
 
   Future<void> fetchGuestCookies() async {
     try {
       if (kDebugMode) {
-        print("Request: Fetching guest cookies...");
+        Log.d(_tag, "Fetching guest cookies...");
       }
       final url = _buildUrl(Api.urlBase, Api.urlNav);
       await _dio.get(url);
     } catch (e) {
-      print("Request: Failed to fetch guest cookies: $e");
+      Log.w(_tag, "Failed to fetch guest cookies: $e");
     }
   }
 
@@ -155,7 +157,7 @@ class Request {
       await _cookieJar.saveFromResponse(Uri.parse(Api.urlBase), cookies);
       await _cookieJar.saveFromResponse(Uri.parse(Api.urlLoginBase), cookies);
       _isUserLoggedIn = true;
-      print("Request: Manual cookies set (${cookies.length} items)");
+      Log.i(_tag, "Manual cookies set (${cookies.length} items)");
     }
   }
 
@@ -291,8 +293,9 @@ class Request {
           );
         } else {
           if (kDebugMode) {
-            print(
-              "Request Warning: API returned HTML content (WAF or Error Page). Suppressed dialog.",
+            Log.w(
+              _tag,
+              "API returned HTML content (WAF or Error Page). Suppressed dialog.",
             );
           }
           return result;
@@ -329,12 +332,12 @@ class Request {
         } else if (code != 0) {
           if (code == ErrorCode.notFound || suppressErrorDialog) {
             if (kDebugMode)
-              print("Request: Suppressed error dialog for code $code.");
+              Log.d(_tag, "Suppressed error dialog for code $code.");
             return result;
           }
 
           if (retryCount < _maxRetries) {
-            if (kDebugMode) print("Business error (code $code), retrying...");
+            if (kDebugMode) Log.d(_tag, "Business error (code $code), retrying...");
             await Future.delayed(
               Duration(milliseconds: 500 * (retryCount + 1)),
             );
@@ -351,7 +354,7 @@ class Request {
               _showErrorDialog(code, message);
             } else {
               if (kDebugMode) {
-                print("Request: Ignored undefined error code: $code");
+                Log.d(_tag, "Ignored undefined error code: $code");
               }
             }
           }
@@ -416,7 +419,7 @@ class Request {
                 try {
                   Provider.of<AuthProvider>(context, listen: false).logout();
                 } catch (e) {
-                  print("Request: Failed to invoke AuthProvider logout: $e");
+                  Log.w(_tag, "Failed to invoke AuthProvider logout: $e");
                   await _cookieJar.deleteAll();
                   _isUserLoggedIn = false;
                   await fetchGuestCookies();

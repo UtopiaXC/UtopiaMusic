@@ -16,6 +16,9 @@ import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "VIDEO_DETAIL";
 
 class VideoDetailPage extends StatefulWidget {
   final String bvid;
@@ -158,7 +161,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
         });
       }
     } catch (e) {
-      print('Error checking fav status: $e');
+      Log.w(_tag, 'Error checking fav status: $e');
     }
   }
 

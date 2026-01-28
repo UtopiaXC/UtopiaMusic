@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "SCHEME_LAUNCH";
 
 class SchemeLauncher {
   static Future<void> launchBilibili(
@@ -19,7 +22,7 @@ class SchemeLauncher {
           return;
         }
       } catch (e) {
-        print('Error launching app scheme: $e');
+        Log.w(_tag, 'Error launching app scheme: $e');
       }
     }
 

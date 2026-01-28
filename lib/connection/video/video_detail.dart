@@ -6,7 +6,10 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'package:dio/dio.dart';
+
+const String _tag = "VIDEO_DETAIL_API";
 
 class VideoDetailApi {
   final HtmlUnescape _unescape = HtmlUnescape();
@@ -24,7 +27,7 @@ class VideoDetailApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching video detail: $e');
+      Log.w(_tag, 'Error fetching video detail: $e');
     }
     return null;
   }
@@ -42,7 +45,7 @@ class VideoDetailApi {
         return list.map((item) => _mapToSong(context, item)).toList();
       }
     } catch (e) {
-      print('Error fetching related videos: $e');
+      Log.w(_tag, 'Error fetching related videos: $e');
     }
     return [];
   }
@@ -64,7 +67,7 @@ class VideoDetailApi {
          }
       }
     } catch (e) {
-      print('Error fetching video collection: $e');
+      Log.w(_tag, 'Error fetching video collection: $e');
     }
     return [];
   }
@@ -108,7 +111,7 @@ class VideoDetailApi {
         }
       }
     } catch (e) {
-      print('Error fetching video parts: $e');
+      Log.w(_tag, 'Error fetching video parts: $e');
     }
     return [];
   }
@@ -142,7 +145,7 @@ class VideoDetailApi {
         }
       }
     } catch (e) {
-      print('Error fetching replies: $e');
+      Log.w(_tag, 'Error fetching replies: $e');
     }
     return [];
   }
@@ -168,7 +171,7 @@ class VideoDetailApi {
         }
       }
     } catch (e) {
-      print('Error fetching sub-replies: $e');
+      Log.w(_tag, 'Error fetching sub-replies: $e');
     }
     return [];
   }
@@ -189,7 +192,7 @@ class VideoDetailApi {
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
-      print('Error action like: $e');
+      Log.e(_tag, 'Error action like: $e');
     }
     return false;
   }
@@ -210,7 +213,7 @@ class VideoDetailApi {
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
-      print('Error action coin: $e');
+      Log.e(_tag, 'Error action coin: $e');
     }
     return false;
   }
@@ -247,7 +250,7 @@ class VideoDetailApi {
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
-      print('Error action fav: $e');
+      Log.e(_tag, 'Error action fav: $e');
     }
     return false;
   }

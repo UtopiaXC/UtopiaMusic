@@ -11,6 +11,9 @@ import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "PLAYLIST_CATEGORY_WIDGET";
 
 enum PlaylistCategoryType {
   favorites,
@@ -207,7 +210,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                   cover = info['cover'] ?? cover;
                 }
               } catch (e) {
-                print('Failed to fetch info for folder $id: $e');
+                Log.w(_tag, 'Failed to fetch info for folder $id: $e');
               }
             }
 

@@ -6,7 +6,10 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'package:dio/dio.dart';
+
+const String _tag = "LIBRARY_API";
 
 class LibraryApi {
   final HtmlUnescape _unescape = HtmlUnescape();
@@ -22,7 +25,7 @@ class LibraryApi {
         return data['data']['list'] ?? [];
       }
     } catch (e) {
-      print('Error fetching favorite folders: $e');
+      Log.w(_tag, 'Error fetching favorite folders: $e');
     }
     return [];
   }
@@ -39,7 +42,7 @@ class LibraryApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching favorite folder info: $e');
+      Log.w(_tag, 'Error fetching favorite folder info: $e');
     }
     return null;
   }
@@ -77,7 +80,7 @@ class LibraryApi {
       }
       return allCollections;
     } catch (e) {
-      print('Error fetching collections: $e');
+      Log.w(_tag, 'Error fetching collections: $e');
     }
     return [];
   }
@@ -126,7 +129,7 @@ class LibraryApi {
       }
       return allSongs;
     } catch (e) {
-      print('Error fetching collection resources: $e');
+      Log.w(_tag, 'Error fetching collection resources: $e');
     }
     return [];
   }
@@ -174,7 +177,7 @@ class LibraryApi {
       }
       return allSongs;
     } catch (e) {
-      print('Error fetching favorite resources: $e');
+      Log.w(_tag, 'Error fetching favorite resources: $e');
     }
     return [];
   }
@@ -216,7 +219,7 @@ class LibraryApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching folder info: $e');
+      Log.w(_tag, 'Error fetching folder info: $e');
     }
     return null;
   }
@@ -242,7 +245,7 @@ class LibraryApi {
         return true;
       }
     } catch (e) {
-      print('Error editing folder: $e');
+      Log.e(_tag, 'Error editing folder: $e');
     }
     return false;
   }
@@ -259,7 +262,7 @@ class LibraryApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching video detail for aid: $e');
+      Log.w(_tag, 'Error fetching video detail for aid: $e');
     }
     return null;
   }
@@ -283,7 +286,7 @@ class LibraryApi {
         return true;
       }
     } catch (e) {
-      print('Error removing resource: $e');
+      Log.e(_tag, 'Error removing resource: $e');
     }
     return false;
   }

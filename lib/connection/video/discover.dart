@@ -5,7 +5,9 @@ import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:html_unescape/html_unescape.dart';
-import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "VIDEO_API";
 
 class VideoApi {
   static const String _kFreshIdxKey = 'video_api_fresh_idx';
@@ -13,7 +15,7 @@ class VideoApi {
 
   Future<List<Song>> getRecommentVideos(BuildContext context, {int recursionDepth = 0}) async {
     if (recursionDepth > 10) {
-      print('VideoApi: Max recursion depth reached ($recursionDepth), stopping retry.');
+      Log.w(_tag, 'Max recursion depth reached ($recursionDepth), stopping retry.');
       return [];
     }
 
@@ -48,17 +50,18 @@ class VideoApi {
             .map((item) => _mapToSong(context, item))
             .toList();
       } else if (data != null && data['code'] == 62011) {
-        print('Feed exhausted (62011), resetting fresh_idx to 0...');
+        Log.d(_tag, 'Feed exhausted (62011), resetting fresh_idx to 0...');
         await prefs.setInt(_kFreshIdxKey, 0);
         return getRecommentVideos(context, recursionDepth: recursionDepth + 1);
       } else {
-        print(
+        Log.w(
+          _tag,
           'Failed to load recommend videos: ${data?['message']} (${data?['code']})',
         );
         return [];
       }
     } catch (e) {
-      print('Error fetching recommend videos: $e');
+      Log.w(_tag, 'Error fetching recommend videos: $e');
       return [];
     }
   }
@@ -78,10 +81,10 @@ class VideoApi {
             .map((item) => _mapToSong(context, item))
             .toList();
       } else {
-        print('Failed to load ranking videos: ${data?['message']} (${data?['code']})');
+        Log.w(_tag, 'Failed to load ranking videos: ${data?['message']} (${data?['code']})');
       }
     } catch (e) {
-      print('Error fetching ranking videos: $e');
+      Log.w(_tag, 'Error fetching ranking videos: $e');
     }
     return [];
   }
@@ -100,10 +103,10 @@ class VideoApi {
             .map((item) => _mapToSong(context, item))
             .toList();
       } else {
-        print('Failed to load region ranking videos: ${data?['message']} (${data?['code']})');
+        Log.w(_tag, 'Failed to load region ranking videos: ${data?['message']} (${data?['code']})');
       }
     } catch (e) {
-      print('Error fetching region ranking videos: $e');
+      Log.w(_tag, 'Error fetching region ranking videos: $e');
     }
     return [];
   }
@@ -154,7 +157,7 @@ class VideoApi {
         }
       }
     } catch (e) {
-      print('Error fetching feed: $e');
+      Log.w(_tag, 'Error fetching feed: $e');
       return {'code': -1, 'message': e.toString()};
     }
     return {'code': -1, 'message': 'Unknown error'};

@@ -14,6 +14,9 @@ import 'package:utopia_music/pages/search/fragment/search_user_fragment.dart';
 import 'package:utopia_music/pages/search/fragment/search_video_fragment.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/connection/video/search.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "SEARCH_PAGE";
 
 class SearchPage extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -178,7 +181,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
         }
       }
     } catch (e) {
-      print("搜索建议获取失败: $e");
+      Log.w(_tag, '搜索建议获取失败: $e');
       if (mounted) _removeSuggestOverlay();
     }
   }

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:privacy_screen/privacy_screen.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "SECURITY_PROVIDER";
 
 enum LockDelayOption {
   immediate,
@@ -58,20 +61,20 @@ class SecurityProvider extends ChangeNotifier {
       try {
         await PrivacyScreen.instance.enable();
       } catch (e) {
-        debugPrint('Error enabling privacy screen: $e');
+        Log.w(_tag, 'Error enabling privacy screen: $e');
       }
 
     } else if (_privacyScreenEnabled) {
       try {
         await PrivacyScreen.instance.enable();
       } catch (e) {
-        debugPrint('Error enabling privacy screen: $e');
+        Log.w(_tag, 'Error enabling privacy screen: $e');
       }
     } else {
       try {
         await PrivacyScreen.instance.disable();
       } catch (e) {
-        debugPrint('Error disabling privacy screen: $e');
+        Log.w(_tag, 'Error disabling privacy screen: $e');
       }
     }
     
@@ -79,30 +82,30 @@ class SecurityProvider extends ChangeNotifier {
   }
 
   Future<void> setBiometricEnabled(bool enabled) async {
-    debugPrint('SecurityProvider: setBiometricEnabled called with enabled=$enabled');
+    Log.d(_tag, 'setBiometricEnabled called with enabled=$enabled');
     if (enabled) {
       final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
       final bool canAuthenticate = canAuthenticateWithBiometrics || await _auth.isDeviceSupported();
       
-      debugPrint('SecurityProvider: canCheckBiometrics=$canAuthenticateWithBiometrics, isDeviceSupported=$canAuthenticate');
+      Log.d(_tag, 'canCheckBiometrics=$canAuthenticateWithBiometrics, isDeviceSupported=$canAuthenticate');
 
       if (!canAuthenticate) {
-        debugPrint('SecurityProvider: Device not supported for authentication');
+        Log.d(_tag, 'Device not supported for authentication');
         return;
       }
       
       try {
-        debugPrint('SecurityProvider: Starting authentication...');
+        Log.d(_tag, 'Starting authentication...');
         final bool didAuthenticate = await _auth.authenticate(
           localizedReason: '请验证身份以启用生物识别',
           biometricOnly: true,
         );
-        debugPrint('SecurityProvider: Authentication result=$didAuthenticate');
+        Log.d(_tag, 'Authentication result=$didAuthenticate');
         if (!didAuthenticate) {
           return;
         }
       } catch (e) {
-        debugPrint('SecurityProvider: Authentication error: $e');
+        Log.w(_tag, 'Authentication error: $e');
         return;
       }
     }
@@ -114,7 +117,7 @@ class SecurityProvider extends ChangeNotifier {
       try {
         await PrivacyScreen.instance.enable();
       } catch (e) {
-        debugPrint('Error enabling privacy screen: $e');
+        Log.w(_tag, 'Error enabling privacy screen: $e');
       }
     } else {
       final prefs = await SharedPreferences.getInstance();
@@ -124,13 +127,13 @@ class SecurityProvider extends ChangeNotifier {
         try {
           await PrivacyScreen.instance.enable();
         } catch (e) {
-          debugPrint('Error enabling privacy screen: $e');
+          Log.w(_tag, 'Error enabling privacy screen: $e');
         }
       } else {
         try {
           await PrivacyScreen.instance.disable();
         } catch (e) {
-          debugPrint('Error disabling privacy screen: $e');
+          Log.w(_tag, 'Error disabling privacy screen: $e');
         }
       }
     }
@@ -138,7 +141,7 @@ class SecurityProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_biometricEnabledKey, enabled);
-    debugPrint('SecurityProvider: Biometric enabled state saved: $enabled');
+    Log.i(_tag, 'Biometric enabled state saved: $enabled');
   }
 
   Future<void> setPrivacyScreenEnabled(bool enabled) async {
@@ -151,13 +154,13 @@ class SecurityProvider extends ChangeNotifier {
       try {
         await PrivacyScreen.instance.enable();
       } catch (e) {
-        debugPrint('Error enabling privacy screen: $e');
+        Log.w(_tag, 'Error enabling privacy screen: $e');
       }
     } else {
       try {
         await PrivacyScreen.instance.disable();
       } catch (e) {
-        debugPrint('Error disabling privacy screen: $e');
+        Log.w(_tag, 'Error disabling privacy screen: $e');
       }
     }
     
@@ -241,7 +244,7 @@ class SecurityProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('SecurityProvider: Unlock authentication error: $e');
+      Log.w(_tag, 'Unlock authentication error: $e');
     } finally {
       _isAuthenticating = false;
     }
@@ -257,7 +260,7 @@ class SecurityProvider extends ChangeNotifier {
     try {
       await PrivacyScreen.instance.disable();
     } catch (e) {
-      debugPrint('Error disabling privacy screen: $e');
+      Log.w(_tag, 'Error disabling privacy screen: $e');
     }
     
     notifyListeners();

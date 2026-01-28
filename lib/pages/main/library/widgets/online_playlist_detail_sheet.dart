@@ -11,6 +11,9 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "ONLINE_PLAYLIST_DETAIL_SHEET";
 
 class OnlinePlaylistDetailSheet extends StatefulWidget {
   final PlaylistInfo playlistInfo;
@@ -69,7 +72,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
         });
       }
     } catch (e) {
-      print('Error loading online playlist songs: $e');
+      Log.w(_tag, 'Error loading online playlist songs: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }

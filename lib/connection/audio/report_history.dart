@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "REPORT_HISTORY_API";
 
 class ReportHistoryApi {
   Future<bool> reportHistory({
@@ -25,7 +28,7 @@ class ReportHistoryApi {
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
-      print('Error reporting history: $e');
+      Log.w(_tag, 'Error reporting history: $e');
     }
     return false;
   }

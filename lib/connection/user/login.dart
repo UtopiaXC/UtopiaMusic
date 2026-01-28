@@ -3,6 +3,9 @@ import 'package:dio/dio.dart' hide ResponseType;
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "LOGIN_API";
 
 class LoginApi {
   Future<Map<String, dynamic>?> generateTvQrCode() async {
@@ -29,7 +32,7 @@ class LoginApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error generating TV QR code: $e');
+      Log.e(_tag, 'Error generating TV QR code: $e');
     }
     return null;
   }
@@ -71,7 +74,7 @@ class LoginApi {
               await jar.saveFromResponse(Uri.parse(Api.urlBase), newCookies);
               await jar.saveFromResponse(Uri.parse(Api.urlLoginBase), newCookies);
 
-              print("Login Success: Cookies saved.");
+              Log.i(_tag, "Login Success: Cookies saved.");
             }
           }
 
@@ -87,7 +90,7 @@ class LoginApi {
         }
       }
     } catch (e) {
-      print('Error polling TV QR code: $e');
+      Log.e(_tag, 'Error polling TV QR code: $e');
     }
     return null;
   }

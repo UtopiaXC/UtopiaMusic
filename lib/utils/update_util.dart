@@ -8,7 +8,10 @@ import 'package:utopia_music/connection/update/github_api.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/update/update_dialog.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'dart:ffi';
+
+const String _tag = "UPDATE_UTIL";
 
 class UpdateUtil {
   static Future<void> checkAndShow(
@@ -148,7 +151,7 @@ class UpdateUtil {
         downloadUrl = _matchIos(assets);
       }
     } catch (e) {
-      debugPrint('Smart download match failed: $e');
+      Log.w(_tag, 'Smart download match failed: $e');
     }
 
     if (context.mounted) {
@@ -173,11 +176,11 @@ class UpdateUtil {
     }
 
     if (targetArch == null) {
-      print("Update: Unknown ABI $abi, falling back to browser.");
+      Log.d(_tag, 'Unknown ABI $abi, falling back to browser.');
       return null;
     }
 
-    print("Update: Current App Arch is $targetArch, strict matching...");
+    Log.d(_tag, 'Current App Arch is $targetArch, strict matching...');
     try {
       final match = assets.firstWhere((asset) {
         final name = asset['name'].toString().toLowerCase();
@@ -187,7 +190,7 @@ class UpdateUtil {
       });
       return match['browser_download_url'];
     } catch (e) {
-      print("Update: No strict match found for $targetArch.");
+      Log.d(_tag, 'No strict match found for $targetArch.');
       return null;
     }
   }

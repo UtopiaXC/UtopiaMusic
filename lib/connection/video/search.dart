@@ -8,6 +8,9 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/utils/log.dart';
+
+const String _tag = "SEARCH_API";
 
 class SearchApi {
   final DatabaseService _dbService = DatabaseService();
@@ -34,7 +37,7 @@ class SearchApi {
       if (data != null && data is Map && data['code'] == 0) {
         if (data['data'] == null) {
           if (retryCount < maxRetries) {
-            print('Search response data is null, retrying... ($retryCount)');
+            Log.d(_tag, 'Search response data is null, retrying... ($retryCount)');
             await Future.delayed(const Duration(milliseconds: 500));
             return searchVideos(
               context,
@@ -57,7 +60,8 @@ class SearchApi {
         }
       } else {
         if (retryCount < maxRetries) {
-          print(
+          Log.d(
+            _tag,
             'Search failed (code: ${data is Map ? data['code'] : 'invalid'}), retrying... ($retryCount)',
           );
           await Future.delayed(const Duration(milliseconds: 500));
@@ -69,7 +73,8 @@ class SearchApi {
           );
         }
 
-        print(
+        Log.w(
+          _tag,
           'Failed to search videos: ${data is Map ? data['message'] : 'Unknown error'} (${data is Map ? data['code'] : 'Unknown code'})',
         );
         return [];
@@ -79,7 +84,7 @@ class SearchApi {
       final maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
 
       if (retryCount < maxRetries) {
-        print('Error searching videos: $e, retrying... ($retryCount)');
+        Log.d(_tag, 'Error searching videos: $e, retrying... ($retryCount)');
         await Future.delayed(const Duration(milliseconds: 500));
         return searchVideos(
           context,
@@ -88,7 +93,7 @@ class SearchApi {
           retryCount: retryCount + 1,
         );
       }
-      print('Error searching videos: $e');
+      Log.w(_tag, 'Error searching videos: $e');
       return [];
     }
   }
@@ -109,7 +114,7 @@ class SearchApi {
         try {
           data = jsonDecode(data);
         } catch (e) {
-          print('JSON Decode failed: $e');
+          Log.w(_tag, 'JSON Decode failed: $e');
           return [];
         }
       }
@@ -148,7 +153,7 @@ class SearchApi {
 
       return [];
     } catch (e) {
-      print('Error fetching search suggestions: $e');
+      Log.w(_tag, 'Error fetching search suggestions: $e');
       return [];
     }
   }
@@ -202,7 +207,7 @@ class SearchApi {
         return detailData['data']['cid'] ?? 0;
       }
     } catch (e) {
-      print('Error fetching video detail for cid: $e');
+      Log.w(_tag, 'Error fetching video detail for cid: $e');
     }
     return 0;
   }

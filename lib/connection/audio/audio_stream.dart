@@ -166,14 +166,16 @@ class AudioStreamApi {
             }
           }
         } else {
-          print(
+          Log.w(
+            _tag,
             'GetAudioStream Error Code: ${data['code']}, Message: ${data['message']}',
           );
           if (!isRetry &&
               (data['code'] == -403 ||
                   data['code'] == -412 ||
                   data['code'] == -400)) {
-            print(
+            Log.d(
+              _tag,
               "WBI signature might be invalid. Refreshing keys and retrying...",
             );
             await WbiUtil.invalidateKeys();
@@ -189,7 +191,7 @@ class AudioStreamApi {
       }
       return null;
     } catch (e) {
-      print('Error fetching audio stream: $e');
+      Log.e(_tag, 'Error fetching audio stream: $e');
       if (!isRetry) {
         return await _getAudioStreamInternal(
           bvid,

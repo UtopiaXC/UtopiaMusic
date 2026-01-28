@@ -9,6 +9,8 @@ import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/log.dart';
 
+const String _tag = "SETTINGS_PROVIDER";
+
 class SettingsProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
   static const String _seedColorKey = 'seed_color';
@@ -400,7 +402,7 @@ class SettingsProvider extends ChangeNotifier {
       final audioService = AudioPlayerService();
       await audioService.resetState();
     } catch (e) {
-      print("Error stopping player: $e");
+      Log.e(_tag, 'Error stopping player: $e');
     }
     try {
       final downloadManager = DownloadManager();
@@ -409,12 +411,12 @@ class SettingsProvider extends ChangeNotifier {
       await downloadManager.clearAllCache();
       await downloadManager.deleteAllDownloads();
     } catch (e) {
-      print("Error clearing download manager: $e");
+      Log.e(_tag, 'Error clearing download manager: $e');
     }
     try {
       await DatabaseService().deleteDatabaseFile();
     } catch (e) {
-      print("Error deleting DB: $e");
+      Log.e(_tag, 'Error deleting DB: $e');
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -439,7 +441,7 @@ class SettingsProvider extends ChangeNotifier {
         await _deleteDirectoryContents(supportDir);
       }
     } catch (e) {
-      print("Error nuking file system: $e");
+      Log.w(_tag, 'Error nuking file system: $e');
     }
   }
 
@@ -454,11 +456,11 @@ class SettingsProvider extends ChangeNotifier {
             await entity.delete(recursive: true);
           }
         } catch (e) {
-          print("Skipping file ${entity.path}: $e");
+          Log.w(_tag, 'Skipping file ${entity.path}: $e');
         }
       }
     } catch (e) {
-      print("Error listing directory ${dir.path}: $e");
+      Log.w(_tag, 'Error listing directory ${dir.path}: $e');
     }
   }
 

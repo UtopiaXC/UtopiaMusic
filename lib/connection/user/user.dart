@@ -1,6 +1,9 @@
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'package:dio/dio.dart';
+
+const String _tag = "USER_API";
 
 class UserApi {
   Future<Map<String, dynamic>?> getUserInfo() async {
@@ -14,7 +17,7 @@ class UserApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching user info: $e');
+      Log.w(_tag, 'Error fetching user info: $e');
     }
     return null;
   }
@@ -31,7 +34,7 @@ class UserApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching user card: $e');
+      Log.w(_tag, 'Error fetching user card: $e');
     }
     return null;
   }
@@ -48,7 +51,7 @@ class UserApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching user stat: $e');
+      Log.w(_tag, 'Error fetching user stat: $e');
     }
     return null;
   }
@@ -71,7 +74,7 @@ class UserApi {
         return data['data']['list']['vlist'] ?? [];
       }
     } catch (e) {
-      print('Error fetching user videos: $e');
+      Log.w(_tag, 'Error fetching user videos: $e');
     }
     return [];
   }
@@ -92,7 +95,7 @@ class UserApi {
         return data['data']['list'] ?? [];
       }
     } catch (e) {
-      print('Error fetching user created fav folders: $e');
+      Log.w(_tag, 'Error fetching user created fav folders: $e');
     }
     return [];
   }
@@ -116,7 +119,7 @@ class UserApi {
         }
       }
     } catch (e) {
-      print('Error fetching user created fav folders all: $e');
+      Log.w(_tag, 'Error fetching user created fav folders all: $e');
     }
     return [];
   }
@@ -138,7 +141,7 @@ class UserApi {
         return data['data']['list'] ?? [];
       }
     } catch (e) {
-      print('Error fetching user collected fav folders: $e');
+      Log.w(_tag, 'Error fetching user collected fav folders: $e');
     }
     return [];
   }
@@ -160,7 +163,7 @@ class UserApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching user seasons series list: $e');
+      Log.w(_tag, 'Error fetching user seasons series list: $e');
     }
     return null;
   }
@@ -185,7 +188,7 @@ class UserApi {
         return true;
       }
     } catch (e) {
-      print('Error modifying relation: $e');
+      Log.e(_tag, 'Error modifying relation: $e');
     }
     return false;
   }
@@ -207,7 +210,7 @@ class UserApi {
         return data['data']['list'] ?? [];
       }
     } catch (e) {
-      print('Error fetching followings: $e');
+      Log.w(_tag, 'Error fetching followings: $e');
     }
     return [];
   }
@@ -229,7 +232,7 @@ class UserApi {
         return data['data'];
       }
     } catch (e) {
-      print('Error fetching history: $e');
+      Log.w(_tag, 'Error fetching history: $e');
     }
     return null;
   }
@@ -254,7 +257,7 @@ class UserApi {
         return true;
       }
     } catch (e) {
-      print('Error creating fav folder: $e');
+      Log.e(_tag, 'Error creating fav folder: $e');
     }
     return false;
   }
@@ -280,7 +283,7 @@ class UserApi {
         return true;
       }
     } catch (e) {
-      print('Error editing fav folder: $e');
+      Log.e(_tag, 'Error editing fav folder: $e');
     }
     return false;
   }
@@ -303,7 +306,7 @@ class UserApi {
         return true;
       }
     } catch (e) {
-      print('Error deleting fav folder: $e');
+      Log.e(_tag, 'Error deleting fav folder: $e');
     }
     return false;
   }
@@ -324,7 +327,7 @@ class UserApi {
         return data['data']['result'] ?? [];
       }
     } catch (e) {
-      print('Error searching users: $e');
+      Log.w(_tag, 'Error searching users: $e');
     }
     return [];
   }

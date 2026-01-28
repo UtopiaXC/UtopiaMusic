@@ -3,7 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
+import 'package:utopia_music/utils/log.dart';
 import 'package:dio/dio.dart';
+
+const String _tag = "AUTH_PROVIDER";
 
 enum UserVipType { none, vip, annualVip }
 
@@ -57,7 +60,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Auth: Error checking login status: $e');
+      Log.w(_tag, 'Error checking login status: $e');
       _loginStatus = LoginStatus.notLoggedIn;
       notifyListeners();
     }
@@ -96,7 +99,7 @@ class AuthProvider extends ChangeNotifier {
         _userInfo = null;
       }
     } catch (e) {
-      print('Auth: Error fetching user info: $e');
+      Log.w(_tag, 'Error fetching user info: $e');
       _loginStatus = LoginStatus.expired;
       _userInfo = null;
     }
@@ -142,14 +145,15 @@ class AuthProvider extends ChangeNotifier {
                 )
                 .timeout(const Duration(seconds: 2))
                 .catchError((e) {
-                  print(
-                    "Auth: Exit API call failed or timed out (ignoring): $e",
+                  Log.w(
+                    _tag,
+                    'Exit API call failed or timed out (ignoring): $e',
                   );
                   return null;
                 });
           }
         } catch (e) {
-          print("Auth: Error during exit API call: $e");
+          Log.w(_tag, 'Error during exit API call: $e');
         }
       }
 
@@ -162,7 +166,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       await Request().fetchGuestCookies();
     } catch (e) {
-      print('Auth: Error during logout: $e');
+      Log.w(_tag, 'Error during logout: $e');
     }
   }
 
