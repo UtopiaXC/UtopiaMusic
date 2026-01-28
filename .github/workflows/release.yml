@@ -182,6 +182,20 @@ jobs:
         run: flutter pub get
       - name: Build iOS unsigned
         run: flutter build ios --release --no-codesign --build-name $VERSION_NAME --build-number $BUILD_NUMBER
+      - name: Optimize iOS Frameworks
+        run: |
+          APP_PATH="build/ios/Release-iphoneos/Runner.app"
+          find "$APP_PATH/Frameworks" -type d -name '*.framework' | while read -r framework_path
+          do
+              name=$(basename "$framework_path" .framework)
+              binary="$framework_path/$name"
+              if lipo -info "$binary" | grep -q "x86_64"; then
+                  echo "Stripping x86_64 from $name"
+                  lipo -remove x86_64 "$binary" -o "$binary"
+              fi
+              echo "Removing signature from $name"
+              codesign --remove-signature "$binary"
+          done
       - name: Create unsigned IPA
         run: |
           mkdir -p dist/ios/Payload
