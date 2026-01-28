@@ -18,7 +18,7 @@ class PlayerBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     switch (mode) {
       case 'gradient':
         return _buildGradientBackground(context);
@@ -33,7 +33,7 @@ class PlayerBackground extends StatelessWidget {
   }
 
   Widget _buildGradientBackground(BuildContext context) {
-    Log.v(_tag, "_buildGradientBackground");
+    // Log.v(_tag, "_buildGradientBackground");
     if (extractedColorScheme == null) {
       return Container(color: Theme.of(context).scaffoldBackgroundColor);
     }
@@ -60,7 +60,7 @@ class PlayerBackground extends StatelessWidget {
   }
 
   Widget _buildBlurredBackground(String coverUrl, double sigma) {
-    Log.v(_tag, "_buildBlurredBackground, coverUrl: $coverUrl, sigma: $sigma");
+    // Log.v(_tag, "_buildBlurredBackground, coverUrl: $coverUrl, sigma: $sigma");
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,

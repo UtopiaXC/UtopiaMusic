@@ -7,19 +7,88 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
-class _FileLoggerObserver extends TalkerObserver {
+class RawLog extends TalkerLog {
+  RawLog(super.message, {super.logLevel});
+
+  @override
+  String generateTextMessage({TimeFormat timeFormat = TimeFormat.timeAndSeconds}) {
+    return message?? '';
+  }
+}
+
+class LogFormatter {
+  LogFormatter._();
+
+  static String _two(int n) => n.toString().padLeft(2, '0');
+  static String _three(int n) => n.toString().padLeft(3, '0');
+
+  static String formatDateTime(DateTime dt) {
+    return '${dt.year}/${_two(dt.month)}/${_two(dt.day)} '
+        '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}.'
+        '${_three(dt.millisecond)}';
+  }
+
+  static String format({
+    required String message,
+    required LogLevel level,
+    required DateTime time,
+    Object? exception,
+    StackTrace? stackTrace,
+  }) {
+    final timeStr = formatDateTime(time);
+    final levelStr = level.name.toUpperCase();
+    final baseLog = "[$timeStr] [$levelStr] $message";
+
+    if (exception != null || stackTrace != null) {
+      final buffer = StringBuffer(baseLog);
+      if (exception != null) {
+        buffer.write("\nError: $exception");
+      }
+      if (stackTrace != null) {
+        buffer.write("\nStack: $stackTrace");
+      }
+      return buffer.toString();
+    }
+
+    return baseLog;
+  }
+}
+
+class ConsoleLogFormatter extends LoggerFormatter {
+  @override
+  String fmt(LogDetails details, TalkerLoggerSettings settings) {
+    return LogFormatter.format(
+      message: details.message,
+      level: details.level,
+      time: DateTime.now(),
+    );
+  }
+}
+
+class FileLogObserver extends TalkerObserver {
   final void Function(String record) onWrite;
 
-  _FileLoggerObserver({required this.onWrite});
+  FileLogObserver({required this.onWrite});
+
+  void _write(TalkerData data) {
+    final formatted = LogFormatter.format(
+      message: data.message ?? '',
+      level: data.logLevel ?? LogLevel.debug,
+      time: data.time,
+      exception: data.exception,
+      stackTrace: data.stackTrace,
+    );
+    onWrite(formatted);
+  }
 
   @override
-  void onLog(TalkerData log) => onWrite(log.generateTextMessage());
+  void onLog(TalkerData log) => _write(log);
 
   @override
-  void onError(TalkerError err) => onWrite(err.generateTextMessage());
+  void onError(TalkerError err) => _write(err);
 
   @override
-  void onException(TalkerException err) => onWrite(err.generateTextMessage());
+  void onException(TalkerException err) => _write(err);
 }
 
 class Log {
@@ -41,6 +110,12 @@ class Log {
     return '[PID:$_pid] [UtopiaMusic] [$tag] $msg';
   }
 
+  static void _dispatchLog(String message, LogLevel level) {
+    LogService.instance.talker.logTyped(
+      RawLog(message, logLevel: level),
+    );
+  }
+
   static void d(dynamic classTag, [dynamic arg2]) {
     if (_currentLevel == LogLevel.error ||
         _currentLevel == LogLevel.info ||
@@ -48,24 +123,27 @@ class Log {
       return;
     }
     if (LogLevel.debug.index < _currentLevel.index) return;
+
     final (tag, msg) = _parseArgs(classTag, arg2);
-    LogService.instance.talker.debug(_formatMsg(tag, msg));
+    _dispatchLog(_formatMsg(tag, msg), LogLevel.debug);
   }
 
   static void i(dynamic classTag, [dynamic arg2]) {
     if (_currentLevel == LogLevel.error || _currentLevel == LogLevel.warning) {
       return;
     }
+
     final (tag, msg) = _parseArgs(classTag, arg2);
-    LogService.instance.talker.info(_formatMsg(tag, msg));
+    _dispatchLog(_formatMsg(tag, msg), LogLevel.info);
   }
 
   static void w(dynamic classTag, [dynamic arg2]) {
     if (_currentLevel == LogLevel.error) {
       return;
     }
+
     final (tag, msg) = _parseArgs(classTag, arg2);
-    LogService.instance.talker.warning(_formatMsg(tag, msg));
+    _dispatchLog(_formatMsg(tag, msg), LogLevel.warning);
   }
 
   static void v(dynamic classTag, [dynamic arg2]) {
@@ -75,18 +153,20 @@ class Log {
         _currentLevel == LogLevel.warning) {
       return;
     }
+
     final (tag, msg) = _parseArgs(classTag, arg2);
-    LogService.instance.talker.verbose(_formatMsg(tag, msg));
+    _dispatchLog(_formatMsg(tag, msg), LogLevel.verbose);
   }
 
   static void e(
-    dynamic classTag, [
-    dynamic arg2,
-    Object? error,
-    StackTrace? stackTrace,
-  ]) {
+      dynamic classTag, [
+        dynamic arg2,
+        Object? error,
+        StackTrace? stackTrace,
+      ]) {
     final (tag, msg) = _parseArgs(classTag, arg2);
     final formattedMsg = _formatMsg(tag, msg);
+
     if (error != null) {
       LogService.instance.talker.handle(error, stackTrace, formattedMsg);
     } else {
@@ -96,7 +176,7 @@ class Log {
 
   static void setLevel(LogLevel level) {
     _currentLevel = level;
-    LogService.instance.talker.info('Log Level changed to: ${level.name}');
+    _dispatchLog('Log Level changed to: ${level.name}', LogLevel.info);
   }
 }
 
@@ -118,8 +198,9 @@ class LogService {
     final prefs = await SharedPreferences.getInstance();
     final isDebugMode = prefs.getBool('debug_mode') ?? kDebugMode;
     final logLevelIndex = prefs.getInt('log_level') ?? LogLevel.warning.index;
+
     _talker = TalkerFlutter.init(
-      observer: _FileLoggerObserver(onWrite: _writeLogToDisk),
+      observer: FileLogObserver(onWrite: _writeLogToDisk),
       settings: TalkerSettings(
         enabled: true,
         useHistory: true,
@@ -129,6 +210,7 @@ class LogService {
       logger: TalkerLogger(
         output: debugPrint,
         settings: TalkerLoggerSettings(enableColors: true),
+        formatter: ConsoleLogFormatter(),
       ),
     );
 
@@ -187,10 +269,11 @@ class LogService {
       _currentLogFile = File('${logDir.path}/latest.log');
       _currentFileSize = 0;
       _logSink = _currentLogFile!.openWrite(mode: FileMode.write);
-      final header =
-          '=== Session Start: ${DateTime.now()} | Platform: ${defaultTargetPlatform.name} ===\n';
-      _logSink!.write(header);
-      _currentFileSize += utf8.encode(header).length;
+
+      final startMsg = '=== Session Start: ${DateTime.now()} | Platform: ${defaultTargetPlatform.name} ===\n';
+      final bytes = utf8.encode(startMsg);
+      _logSink!.add(bytes);
+      _currentFileSize += bytes.length;
     } catch (e) {
       debugPrint("Init log file failed: $e");
     }
@@ -222,8 +305,9 @@ class LogService {
       _currentFileSize = 0;
 
       const header = '\n=== Log Rotated (Previous file exceeded 1MB) ===\n';
-      _logSink!.write(header);
-      _currentFileSize += utf8.encode(header).length;
+      final bytes = utf8.encode(header);
+      _logSink!.add(bytes);
+      _currentFileSize += bytes.length;
     } catch (e) {
       debugPrint("Rotate log failed: $e");
     } finally {

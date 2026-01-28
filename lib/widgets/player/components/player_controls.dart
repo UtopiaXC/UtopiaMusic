@@ -54,7 +54,7 @@ class PlayerControls extends StatelessWidget {
   });
 
   String _formatDuration(Duration duration) {
-    Log.v(_tag, "_formatDuration, duration: $duration");
+    // Log.v(_tag, "_formatDuration, duration: $duration");
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     final hours = duration.inHours;
     final minutes = twoDigits(duration.inMinutes.remainder(60));
@@ -66,7 +66,7 @@ class PlayerControls extends StatelessWidget {
   }
 
   Widget _getLoopModeIcon(BuildContext context) {
-    Log.v(_tag, "_getLoopModeIcon");
+    // Log.v(_tag, "_getLoopModeIcon");
     switch (loopMode) {
       case PlayMode.sequence:
         return const Icon(Icons.repeat, color: Colors.grey);
@@ -80,7 +80,7 @@ class PlayerControls extends StatelessWidget {
   }
 
   Color? _getLoopModeColor(BuildContext context) {
-    Log.v(_tag, "_getLoopModeColor");
+    // Log.v(_tag, "_getLoopModeColor");
     if (loopMode == PlayMode.sequence) {
       return Theme.of(context).disabledColor;
     }
@@ -88,7 +88,7 @@ class PlayerControls extends StatelessWidget {
   }
 
   Widget _getSpeedIcon(BuildContext context) {
-    Log.v(_tag, "_getSpeedIcon");
+    // Log.v(_tag, "_getSpeedIcon");
     final playerProvider = Provider.of<PlayerProvider>(context);
     final speed = playerProvider.player.speed;
 
@@ -127,7 +127,7 @@ class PlayerControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     final maxDuration = duration.inSeconds.toDouble();
     final currentPosition = position.inSeconds.toDouble();
     final sliderValue = currentPosition > maxDuration

@@ -71,7 +71,7 @@ class HistoryManager {
   }
 
   Future<void> _tick(Song song) async {
-    Log.v(_tag, "_tick, song: ${song.title}");
+    // Log.v(_tag, "_tick, song: ${song.title}");
     if (_saveProgress) {
       _saveCurrentProgress();
     }
@@ -100,7 +100,7 @@ class HistoryManager {
   }
 
   Future<void> _saveCurrentProgress() async {
-    Log.v(_tag, "_saveCurrentProgress");
+    // Log.v(_tag, "_saveCurrentProgress");
     final position = getCurrentPositionMilliseconds();
     if (position > 0) {
       final prefs = await SharedPreferences.getInstance();

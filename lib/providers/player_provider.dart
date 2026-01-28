@@ -170,10 +170,11 @@ class PlayerProvider extends ChangeNotifier {
       _handlePlaybackError(error);
     });
     _audioPlayerService.actualQualityStream.listen((quality) {
-      Log.d(_tag, "actualQualityStream, quality: $quality");
+      // Log.d(_tag, "actualQualityStream, quality: $quality");
       if (_currentPlayingQuality != quality) {
         _currentPlayingQuality = quality;
         notifyListeners();
+        Log.i(_tag, "Updated actual playing quality to: $quality");
       }
     });
   }

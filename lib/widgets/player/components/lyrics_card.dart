@@ -199,7 +199,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   void _syncDanmaku(Duration position) {
-    Log.v(_tag, "_syncDanmaku, position: ${position.inMilliseconds}");
+    // Log.v(_tag, "_syncDanmaku, position: ${position.inMilliseconds}");
     if (_rawDanmakus.isEmpty || _danmakuController == null) return;
 
     final double currentSeconds = position.inMilliseconds / 1000.0;
@@ -243,10 +243,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   bool _calculateSubtitleIndex(Duration position) {
-    Log.v(
-      _tag,
-      "_calculateSubtitleIndex, position: ${position.inMilliseconds}",
-    );
+    // Log.v(_tag, "_calculateSubtitleIndex, position: ${position.inMilliseconds}",);
     if (_subtitles.isEmpty) return false;
     final seconds = position.inMilliseconds / 1000.0;
     int index = -1;
@@ -297,7 +294,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     final playerProvider = Provider.of<PlayerProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final song = playerProvider.currentSong;
@@ -495,7 +492,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   }
 
   Widget _buildLyricsView(Song song, ThemeData theme) {
-    Log.v(_tag, "_buildLyricsView, song: ${song.title}, bvid: ${song.bvid}");
+    // Log.v(_tag, "_buildLyricsView, song: ${song.title}, bvid: ${song.bvid}");
     if (_isLoadingSubtitles) {
       return Center(
         child: CircularProgressIndicator(color: theme.colorScheme.primary),

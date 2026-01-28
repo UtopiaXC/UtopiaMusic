@@ -453,7 +453,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     final topPadding = MediaQuery.of(context).padding.top;
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final settingsProvider = Provider.of<SettingsProvider>(context);

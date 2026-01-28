@@ -44,8 +44,21 @@ class NetworkException implements Exception {
 class ResourceResponse {
   final File? file;
   final String? directUrl;
+  final int? quality;
 
-  ResourceResponse({this.file, this.directUrl});
+  ResourceResponse({this.file, this.directUrl, this.quality});
+}
+
+class NetworkStreamResponse {
+  final HttpClientResponse httpResponse;
+  final String mimeType;
+  final int actualQuality;
+
+  NetworkStreamResponse({
+    required this.httpResponse,
+    required this.mimeType,
+    required this.actualQuality,
+  });
 }
 
 class DownloadUpdate {
@@ -93,7 +106,7 @@ class DownloadManager {
   int _activeDownloads = 0;
   final Map<String, bool> _activeTaskIds = {};
   final StreamController<DownloadUpdate> _progressController =
-      StreamController.broadcast();
+  StreamController.broadcast();
 
   Stream<DownloadUpdate> get downloadUpdateStream => _progressController.stream;
 
@@ -111,7 +124,6 @@ class DownloadManager {
   }
 
   Future<void> _initDirs() async {
-    Log.v(_tag, "_initDirs");
     if (_cacheDir != null && _downloadDir != null) return;
 
     final tempDir = await getTemporaryDirectory();
@@ -128,14 +140,10 @@ class DownloadManager {
   }
 
   Future<ResourceResponse?> checkLocalResource(
-    String bvid,
-    int initCid,
-    int quality,
-  ) async {
-    Log.v(
-      _tag,
-      "checkLocalResource, bvid: $bvid, cid: $initCid, quality: $quality",
-    );
+      String bvid,
+      int initCid,
+      int quality,
+      ) async {
     await _initDirs();
 
     int cid = initCid;
@@ -147,8 +155,8 @@ class DownloadManager {
     if (downloadRecord != null) {
       final path = downloadRecord['save_path'] as String;
       final file = File(path);
-      if (await file.exists()) {
-        return ResourceResponse(file: file);
+      if (await file.exists() && await file.length() > 0) {
+        return ResourceResponse(file: file, quality: quality);
       }
     }
 
@@ -158,25 +166,30 @@ class DownloadManager {
       final fileName = _getStaticCacheFileName(bvid, cid, quality);
       final file = File('$_cacheDir/$fileName');
       if (await file.exists()) {
-        await _dbService.recordCacheAccess(
-          bvid,
-          cid,
-          quality,
-          status: CacheStatus.staticCached.code,
-        );
-        return ResourceResponse(file: file);
+        if (await file.length() > 0) {
+          await _dbService.recordCacheAccess(
+            bvid,
+            cid,
+            quality,
+            status: CacheStatus.staticCached.code,
+          );
+          return ResourceResponse(file: file);
+        } else {
+          try { await file.delete(); } catch (_) {}
+          await _dbService.removeCacheMeta(cacheMeta['key']);
+        }
       }
     }
 
     return null;
   }
 
-  Future<HttpClientResponse> getNetworkStream(
-    String bvid,
-    int initCid,
-    int quality, {
-    int start = 0,
-  }) async {
+  Future<NetworkStreamResponse> getNetworkStream(
+      String bvid,
+      int initCid,
+      int quality, {
+        int start = 0,
+      }) async {
     Log.v(
       _tag,
       "getNetworkStream, bvid: $bvid, cid: $initCid, quality: $quality",
@@ -185,15 +198,12 @@ class DownloadManager {
     if (cid == 0) {
       try {
         cid = await _searchApi.fetchCid(bvid);
-        Log.i(_tag, "Resolved CID: $cid");
       } catch (e) {
         Log.w(_tag, "Fetch cid failed, source may be invalid");
       }
     }
 
-    if (cid == 0) {
-      throw ResourceException("Fetch CID failed");
-    }
+    if (cid == 0) throw ResourceException("Fetch CID failed");
 
     int retryCount = 0;
     const maxRetries = 2;
@@ -214,7 +224,6 @@ class DownloadManager {
         client.connectionTimeout = const Duration(seconds: 15);
 
         final request = await client.getUrl(Uri.parse(streamInfo.url));
-
         request.headers.set('User-Agent', HttpConstants.userAgent);
         request.headers.set('Referer', HttpConstants.referer);
         if (start > 0) {
@@ -223,31 +232,25 @@ class DownloadManager {
 
         final response = await request.close();
         if (response.statusCode >= 400) {
-          if (response.statusCode == 403 ||
-              response.statusCode == 404 ||
-              response.statusCode == 410) {
-            throw ResourceException("HTTP ${response.statusCode}: 资源无效或无权访问");
+          if (response.statusCode == 403 || response.statusCode == 404) {
+            throw ResourceException("HTTP ${response.statusCode}: Resource unavailable");
           }
-          throw NetworkException(
-            "HTTP Server Error",
-            statusCode: response.statusCode,
-          );
+          throw NetworkException("HTTP Error", statusCode: response.statusCode);
         }
 
-        return response;
+        return NetworkStreamResponse(
+          httpResponse: response,
+          mimeType: streamInfo.mimeType,
+          actualQuality: streamInfo.quality,
+        );
       } catch (e) {
         retryCount++;
-        Log.w(_tag, "getNetworkStream failed (attempt $retryCount): $e");
-
         if (e is ResourceException) rethrow;
-
-        if (retryCount > maxRetries) {
-          rethrow;
-        }
+        if (retryCount > maxRetries) rethrow;
         await Future.delayed(const Duration(milliseconds: 500));
       }
     }
-    throw ResourceException("Failed to get network stream after retries");
+    throw ResourceException("Failed to get network stream");
   }
 
   String getStaticCachePath(String bvid, int cid, int quality) {
@@ -260,16 +263,13 @@ class DownloadManager {
   }
 
   Future<void> _cleanTempFiles() async {
-    Log.v(_tag, "_cleanTempFiles");
     if (_cacheDir == null) return;
     try {
       final dir = Directory(_cacheDir!);
       if (await dir.exists()) {
         await for (var file in dir.list()) {
           if (file is File && file.path.endsWith('.tmp')) {
-            try {
-              await file.delete();
-            } catch (_) {}
+            try { await file.delete(); } catch (_) {}
           }
         }
       }
@@ -311,42 +311,33 @@ class DownloadManager {
       try {
         await for (var file in dir.list()) {
           if (file is File) {
-            try {
-              await file.delete();
-            } catch (_) {}
+            try { await file.delete(); } catch (_) {}
           }
         }
-      } catch (e) {
-        Log.e(_tag, "Fail to clear static cache", e);
-      }
+      } catch (_) {}
     }
     await _dbService.clearStaticCacheMeta();
   }
 
   Future<void> startDownload(Song song, {int? quality}) async {
-    Log.v(_tag, "startDownload, bvid: ${song.bvid}, cid: ${song.cid}");
     await _initDirs();
     int cid = song.cid;
     if (cid == 0) cid = await _searchApi.fetchCid(song.bvid);
     final songWithCid = song.copyWith(cid: cid);
     if (await isDownloaded(songWithCid.bvid, songWithCid.cid)) return;
+
     final id = '${songWithCid.bvid}_${songWithCid.cid}';
-    if (_queue.any((task) => '${task.song.bvid}_${task.song.cid}' == id))
-      return;
+    if (_queue.any((task) => '${task.song.bvid}_${task.song.cid}' == id)) return;
     if (_activeTaskIds.containsKey(id)) return;
+
     int targetQuality = quality ?? await _resolveBestQuality(songWithCid);
-    final fileName =
-        '${songWithCid.bvid}_${songWithCid.cid}_$targetQuality.audio';
+    final fileName = '${songWithCid.bvid}_${songWithCid.cid}_$targetQuality.audio';
     final savePath = '$_downloadDir/$fileName';
+
     await _dbService.insertDownload(songWithCid, savePath, targetQuality);
     _progressController.add(DownloadUpdate(id, 0.0, 0));
-    _queue.add(
-      _DownloadTask(
-        song: songWithCid,
-        savePath: savePath,
-        quality: targetQuality,
-      ),
-    );
+    _queue.add(_DownloadTask(
+        song: songWithCid, savePath: savePath, quality: targetQuality));
     _processQueue();
   }
 
@@ -360,7 +351,7 @@ class DownloadManager {
       );
       if (available.isNotEmpty) {
         available.sort(
-          (a, b) =>
+              (a, b) =>
               QualityUtils.getScore(b).compareTo(QualityUtils.getScore(a)),
         );
         int preferredScore = QualityUtils.getScore(targetQuality);
@@ -393,7 +384,6 @@ class DownloadManager {
   }
 
   Future<void> _executeDownload(_DownloadTask task) async {
-    Log.v(_tag, "_executeDownload, bvid: ${task.song.bvid}");
     final id = '${task.song.bvid}_${task.song.cid}';
 
     try {
@@ -404,12 +394,13 @@ class DownloadManager {
       await _dbService.updateDownloadStatus(task.song.bvid, task.song.cid, 1);
       _progressController.add(DownloadUpdate(id, 0.0, 1));
 
-      final response = await getNetworkStream(
+      final netResponse = await getNetworkStream(
         task.song.bvid,
         task.song.cid,
         task.quality,
         start: downloadedBytes,
       );
+      final response = netResponse.httpResponse;
 
       final totalBytes = response.contentLength + downloadedBytes;
       final sink = file.openWrite(mode: FileMode.append);
@@ -459,7 +450,6 @@ class DownloadManager {
   }
 
   Future<void> pauseDownload(String bvid, int cid) async {
-    Log.v(_tag, "pauseDownload, bvid: $bvid, cid: $cid");
     final id = '${bvid}_$cid';
     if (_activeTaskIds.containsKey(id)) {
       _activeTaskIds.remove(id);
@@ -471,7 +461,6 @@ class DownloadManager {
   }
 
   Future<void> retryDownload(String bvid, int cid) async {
-    Log.v(_tag, "retryDownload, bvid: $bvid, cid: $cid");
     final record = await _dbService.getDownload(bvid, cid);
     if (record != null) {
       await _dbService.updateDownloadStatus(bvid, cid, 0);
@@ -492,7 +481,6 @@ class DownloadManager {
   }
 
   Future<void> deleteDownload(String bvid, int cid) async {
-    Log.v(_tag, "deleteDownload, bvid: $bvid, cid: $cid");
     await pauseDownload(bvid, cid);
     await _dbService.deleteDownload(bvid, cid);
     _queue.removeWhere((t) => t.song.bvid == bvid && t.song.cid == cid);
@@ -501,16 +489,13 @@ class DownloadManager {
     if (await dir.exists()) {
       await for (var file in dir.list()) {
         if (file.path.contains('${bvid}_$cid')) {
-          try {
-            await file.delete();
-          } catch (_) {}
+          try { await file.delete(); } catch (_) {}
         }
       }
     }
   }
 
   Future<void> _performSmartCleanup() async {
-    Log.v(_tag, "_performSmartCleanup");
     if (_cacheDir == null) return;
     try {
       final metas = await _dbService.getCompletedCacheMeta();
@@ -520,65 +505,29 @@ class DownloadManager {
       for (var m in metas) {
         int size = (m['file_size'] as int? ?? 0);
         if (size <= 0) {
-          try {
-            final bvid = m['bvid'];
-            final cid = m['cid'];
-            final quality = m['quality'];
-            final path = getStaticCachePath(bvid, cid, quality);
-            final file = File(path);
-            if (await file.exists()) {
-              size = await file.length();
-              _dbService.recordCacheAccess(bvid, cid, quality, fileSize: size);
-            }
-          } catch (e) {
-            Log.w(_tag, "_performSmartCleanup failed, error: $e");
-          }
+          final path = getStaticCachePath(m['bvid'], m['cid'], m['quality']);
+          final f = File(path);
+          if (await f.exists()) size = await f.length();
         }
         totalSize += size;
       }
 
-      Log.i(
-        _tag,
-        "Current Cache Size: ${(totalSize / 1024 / 1024).toStringAsFixed(2)} MB / Max: ${(_maxCacheSize / 1024 / 1024).toStringAsFixed(2)} MB",
-      );
-
       if (totalSize <= _maxCacheSize) return;
+
       List<Map<String, dynamic>> sortedMetas = List.from(metas);
-      final now = DateTime.now().millisecondsSinceEpoch;
-      sortedMetas.sort((a, b) {
-        double scoreA = _calculateScore(a, now);
-        double scoreB = _calculateScore(b, now);
-        return scoreA.compareTo(scoreB);
-      });
+      sortedMetas.sort((a, b) => _calculateScore(a, DateTime.now().millisecondsSinceEpoch).compareTo(_calculateScore(b, DateTime.now().millisecondsSinceEpoch)));
 
-      int targetSize = (_maxCacheSize * 0.8).toInt();
-      for (var meta in sortedMetas) {
-        if (totalSize <= targetSize) break;
-
-        final key = meta['key'];
-        final bvid = meta['bvid'];
-        final cid = meta['cid'];
-        final quality = meta['quality'];
-        final fileName = _getStaticCacheFileName(bvid, cid, quality);
+      while (totalSize > _maxCacheSize * 0.8 && sortedMetas.isNotEmpty) {
+        final meta = sortedMetas.removeAt(0);
+        final fileName = _getStaticCacheFileName(meta['bvid'], meta['cid'], meta['quality']);
         final file = File('$_cacheDir/$fileName');
-
-        try {
-          if (await file.exists()) {
-            int fileSize = await file.length();
-            await file.delete();
-            totalSize -= fileSize;
-          } else {
-            totalSize -= (meta['file_size'] as int? ?? 0);
-          }
-          await _dbService.removeCacheMeta(key as String);
-          Log.i(_tag, "Cleaned up cache: $fileName");
-        } catch (e) {
-          Log.w(_tag, "Failed to delete cache file: $fileName");
+        if (await file.exists()) {
+          totalSize -= await file.length();
+          await file.delete();
         }
+        await _dbService.removeCacheMeta(meta['key']);
       }
-    } catch (e) {
-      Log.e(_tag, "Smart cleanup failed", e);
-    }
+    } catch (_) {}
   }
 
   double _calculateScore(Map<String, dynamic> meta, int now) {
@@ -611,27 +560,10 @@ class DownloadManager {
   }
 
   Future<void> setMaxConcurrentDownloads(int count) async {
-    Log.v(_tag, "setMaxConcurrentDownloads, count: $count");
     if (count < 0) count = 0;
     _maxConcurrentDownloads = count;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_concurrentDownloadsKey, count);
-    if (count == 0) {
-      final activeIds = List<String>.from(_activeTaskIds.keys);
-      for (var id in activeIds) {
-        final parts = id.split('_');
-        if (parts.length >= 2) {
-          final bvid = parts[0];
-          final cid = int.tryParse(parts[1]) ?? 0;
-          _activeTaskIds.remove(id);
-          await _dbService.updateDownloadStatus(bvid, cid, 0);
-          _progressController.add(DownloadUpdate(id, 0.0, 0));
-        }
-      }
-      _activeDownloads = 0;
-    } else {
-      _processQueue();
-    }
   }
 
   Future<int> getMaxConcurrentDownloads() async {
@@ -655,9 +587,7 @@ class DownloadManager {
   Future<void> deleteAllDownloads() async {
     final downloads = await _dbService.getAllDownloads();
     for (var d in downloads) {
-      final bvid = d['bvid'] as String;
-      final cid = d['cid'] as int;
-      await deleteDownload(bvid, cid);
+      await deleteDownload(d['bvid'] as String, d['cid'] as int);
     }
   }
 

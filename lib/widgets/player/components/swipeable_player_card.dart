@@ -142,7 +142,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
 
   @override
   void didUpdateWidget(SwipeablePlayerCard oldWidget) {
-    Log.v(_tag, "didUpdateWidget, oldWidget: $oldWidget");
+    // Log.v(_tag, "didUpdateWidget, oldWidget: $oldWidget");
     super.didUpdateWidget(oldWidget);
     if (_isAnimatingOut) {
       _controller.stop();
@@ -155,7 +155,7 @@ class SwipeablePlayerCardState extends State<SwipeablePlayerCard>
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     return LayoutBuilder(
       builder: (context, constraints) {
         _width = constraints.maxWidth;

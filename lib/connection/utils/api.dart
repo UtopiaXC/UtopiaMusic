@@ -1,8 +1,10 @@
 class Api {
+  static const String urlSiteBase = 'https://www.bilibili.com' ;
   static const String urlBase = 'https://api.bilibili.com';
   static const String urlLiveBase = 'https://api.live.bilibili.com';
   static const String urlLoginBase = 'https://passport.bilibili.com';
   static const String urlSearchBase = 'https://s.search.bilibili.com';
+  static const String urlCommentBase = 'https://comment.bilibili.com';
 
   static const String urlRecommentList =
       '/x/web-interface/wbi/index/top/feed/rcmd';
@@ -57,4 +59,5 @@ class Api {
   static const String urlHistoryCursor = '/x/web-interface/history/cursor';
   static const String urlBatchDel = '/x/v3/fav/resource/batch-del';
   static const String urlAiSubtitle = '/x/web-interface/view/conclusion/get';
+  static const String urlDanmuku = '/video/av';
 }

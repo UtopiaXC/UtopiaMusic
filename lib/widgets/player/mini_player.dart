@@ -30,7 +30,7 @@ class MiniPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     final colorScheme = Theme.of(context).colorScheme;
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
 

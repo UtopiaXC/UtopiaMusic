@@ -12,7 +12,7 @@ class PlayerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Log.v(_tag, "build");
+    // Log.v(_tag, "build");
     return LayoutBuilder(
       builder: (context, constraints) {
         double imageSize = min(300.0, constraints.maxHeight - 60);

@@ -3,7 +3,7 @@
 
 这是一个以纯粹音乐播放为理念核心的B站第三方客户端，仅支持音频，你可以拿来听歌，听书，抑或是睡前听点长视频助眠。  
 <br>
-界面设计效果见底部UI/UX Demo  
+**界面设计效果见底部[UI/UX Demo](#uiux-demo)**  
 <br>
 开发初衷：最近用了 [Biu](https://github.com/wood3n/biu) 和 [BBPlayer](https://github.com/bbplayer-app/BBPlayer)，发现两个应用都很优秀。可惜Biu用的 Electron 只支持桌面端，BBPlayer虽然是React Native
 Expo开发的，但是我尝试打包成iOS的ipa的时候发现作者在播放引擎上针对安卓做了优化，在iOS上用不了，我尝试替换了一下播放库，结果还是不行，遂作罢。查了半天，发现好多人都做过flutter版的bili
@@ -14,10 +14,13 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 警告：本项目大量使用Gemini等生成式AI。开发工具：idea + Gemini Code Assist插件  
 我本人移动端上此前只做过原生安卓开发和安卓OS开发，对flutter可以说是一窍不通，因此本项目基本vibecode。  
 <br>
-（笑死我不会说我是为了用CarPlay听小马音乐才开发的这个，推荐收听：[小马の音乐](https://space.bilibili.com/283351624/lists/4012940?type=season)）
+（笑死我不会说我是为了用CarPlay听小马音乐才开发的这个，推荐收听：[小马の音乐](https://space.bilibili.com/283351624/lists/4012940?type=season)）  
+<br>
+20260128 做人做企业不能忘本，向已死的互联网海盗精神致敬。  
 
 ## 下载
-> 已知问题：为了适配iOS的AVPlayer，引入了Buffer，可能和原有Cache设计冲突，状态机管理略混乱，可能导致播放卡住无法再恢复。可以尝试退出重启，或直接杀死进程重启。我正在研究解决方案。  
+> 已知问题：iOS的AVPlayer机制与Android的Codec不一致，因此在iOS上经常无法开始播放，正在研究解决办法。  
+
 [测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
 
 ## 参考与感谢
@@ -25,6 +28,7 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 [SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)  
 [wood3n/biu](https://github.com/wood3n/biu)  
 [bbplayer-app/BBPlayer](https://github.com/bbplayer-app/BBPlayer)  
+[guozhigq/pilipala](https://github.com/guozhigq/pilipala)
 [bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)
 
 ## 引用的开源许可证
@@ -34,8 +38,8 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 ## 社区协作
 
 本项目欢迎贡献代码。  
-不拒绝AI代码。但是提交AI代码前请务必人工审阅。  
-请遵守社区规则提交issue与PR。
+欢迎AI代码。但是提交AI代码前请务必人工审阅。  
+请遵守社区规则提交issue与PR。  
 
 ## 捐助
 
@@ -44,7 +48,7 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 
 ## 用户协议与免责声明 / EULA
 
-[EULA.md](assets/documentations/EULA.md)
+[EULA](assets/documentations/EULA.md)
 
 
 ## UI/UX Demo
