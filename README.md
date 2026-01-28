@@ -19,9 +19,7 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 20260128 做人做企业不能忘本，向已死的互联网海盗精神致敬。  
 
 ## 下载
-> 已知问题：iOS的AVPlayer机制与Android的Codec不一致，因此在iOS上经常无法开始播放，正在研究解决办法。  
-
-[测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
+[最新测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
 
 ## 参考与感谢
 
