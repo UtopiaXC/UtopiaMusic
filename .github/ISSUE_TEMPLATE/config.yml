@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name:  提问 / 讨论
-    url: https://github.com/YOUR_USER/YOUR_REPO/discussions
+    url: https://github.com/UtopiaXC/UtopiaMusic/discussions
     about: 如果是非Bug或新功能请求，请在讨论区讨论，而不是提交Issue。
