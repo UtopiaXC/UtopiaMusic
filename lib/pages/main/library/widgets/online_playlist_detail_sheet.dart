@@ -28,7 +28,9 @@ class OnlinePlaylistDetailSheet extends StatefulWidget {
 
 class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
   List<Song> _songs = [];
+  List<Song> _displaySongs = [];
   bool _isLoading = true;
+  bool _isDescending = true;
   final LibraryApi _libraryApi = LibraryApi();
   final UserApi _userApi = UserApi();
   late PlaylistInfo _currentPlaylistInfo;
@@ -47,10 +49,10 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       List<Song> songs;
       bool isActuallyCollection = widget.isCollection;
       if (widget.isCollection && _currentPlaylistInfo.originalData != null) {
-         final attr = _currentPlaylistInfo.originalData['attr'];
-         if (attr != null && attr != 0) {
-           isActuallyCollection = false;
-         }
+        final attr = _currentPlaylistInfo.originalData['attr'];
+        if (attr != null && attr != 0) {
+          isActuallyCollection = false;
+        }
       }
 
       if (isActuallyCollection) {
@@ -58,10 +60,11 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       } else {
         songs = await _libraryApi.getFavoriteResources(mediaId, context);
       }
-      
+
       if (mounted) {
         setState(() {
           _songs = songs;
+          _applySorting();
           _isLoading = false;
         });
       }
@@ -71,6 +74,20 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _applySorting() {
+    _displaySongs = List.from(_songs);
+    if (_isDescending) {
+      _displaySongs = _displaySongs.reversed.toList();
+    }
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _isDescending = !_isDescending;
+      _applySorting();
+    });
   }
 
   Future<void> _handleClone() async {
@@ -95,18 +112,18 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
     );
 
     if (confirm != true) return;
-    
+
     setState(() => _isLoading = true);
     try {
       final id = await DatabaseService().createLocalPlaylist(
         _currentPlaylistInfo.title,
         '',
       );
-      
-      for (var song in _songs) {
+
+      for (var song in _displaySongs) {
         await DatabaseService().addSongToLocalPlaylist(id, song);
       }
-      
+
       if (mounted) {
         setState(() => _isLoading = false);
         Navigator.pop(context);
@@ -159,9 +176,9 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
   }
 
   Future<void> _handlePlay() async {
-    if (_songs.isEmpty) return;
+    if (_displaySongs.isEmpty) return;
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    
+
     if (playerProvider.playlist.isNotEmpty) {
       final confirm = await showDialog<bool>(
         context: context,
@@ -180,14 +197,14 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
           ],
         ),
       );
-      
+
       if (confirm != true) return;
     }
 
     if (mounted) {
       Navigator.pop(context);
     }
-    await playerProvider.setPlaylistAndPlay(_songs, _songs.first);
+    await playerProvider.setPlaylistAndPlay(_displaySongs, _displaySongs.first);
   }
 
   Future<void> _handleEdit() async {
@@ -201,11 +218,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
         initialTitle: _currentPlaylistInfo.title,
       ),
     );
-    
-    // Refresh info if needed, but we might need to reload the whole sheet or just update title locally
-    // For simplicity, we can just pop and let user reload, or try to reload info.
-    // But _loadSongs doesn't reload playlist info.
-    // We can fetch info and update _currentPlaylistInfo.
+
     final info = await _libraryApi.getFavoriteFolderInfo(_currentPlaylistInfo.id);
     if (info != null && mounted) {
       setState(() {
@@ -246,7 +259,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       if (detailData != null) {
         aid = detailData['aid'];
       }
-      
+
       if (aid == 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -260,7 +273,7 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
         int.parse(_currentPlaylistInfo.id),
         aid,
       );
-      
+
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -309,9 +322,9 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                             borderRadius: BorderRadius.circular(8),
                             image: _currentPlaylistInfo.coverUrl.isNotEmpty
                                 ? DecorationImage(
-                                    image: NetworkImage(_currentPlaylistInfo.coverUrl),
-                                    fit: BoxFit.cover,
-                                  )
+                              image: NetworkImage(_currentPlaylistInfo.coverUrl),
+                              fit: BoxFit.cover,
+                            )
                                 : null,
                           ),
                           child: Stack(
@@ -361,9 +374,9 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                                 child: Text(
                                   '${_currentPlaylistInfo.count}${S.of(context).common_count_of_songs}',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: colorScheme.onSecondaryContainer,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    color: colorScheme.onSecondaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -419,52 +432,82 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                   ],
                 ),
               ),
-              const Divider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    const SizedBox(width: 8),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _toggleSortOrder,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isDescending
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                size: 18,
+                                color: colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : _songs.isEmpty
-                        ? GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onVerticalDragUpdate: (details) {
-                              if (details.primaryDelta! > 10) {
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: Center(child: Text(S.of(context).pages_library_playlist_empty)),
-                          )
-                        : ListView.builder(
-                            controller: scrollController,
-                            itemCount: _songs.length,
-                            itemBuilder: (context, index) {
-                              final song = _songs[index];
-                              return SongListItem(
-                                song: song,
-                                contextList: _songs,
-                                onPlayAction: () {
-                                  Navigator.pop(context);
-                                },
-                                menuItems: [
-                                  if (!widget.isCollection)
-                                    PopupMenuItem(
-                                      value: 'remove',
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.delete_outline, size: 20),
-                                          const SizedBox(width: 12),
-                                          Text(S.of(context).pages_library_online_remove_video),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                                onMenuSelected: (value) {
-                                  if (value == 'remove') {
-                                    _handleRemoveSong(song);
-                                  }
-                                },
-                              );
-                            },
+                    : _displaySongs.isEmpty
+                    ? GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onVerticalDragUpdate: (details) {
+                    if (details.primaryDelta! > 10) {
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: Center(child: Text(S.of(context).pages_library_playlist_empty)),
+                )
+                    : ListView.builder(
+                  controller: scrollController,
+                  itemCount: _displaySongs.length,
+                  itemBuilder: (context, index) {
+                    final song = _displaySongs[index];
+                    return SongListItem(
+                      song: song,
+                      contextList: _displaySongs,
+                      onPlayAction: () {
+                        Navigator.pop(context);
+                      },
+                      menuItems: [
+                        if (!widget.isCollection)
+                          PopupMenuItem(
+                            value: 'remove',
+                            child: Row(
+                              children: [
+                                const Icon(Icons.delete_outline, size: 20),
+                                const SizedBox(width: 12),
+                                Text(S.of(context).pages_library_online_remove_video),
+                              ],
+                            ),
                           ),
+                      ],
+                      onMenuSelected: (value) {
+                        if (value == 'remove') {
+                          _handleRemoveSong(song);
+                        }
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -510,7 +553,7 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
       setState(() {
         _titleController.text = info['title'] ?? widget.initialTitle;
         _descController.text = info['intro'] ?? '';
-        _isPublic = (info['attr'] ?? 0) & 1 == 0; // attr bit 0: 0=public, 1=private
+        _isPublic = (info['attr'] ?? 0) & 1 == 0;
         _isLoading = false;
       });
     } else {
@@ -522,7 +565,7 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
+
     final success = await _userApi.editFavFolder(
       widget.mediaId,
       _titleController.text,
@@ -567,12 +610,12 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
     if (confirm == true) {
       setState(() => _isLoading = true);
       final success = await _userApi.deleteFavFolder(widget.mediaId);
-      
+
       if (mounted) {
         setState(() => _isLoading = false);
         if (success) {
-          Navigator.pop(context); // Close edit sheet
-          Navigator.pop(context); // Close detail sheet
+          Navigator.pop(context);
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(S.of(context).pages_library_online_delete_success)),
           );
@@ -608,72 +651,72 @@ class _BilibiliPlaylistEditSheetState extends State<_BilibiliPlaylistEditSheet> 
           return _isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              S.of(context).pages_library_online_edit_fav,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            IconButton(
-                              onPressed: _handleDelete,
-                              icon: const Icon(Icons.delete_outline),
-                              tooltip: S.of(context).pages_library_online_delete_fav,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        TextFormField(
-                          controller: _titleController,
-                          decoration: InputDecoration(
-                            labelText: S.of(context).pages_library_online_edit_title,
-                            border: const OutlineInputBorder(),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return S.of(context).common_please_input;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _descController,
-                          decoration: InputDecoration(
-                            labelText: S.of(context).pages_library_online_edit_intro,
-                            border: const OutlineInputBorder(),
-                          ),
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 16),
-                        SwitchListTile(
-                          title: Text(S.of(context).pages_library_online_edit_public),
-                          value: _isPublic,
-                          onChanged: (value) {
-                            setState(() {
-                              _isPublic = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _handleSubmit,
-                            child: Text(S.of(context).pages_library_online_edit_save),
-                          ),
-                        ),
-                      ],
+            controller: scrollController,
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        S.of(context).pages_library_online_edit_fav,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      IconButton(
+                        onPressed: _handleDelete,
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: S.of(context).pages_library_online_delete_fav,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: S.of(context).pages_library_online_edit_title,
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return S.of(context).common_please_input;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descController,
+                    decoration: InputDecoration(
+                      labelText: S.of(context).pages_library_online_edit_intro,
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: Text(S.of(context).pages_library_online_edit_public),
+                    value: _isPublic,
+                    onChanged: (value) {
+                      setState(() {
+                        _isPublic = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _handleSubmit,
+                      child: Text(S.of(context).pages_library_online_edit_save),
                     ),
                   ),
-                );
+                ],
+              ),
+            ),
+          );
         },
       ),
     );

@@ -13,6 +13,8 @@ PODS:
   - local_auth_darwin (0.0.1):
     - Flutter
     - FlutterMacOS
+  - media_kit_libs_ios_audio (1.0.4):
+    - Flutter
   - package_info_plus (0.4.5):
     - Flutter
   - privacy_screen (0.0.1):
@@ -37,6 +39,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - local_auth_darwin (from `.symlinks/plugins/local_auth_darwin/darwin`)
+  - media_kit_libs_ios_audio (from `.symlinks/plugins/media_kit_libs_ios_audio/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - privacy_screen (from `.symlinks/plugins/privacy_screen/ios`)
   - restart_app (from `.symlinks/plugins/restart_app/ios`)
@@ -58,6 +61,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/just_audio/darwin"
   local_auth_darwin:
     :path: ".symlinks/plugins/local_auth_darwin/darwin"
+  media_kit_libs_ios_audio:
+    :path: ".symlinks/plugins/media_kit_libs_ios_audio/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   privacy_screen:
@@ -80,6 +85,7 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
   local_auth_darwin: c3ee6cce0a8d56be34c8ccb66ba31f7f180aaebb
+  media_kit_libs_ios_audio: 905e6323b72e65c63ab9262b2e473f52c024a3a8
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   privacy_screen: 3159a541f5d3a31bea916cfd4e58f9dc722b3fd4
   restart_app: 9cda5378aacc5000e3f66ee76a9201534e7d3ecf
@@ -88,6 +94,6 @@ SPEC CHECKSUMS:
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
-PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+PODFILE CHECKSUM: f79e1872da79a29354b04cf03619f8f3d69fe58e
 
 COCOAPODS: 1.16.2

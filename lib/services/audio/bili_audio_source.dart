@@ -47,8 +47,20 @@ class BiliAudioSource extends StreamAudioSource {
     _realCid = initCid;
   }
 
-  String _getMimeType() {
+  String _getMimeType(String? extension) {
     if (quality == 30251) return 'audio/flac';
+    if (extension != null) {
+      switch (extension.toLowerCase()) {
+        case 'flac':
+          return 'audio/flac';
+        case 'mp3':
+          return 'audio/mpeg';
+        case 'aac':
+          return 'audio/aac';
+        case 'm4a':
+          return 'audio/mp4';
+      }
+    }
     return 'audio/mp4';
   }
 
@@ -86,7 +98,7 @@ class BiliAudioSource extends StreamAudioSource {
               : (fileLen - startOffset),
           offset: startOffset,
           stream: file.openRead(startOffset, end),
-          contentType: _getMimeType(),
+          contentType: _getMimeType(null),
         );
       }
 
@@ -128,6 +140,7 @@ class BiliAudioSource extends StreamAudioSource {
       }
 
       Stream<List<int>> stream = response;
+
       if (enableCache && sourceLength != null && sourceLength > 0) {
         return _handleCacheStream(
           stream,
@@ -149,7 +162,11 @@ class BiliAudioSource extends StreamAudioSource {
       }
     } catch (e) {
       Log.e(_tag, "BiliAudioSource Request Failed: $e");
-      if (e.toString().contains("403") || e.toString().contains("404")) {
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains("403") ||
+          errorStr.contains("404") ||
+          errorStr.contains("resource") ||
+          errorStr.contains("unavailable")) {
         onFatalError?.call(bvid, _realCid, e.toString());
       }
       rethrow;
@@ -172,13 +189,26 @@ class BiliAudioSource extends StreamAudioSource {
     StreamSubscription? inputSubscription;
     IOSink? fileSink;
     bool isWriting = false;
+    int writtenBytes = 0;
+
     outputController = StreamController<List<int>>.broadcast(
       onCancel: () async {
         await inputSubscription?.cancel();
         if (isWriting && fileSink != null) {
           try {
+            await fileSink!.flush();
             await fileSink!.close();
-            if (await tempFile.exists()) {
+            if (writtenBytes > sourceLength * 0.8) {
+              Log.v(_tag, "Keeping partial cache ($writtenBytes/$sourceLength) for resume");
+              await _dbService.recordCacheAccess(
+                bvid,
+                cid,
+                quality,
+                status: CacheStatus.promoting.code,
+                fileSize: writtenBytes,
+                totalSize: sourceLength,
+              );
+            } else if (await tempFile.exists()) {
               await tempFile.delete();
               Log.v(_tag, "Download cancelled (Probe/Seek), temp file cleaned");
             }
@@ -192,7 +222,13 @@ class BiliAudioSource extends StreamAudioSource {
         if (!await tempFile.parent.exists()) {
           await tempFile.parent.create(recursive: true);
         }
-        if (await tempFile.exists()) await tempFile.delete();
+        if (await tempFile.exists()) {
+          final existingSize = await tempFile.length();
+          if (existingSize > 0 && existingSize < sourceLength) {
+            Log.v(_tag, "Found incomplete cache, will overwrite");
+          }
+          await tempFile.delete();
+        }
 
         fileSink = tempFile.openWrite();
         isWriting = true;
@@ -210,6 +246,7 @@ class BiliAudioSource extends StreamAudioSource {
         if (isWriting && fileSink != null) {
           try {
             fileSink!.add(data);
+            writtenBytes += data.length;
           } catch (e) {
             isWriting = false;
             try { fileSink?.close(); } catch (_) {}
@@ -226,11 +263,11 @@ class BiliAudioSource extends StreamAudioSource {
             await fileSink!.close();
 
             if (_downloadManager.isCacheEnabled) {
-              int writtenBytes = await tempFile.length();
-              if (writtenBytes == sourceLength) {
+              int finalSize = await tempFile.length();
+              if (finalSize == sourceLength) {
                 _promoteTempFile(tempFile, cid, sourceLength);
               } else {
-                Log.v(_tag, "Partial download ($writtenBytes/$sourceLength), skip cache.");
+                Log.v(_tag, "Partial download ($finalSize/$sourceLength), skip cache.");
                 _cleanupTempFile(tempFile);
               }
             } else {
@@ -271,8 +308,9 @@ class BiliAudioSource extends StreamAudioSource {
         quality,
       );
       final staticFile = File(staticPath);
-      if (!await staticFile.parent.exists())
+      if (!await staticFile.parent.exists()) {
         await staticFile.parent.create(recursive: true);
+      }
 
       if (await staticFile.exists()) await staticFile.delete();
 
@@ -286,6 +324,9 @@ class BiliAudioSource extends StreamAudioSource {
         fileSize: totalSize,
         totalSize: totalSize,
       );
+
+      await _downloadManager.onCacheFileAdded(totalSize);
+
     } catch (e) {
       Log.w(_tag, "Promote failed: $e");
       _cleanupTempFile(tempFile);

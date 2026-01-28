@@ -7,6 +7,7 @@ import 'package:utopia_music/main.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/services/audio/bili_audio_source.dart';
+import 'package:utopia_music/services/audio/ios_now_playing_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +19,7 @@ class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
   static const String _defaultAudioQualityKey = 'default_audio_quality';
   final StreamController<int> _actualQualityController =
-      StreamController<int>.broadcast();
+  StreamController<int>.broadcast();
 
   Stream<int> get actualQualityStream => _actualQualityController.stream;
 
@@ -28,6 +29,9 @@ class AudioPlayerService {
   final DownloadManager _downloadManager = DownloadManager();
   final AudioPlayer _player = AudioPlayer();
 
+  final IosNowPlayingService _iosNowPlayingService = IosNowPlayingService();
+  StreamSubscription? _positionSubscription;
+
   List<Song> _globalQueue = [];
   int _currentIndex = 0;
   bool _autoSkipInvalid = true;
@@ -36,13 +40,15 @@ class AudioPlayerService {
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
+  bool get _isIOS => !kIsWeb && Platform.isIOS;
+
   final StreamController<int> _indexController =
-      StreamController<int>.broadcast();
+  StreamController<int>.broadcast();
 
   Stream<int> get currentIndexStream => _indexController.stream;
 
   final StreamController<Map<String, dynamic>> _playbackErrorController =
-      StreamController<Map<String, dynamic>>.broadcast();
+  StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get playbackErrorStream =>
       _playbackErrorController.stream;
@@ -63,15 +69,25 @@ class AudioPlayerService {
       if (_isDesktop && state.processingState == ProcessingState.completed) {
         _handleDesktopAutoNext();
       }
+
+      if (_isIOS) {
+        _iosNowPlayingService.updatePlaybackState(state.playing);
+      }
     });
 
     _player.playbackEventStream.listen(
-      (event) {},
+          (event) {},
       onError: (Object e, StackTrace stackTrace) {
         Log.e(_tag, "Player codec error", e);
         _handleInvalidResourceAndPlayNext();
       },
     );
+
+    if (_isIOS) {
+      _positionSubscription = _player.positionStream.listen((position) {
+        _iosNowPlayingService.updatePosition(position);
+      });
+    }
   }
 
   void _handleDesktopAutoNext() {
@@ -163,6 +179,18 @@ class AudioPlayerService {
   Future<void> _init() async {
     await _loadSettings();
     await _downloadManager.init();
+
+    if (_isIOS) {
+      await _iosNowPlayingService.init();
+      _iosNowPlayingService.bindToPlayer(
+        _player,
+        onPlayCallback: () => resume(),
+        onPauseCallback: () => pause(),
+        onNextCallback: () => playNext(),
+        onPreviousCallback: () => playPrevious(),
+        onSeekCallback: (position) => _player.seek(position),
+      );
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -182,8 +210,8 @@ class AudioPlayerService {
 
   Song? get currentSong =>
       (_currentIndex >= 0 && _currentIndex < _globalQueue.length)
-      ? _globalQueue[_currentIndex]
-      : null;
+          ? _globalQueue[_currentIndex]
+          : null;
 
   AudioSource _createAudioSource(Song song) {
     return BiliAudioSource(
@@ -204,11 +232,11 @@ class AudioPlayerService {
   }
 
   Future<void> playWithQueue(
-    List<Song> queue,
-    int index, {
-    bool autoPlay = true,
-    Duration? initialPosition,
-  }) async {
+      List<Song> queue,
+      int index, {
+        bool autoPlay = true,
+        Duration? initialPosition,
+      }) async {
     try {
       _globalQueue = queue;
       _currentIndex = index;
@@ -228,17 +256,44 @@ class AudioPlayerService {
           initialPosition: initialPosition,
         );
       }
+
+      if (_isIOS && index < queue.length) {
+        _updateIosNowPlaying(queue[index]);
+      }
     } catch (e) {
       Log.e(_tag, "Error setting audio source", e);
     }
   }
 
+  Future<void> _updateIosNowPlaying(Song song, {int? currentIndex}) async {
+    if (!_isIOS) return;
+
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final duration = _player.duration ?? Duration.zero;
+    final position = _player.position;
+    final isPlaying = _player.playing;
+
+    await _iosNowPlayingService.updateNowPlaying(
+      song: song,
+      duration: duration,
+      position: position,
+      isPlaying: isPlaying,
+    );
+
+    final index = currentIndex ?? _currentIndex;
+    await _iosNowPlayingService.updateCommandState(
+      hasNext: index < _globalQueue.length - 1 || _player.loopMode == LoopMode.all,
+      hasPrevious: index > 0 || _player.loopMode == LoopMode.all,
+    );
+  }
+
   Future<void> _playListMobile(
-    List<Song> queue,
-    int index, {
-    bool autoPlay = true,
-    Duration? initialPosition,
-  }) async {
+      List<Song> queue,
+      int index, {
+        bool autoPlay = true,
+        Duration? initialPosition,
+      }) async {
     Log.v(_tag, "playListMobile");
     final List<AudioSource> sources = queue
         .map((s) => _createAudioSource(s))
@@ -267,10 +322,10 @@ class AudioPlayerService {
   }
 
   Future<void> _playSingleDesktop(
-    int index, {
-    bool autoPlay = true,
-    Duration? initialPosition,
-  }) async {
+      int index, {
+        bool autoPlay = true,
+        Duration? initialPosition,
+      }) async {
     if (index < 0 || index >= _globalQueue.length) return;
     final song = _globalQueue[index];
     final source = _createAudioSource(song);
@@ -394,6 +449,10 @@ class AudioPlayerService {
   Future<void> stop() async {
     Log.d(_tag, "stop");
     await _player.stop();
+
+    if (_isIOS) {
+      await _iosNowPlayingService.clearNowPlaying();
+    }
   }
 
   Future<void> playNext() async {
@@ -413,6 +472,10 @@ class AudioPlayerService {
     } else {
       if (_player.hasNext) {
         await _player.seekToNext();
+
+        if (_isIOS && _currentIndex + 1 < _globalQueue.length) {
+          _updateIosNowPlaying(_globalQueue[_currentIndex + 1]);
+        }
       }
     }
   }
@@ -428,6 +491,10 @@ class AudioPlayerService {
     } else {
       if (_player.hasPrevious) {
         await _player.seekToPrevious();
+
+        if (_isIOS && _currentIndex - 1 >= 0) {
+          _updateIosNowPlaying(_globalQueue[_currentIndex - 1]);
+        }
       }
     }
   }
@@ -501,6 +568,8 @@ class AudioPlayerService {
 
   void dispose() {
     Log.v(_tag, "dispose");
+    _positionSubscription?.cancel();
+    _iosNowPlayingService.dispose();
     _player.dispose();
     _indexController.close();
     _playbackErrorController.close();

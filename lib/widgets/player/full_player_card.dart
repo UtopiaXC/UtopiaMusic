@@ -514,7 +514,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
               Column(
                 children: [
                   SizedBox(height: topPadding + 12),
-                  // --- Title Bar ---
                   SizedBox(
                     height: kToolbarHeight,
                     child: NavigationToolbar(
@@ -540,7 +539,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                   color: themeData.textTheme.bodyLarge?.color,
                                 );
                                 if (widget.song.title.length > 15) {
-                                  // Simple length check optimization
                                   return Marquee(
                                     text: widget.song.title,
                                     style: textStyle,
@@ -601,7 +599,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     ),
                   ),
 
-                  // --- Main Content (Swipeable) ---
                   Expanded(
                     child: SwipeablePlayerCard(
                       key: _swipeKey,
@@ -642,7 +639,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     ),
                   ),
 
-                  // --- Controls with StreamBuilder ---
                   GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onHorizontalDragStart: (details) {
@@ -669,7 +665,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                      // 局部刷新：仅进度条和时间变化时重绘
                       child: StreamBuilder<Duration?>(
                         stream: playerProvider.player.durationStream,
                         builder: (context, durationSnapshot) {

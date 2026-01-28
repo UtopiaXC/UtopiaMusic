@@ -146,7 +146,6 @@ class AudioStreamApi {
                 url = url.replaceFirst('http://', 'https://');
               }
 
-              // 简单的后缀判断，仅用于 extension 字段，MIME 判断交给了 AudioStreamInfo getter
               String extension = 'm4s';
               if (url.contains('.m4s')) {
                 extension = 'm4s';
@@ -167,7 +166,6 @@ class AudioStreamApi {
             }
           }
         } else {
-          // 错误处理逻辑
           print(
             'GetAudioStream Error Code: ${data['code']}, Message: ${data['message']}',
           );

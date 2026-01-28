@@ -101,6 +101,9 @@ class DownloadManager {
   int _maxCacheSize = 500 * 1024 * 1024;
   int _maxConcurrentDownloads = 3;
   bool get isCacheEnabled => _maxCacheSize > 0;
+  bool _isCleaningUp = false;
+  int _pendingCacheSize = 0;
+  static const int _cleanupThreshold = 10 * 1024 * 1024;
 
   final List<_DownloadTask> _queue = [];
   int _activeDownloads = 0;
@@ -288,7 +291,7 @@ class DownloadManager {
     _maxCacheSize = mb * 1024 * 1024;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_maxCacheSizeKey, mb);
-    _performSmartCleanup();
+    await _performSmartCleanup();
   }
 
   Future<int> getUsedCacheSize() async {
@@ -317,6 +320,18 @@ class DownloadManager {
       } catch (_) {}
     }
     await _dbService.clearStaticCacheMeta();
+  }
+
+  Future<void> onCacheFileAdded(int fileSize) async {
+    _pendingCacheSize += fileSize;
+    if (_pendingCacheSize >= _cleanupThreshold) {
+      _pendingCacheSize = 0;
+      await _performSmartCleanup();
+    }
+  }
+
+  Future<void> performCleanupIfNeeded() async {
+    await _performSmartCleanup();
   }
 
   Future<void> startDownload(Song song, {int? quality}) async {
@@ -496,38 +511,93 @@ class DownloadManager {
   }
 
   Future<void> _performSmartCleanup() async {
-    if (_cacheDir == null) return;
-    try {
-      final metas = await _dbService.getCompletedCacheMeta();
-      if (metas.isEmpty) return;
+    if (_isCleaningUp) return;
+    _isCleaningUp = true;
 
-      int totalSize = 0;
-      for (var m in metas) {
-        int size = (m['file_size'] as int? ?? 0);
-        if (size <= 0) {
-          final path = getStaticCachePath(m['bvid'], m['cid'], m['quality']);
-          final f = File(path);
-          if (await f.exists()) size = await f.length();
-        }
-        totalSize += size;
+    try {
+      if (_cacheDir == null) await _initDirs();
+      if (_maxCacheSize <= 0) return;
+
+      final actualCacheSize = await getUsedCacheSize();
+
+      Log.d(_tag, "Cache cleanup check: actual=$actualCacheSize, max=$_maxCacheSize");
+
+      if (actualCacheSize <= _maxCacheSize) return;
+
+      Log.i(_tag, "Cache size ($actualCacheSize) exceeds limit ($_maxCacheSize), starting cleanup...");
+
+      final metas = await _dbService.getCompletedCacheMeta();
+      if (metas.isEmpty) {
+        await _cleanOrphanedCacheFiles();
+        return;
       }
 
-      if (totalSize <= _maxCacheSize) return;
-
       List<Map<String, dynamic>> sortedMetas = List.from(metas);
-      sortedMetas.sort((a, b) => _calculateScore(a, DateTime.now().millisecondsSinceEpoch).compareTo(_calculateScore(b, DateTime.now().millisecondsSinceEpoch)));
+      final now = DateTime.now().millisecondsSinceEpoch;
+      sortedMetas.sort((a, b) =>
+          _calculateScore(a, now).compareTo(_calculateScore(b, now)));
 
-      while (totalSize > _maxCacheSize * 0.8 && sortedMetas.isNotEmpty) {
-        final meta = sortedMetas.removeAt(0);
-        final fileName = _getStaticCacheFileName(meta['bvid'], meta['cid'], meta['quality']);
+      int currentSize = actualCacheSize;
+      final targetSize = (_maxCacheSize * 0.8).toInt();
+
+      for (var meta in sortedMetas) {
+        if (currentSize <= targetSize) break;
+
+        final fileName = _getStaticCacheFileName(
+            meta['bvid'], meta['cid'], meta['quality']);
         final file = File('$_cacheDir/$fileName');
+
         if (await file.exists()) {
-          totalSize -= await file.length();
-          await file.delete();
+          final fileSize = await file.length();
+          try {
+            await file.delete();
+            currentSize -= fileSize;
+            Log.v(_tag, "Deleted cache: $fileName ($fileSize bytes)");
+          } catch (e) {
+            Log.w(_tag, "Failed to delete cache file: $e");
+          }
         }
         await _dbService.removeCacheMeta(meta['key']);
       }
-    } catch (_) {}
+
+      Log.i(_tag, "Cache cleanup completed. Size: $actualCacheSize -> $currentSize");
+
+    } catch (e) {
+      Log.e(_tag, "Cache cleanup error: $e");
+    } finally {
+      _isCleaningUp = false;
+    }
+  }
+
+  Future<void> _cleanOrphanedCacheFiles() async {
+    if (_cacheDir == null) return;
+
+    try {
+      final dir = Directory(_cacheDir!);
+      if (!await dir.exists()) return;
+
+      await for (var entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.audio')) {
+          final fileName = entity.path.split('/').last;
+          final parts = fileName.replaceAll('song_', '').replaceAll('.audio', '').split('_');
+          if (parts.length >= 3) {
+            final bvid = parts[0];
+            final cid = int.tryParse(parts[1]) ?? 0;
+            final quality = int.tryParse(parts[2]) ?? 0;
+
+            final meta = await _dbService.getCacheMeta(bvid, cid, quality);
+            if (meta == null) {
+              try {
+                await entity.delete();
+                Log.v(_tag, "Deleted orphaned cache file: $fileName");
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    } catch (e) {
+      Log.w(_tag, "Error cleaning orphaned files: $e");
+    }
   }
 
   double _calculateScore(Map<String, dynamic> meta, int now) {
