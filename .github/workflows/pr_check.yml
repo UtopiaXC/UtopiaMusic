@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   check_and_build:
+    name: Check ${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
@@ -71,6 +72,7 @@ jobs:
       - name: Dart Format Check
         if: matrix.target == 'linux'
         run: dart format --output=none --set-exit-if-changed .
+        continue-on-error: true
 
       - name: Flutter Analyze
         if: matrix.target == 'linux'

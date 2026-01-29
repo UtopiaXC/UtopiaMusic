@@ -57,15 +57,19 @@ android {
     buildTypes {
         getByName("release") {
             val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-            val isCI = System.getenv("CI") == "true"
-            if (!keystorePath.isNullOrEmpty() && file(keystorePath).exists()) {
+            val hasValidKeystore = !keystorePath.isNullOrEmpty() && file(keystorePath).exists()
+            val isBuildingRelease = project.gradle.startParameter.taskNames.any {
+                it.contains("Release", ignoreCase = true)
+            }
+            if (hasValidKeystore) {
                 signingConfig = signingConfigs.getByName("release")
-            } else if (isCI) {
-                throw GradleException("CI Build Error: Keystore path not found or invalid. Check your Secrets.")
             } else {
+                if (isBuildingRelease && System.getenv("CI") == "true") {
+                    throw GradleException("CI Release Build Error: Keystore not found but Release build requested!")
+                }
                 signingConfig = signingConfigs.getByName("debug")
             }
-            //isMinifyEnabled = true
+            // isMinifyEnabled = true
         }
     }
 }
