@@ -288,6 +288,18 @@ class DiscoverPageState extends State<DiscoverPage>
                 tabAlignment: TabAlignment.start,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 onTap: handleTabTap,
+                dividerColor: Colors.transparent,
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                labelColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                unselectedLabelColor:
+                    Theme.of(context).colorScheme.onSurfaceVariant,
+                splashFactory: NoSplash.splashFactory,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
                 tabs: visibleCategories
                     .map((type) => Tab(text: _getCategoryTitle(context, type)))
                     .toList(),

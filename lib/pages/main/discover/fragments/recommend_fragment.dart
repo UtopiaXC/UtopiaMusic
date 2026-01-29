@@ -145,6 +145,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
         scrollController: widget.scrollController,
         isLoading: _isLoading,
         isLoadingMore: _isLoadingMore,
+        useCardStyle: true,
         emptyWidget: ListView(
           controller: widget.scrollController,
           physics: const AlwaysScrollableScrollPhysics(),

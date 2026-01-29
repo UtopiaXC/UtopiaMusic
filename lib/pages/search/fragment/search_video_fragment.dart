@@ -169,6 +169,7 @@ class _SearchVideoFragmentState extends State<SearchVideoFragment>
       songs: _songs,
       scrollController: _scrollController,
       isLoadingMore: _isLoadingMore,
+      useCardStyle: true,
     );
   }
 }

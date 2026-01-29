@@ -111,7 +111,7 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment>
         controller: widget.scrollController,
         itemCount: _songs.length,
         itemBuilder: (context, index) {
-          return SongListItem(song: _songs[index], contextList: _songs);
+          return SongListItem(song: _songs[index], contextList: _songs, useCardStyle: true);
         },
       ),
     );

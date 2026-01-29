@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
+import 'package:utopia_music/widgets/user/user_list_item.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
@@ -148,12 +149,11 @@ class _SubscribeFragmentState extends State<SubscribeFragment>
                   }
 
                   final user = _users[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: NetworkImage(user['face'] ?? ''),
-                    ),
-                    title: Text(user['uname'] ?? ''),
-                    subtitle: Text(user['sign'] ?? ''),
+                  return UserListItem(
+                    avatarUrl: user['face'] ?? '',
+                    name: user['uname'] ?? '',
+                    subtitle: user['sign'] ?? '',
+                    useCardStyle: true,
                     onTap: () {
                       showModalBottomSheet(
                         context: context,

@@ -12,6 +12,7 @@ class SongList extends StatelessWidget {
   final Widget? emptyWidget;
   final List<PopupMenuEntry<String>>? itemMenuItems;
   final void Function(String, Song)? onItemMenuSelected;
+  final bool useCardStyle;
 
   const SongList({
     super.key,
@@ -23,6 +24,7 @@ class SongList extends StatelessWidget {
     this.emptyWidget,
     this.itemMenuItems,
     this.onItemMenuSelected,
+    this.useCardStyle = false,
   });
 
   @override
@@ -41,9 +43,9 @@ class SongList extends StatelessWidget {
       child: ListView.separated(
         controller: scrollController,
         itemCount: songs.length + 1,
-        padding: const EdgeInsets.only(bottom: 120, top: 8),
+        padding: EdgeInsets.only(bottom: 120, top: useCardStyle ? 4 : 8),
         separatorBuilder: (context, index) =>
-            const Divider(height: 1, indent: 72),
+            useCardStyle ? const SizedBox.shrink() : const Divider(height: 1, indent: 72),
         itemBuilder: (context, index) {
           if (index == songs.length) {
             if (isLoadingMore) {
@@ -86,6 +88,7 @@ class SongList extends StatelessWidget {
             onMenuSelected: onItemMenuSelected != null
                 ? (value) => onItemMenuSelected!(value, song)
                 : null,
+            useCardStyle: useCardStyle,
           );
         },
       ),

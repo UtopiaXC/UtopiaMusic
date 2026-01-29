@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
+import 'package:utopia_music/widgets/user/user_list_item.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class SearchUserFragment extends StatefulWidget {
@@ -115,10 +116,11 @@ class _SearchUserFragmentState extends State<SearchUserFragment>
             cover = 'https:$cover';
           }
 
-          return ListTile(
-            leading: CircleAvatar(backgroundImage: NetworkImage(cover)),
-            title: Text(user['uname'] ?? ''),
-            subtitle: Text(user['usign'] ?? ''),
+          return UserListItem(
+            avatarUrl: cover,
+            name: user['uname'] ?? '',
+            subtitle: user['usign'] ?? '',
+            useCardStyle: true,
             onTap: () {
               showModalBottomSheet(
                 context: context,

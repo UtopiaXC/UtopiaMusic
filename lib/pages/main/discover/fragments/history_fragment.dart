@@ -205,7 +205,7 @@ class _HistoryFragmentState extends State<HistoryFragment>
               }
 
               final song = _songs[index];
-              return SongListItem(song: song, contextList: _songs);
+              return SongListItem(song: song, contextList: _songs, useCardStyle: true);
             },
           ),
         );

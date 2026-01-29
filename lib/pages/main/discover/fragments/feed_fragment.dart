@@ -191,7 +191,7 @@ class _FeedFragmentState extends State<FeedFragment>
                   );
                 }
               }
-              return SongListItem(song: _songs[index], contextList: _songs);
+              return SongListItem(song: _songs[index], contextList: _songs, useCardStyle: true);
             },
           ),
         );
