@@ -41,14 +41,24 @@ class RecommendationManager {
     required Function() notifyLoaded,
   }) async {
     Log.v(_tag, "checkAndLoad");
-    if (!_enabled || _isLoading) return;
+    if (!_enabled) {
+      Log.v(_tag, "AutoPlay disabled, skipping.");
+      return;
+    }
+    if (_isLoading) {
+      Log.v(_tag, "Already loading, skipping.");
+      return;
+    }
 
     _isLoading = true;
     notifyLoading();
 
     try {
       final context = navigatorKey.currentContext;
-      if (context == null) return;
+      if (context == null) {
+        Log.w(_tag, "Context is null, cannot fetch related videos.");
+        return;
+      }
 
       final related = await _videoDetailApi.getRelatedVideos(
         context,
@@ -57,6 +67,8 @@ class RecommendationManager {
 
       if (related.isNotEmpty) {
         await _updatePlaylistResetHistory(currentSong, related);
+      } else {
+        Log.w(_tag, "No related videos found.");
       }
     } catch (e) {
       Log.e("RecommendationManager", "AutoPlay Error", e);

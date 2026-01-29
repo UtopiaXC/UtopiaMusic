@@ -3,7 +3,7 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
-import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
+import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
 
 class SongListItem extends StatelessWidget {
   final Song song;

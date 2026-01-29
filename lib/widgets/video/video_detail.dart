@@ -12,7 +12,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
 import 'package:utopia_music/widgets/video/video_detail_info.dart';
 import 'package:utopia_music/widgets/video/favorite_sheet.dart';
-import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
+import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';

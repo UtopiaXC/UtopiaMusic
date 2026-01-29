@@ -9,7 +9,7 @@ import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
-import 'package:utopia_music/widgets/dialogs/play_options_sheet.dart';
+import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class SpaceSheet extends StatefulWidget {

@@ -20,6 +20,51 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "LYRICS_CARD";
 
+class _LyricsCache {
+  static const int _maxCacheSize = 3;
+  static final Map<String, List<SubtitleItem>> _subtitles = {};
+  static final Map<String, List<model.DanmakuItem>> _danmakus = {};
+
+  static void setSubtitles(String key, List<SubtitleItem> data) {
+    if (_subtitles.containsKey(key)) {
+      _subtitles.remove(key);
+    } else if (_subtitles.length >= _maxCacheSize) {
+      _subtitles.remove(_subtitles.keys.first);
+    }
+    _subtitles[key] = data;
+  }
+
+  static List<SubtitleItem>? getSubtitles(String key) {
+    final data = _subtitles.remove(key);
+    if (data != null) {
+      _subtitles[key] = data;
+    }
+    return data;
+  }
+
+  static void setDanmakus(String key, List<model.DanmakuItem> data) {
+    if (_danmakus.containsKey(key)) {
+      _danmakus.remove(key);
+    } else if (_danmakus.length >= _maxCacheSize) {
+      _danmakus.remove(_danmakus.keys.first);
+    }
+    _danmakus[key] = data;
+  }
+
+  static List<model.DanmakuItem>? getDanmakus(String key) {
+    final data = _danmakus.remove(key);
+    if (data != null) {
+      _danmakus[key] = data;
+    }
+    return data;
+  }
+
+  static void clear() {
+    _subtitles.clear();
+    _danmakus.clear();
+  }
+}
+
 class LyricsPage extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onPlaylist;
@@ -30,7 +75,8 @@ class LyricsPage extends StatefulWidget {
   State<LyricsPage> createState() => _LyricsPageState();
 }
 
-class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
+class _LyricsPageState extends State<LyricsPage>
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   bool _isDragging = false;
   double _dragValue = 0.0;
   late TabController _tabController;
@@ -57,6 +103,9 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
   Timer? _subtitleTimer;
   Timer? _danmakuTimer;
   StreamSubscription? _danmakuSyncSubscription;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -126,12 +175,62 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     _subtitleTimer?.cancel();
     _danmakuTimer?.cancel();
 
-    _subtitleTimer = Timer(const Duration(milliseconds: 500), () {
-      if (mounted) _loadSubtitles(song, currentId);
-    });
+    final cachedSubtitles = _LyricsCache.getSubtitles(currentId);
+    final cachedDanmakus = _LyricsCache.getDanmakus(currentId);
 
-    _danmakuTimer = Timer(const Duration(milliseconds: 800), () {
-      if (mounted) _loadDanmaku(song, currentId);
+    if (cachedSubtitles != null) {
+      Log.v(_tag, "Using cached subtitles for $currentId");
+      setState(() {
+        _subtitles = cachedSubtitles;
+        _hasSubtitles = cachedSubtitles.isNotEmpty;
+        _isLoadingSubtitles = false;
+      });
+    } else {
+      setState(() => _isLoadingSubtitles = true);
+    }
+
+    if (cachedDanmakus != null) {
+      Log.v(_tag, "Using cached danmakus for $currentId");
+      setState(() {
+        _rawDanmakus = cachedDanmakus;
+        _hasDanmaku = cachedDanmakus.isNotEmpty;
+        _isLoadingDanmaku = false;
+      });
+      if (mounted) {
+        _resetDanmakuCursor(
+          playerProvider.player.position.inMilliseconds / 1000.0,
+        );
+      }
+    } else {
+      setState(() => _isLoadingDanmaku = true);
+    }
+
+    if (cachedSubtitles != null && cachedDanmakus != null) {
+      return;
+    }
+
+    _subtitleTimer = Timer(const Duration(milliseconds: 300), () async {
+      if (!mounted) return;
+      if (_currentSongId != currentId) return;
+
+      int realCid = song.cid;
+      if (realCid == 0) {
+        realCid = await _resolveCid(song);
+      }
+
+      if (!mounted || _currentSongId != currentId) return;
+
+      if (cachedSubtitles == null) {
+        await _loadSubtitles(song, currentId, realCid);
+      }
+
+      if (cachedDanmakus == null) {
+        _danmakuTimer = Timer(const Duration(milliseconds: 300), () {
+          if (mounted && _currentSongId == currentId) {
+            _loadDanmaku(song, currentId, realCid);
+          }
+        });
+      }
     });
   }
 
@@ -149,51 +248,65 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     return 0;
   }
 
-  Future<void> _loadSubtitles(Song song, String originalId) async {
-    Log.v(_tag, "_loadSubtitles, bvid: ${song.bvid}, cid: ${song.cid}");
+  Future<void> _loadSubtitles(Song song, String originalId, int cid) async {
+    Log.v(_tag, "_loadSubtitles, bvid: ${song.bvid}, cid: $cid");
     if (_currentSongId != originalId) return;
-    final int realCid = await _resolveCid(song);
-    if (_currentSongId != originalId || !mounted) return;
 
-    if (realCid == 0) {
-      setState(() => _isLoadingSubtitles = false);
+    if (cid == 0) {
+      if (mounted) setState(() => _isLoadingSubtitles = false);
       return;
     }
-    final subtitles = await _subtitleApi.getSubtitles(song.bvid, realCid);
-    if (mounted && _currentSongId == originalId) {
-      setState(() {
-        _subtitles = subtitles;
-        _hasSubtitles = subtitles.isNotEmpty;
-        _isLoadingSubtitles = false;
-      });
+
+    try {
+      final subtitles = await _subtitleApi.getSubtitles(song.bvid, cid);
+      if (mounted && _currentSongId == originalId) {
+        _LyricsCache.setSubtitles(originalId, subtitles);
+        setState(() {
+          _subtitles = subtitles;
+          _hasSubtitles = subtitles.isNotEmpty;
+          _isLoadingSubtitles = false;
+        });
+      }
+    } catch (e) {
+      Log.w(_tag, "Failed to load subtitles: $e");
+      if (mounted && _currentSongId == originalId) {
+        setState(() => _isLoadingSubtitles = false);
+      }
     }
   }
 
-  Future<void> _loadDanmaku(Song song, String originalId) async {
-    Log.v(_tag, "_loadDanmaku, bvid: ${song.bvid}, cid: ${song.cid}");
+  Future<void> _loadDanmaku(Song song, String originalId, int cid) async {
+    Log.v(_tag, "_loadDanmaku, bvid: ${song.bvid}, cid: $cid");
     if (_currentSongId != originalId) return;
-    final int realCid = await _resolveCid(song);
-    if (_currentSongId != originalId || !mounted) return;
 
-    if (realCid == 0) {
-      setState(() => _isLoadingDanmaku = false);
+    if (cid == 0) {
+      if (mounted) setState(() => _isLoadingDanmaku = false);
       return;
     }
-    final danmakus = await _danmakuApi.getDanmaku(realCid);
-    if (mounted && _currentSongId == originalId) {
-      setState(() {
-        _rawDanmakus = danmakus;
-        _hasDanmaku = danmakus.isNotEmpty;
-        _isLoadingDanmaku = false;
-      });
-      if (mounted) {
-        _resetDanmakuCursor(
-          Provider.of<PlayerProvider>(
-                context,
-                listen: false,
-              ).player.position.inMilliseconds /
-              1000.0,
-        );
+
+    try {
+      final danmakus = await _danmakuApi.getDanmaku(cid);
+      if (mounted && _currentSongId == originalId) {
+        _LyricsCache.setDanmakus(originalId, danmakus);
+        setState(() {
+          _rawDanmakus = danmakus;
+          _hasDanmaku = danmakus.isNotEmpty;
+          _isLoadingDanmaku = false;
+        });
+        if (mounted) {
+          _resetDanmakuCursor(
+            Provider.of<PlayerProvider>(
+                  context,
+                  listen: false,
+                ).player.position.inMilliseconds /
+                1000.0,
+          );
+        }
+      }
+    } catch (e) {
+      Log.w(_tag, "Failed to load danmaku: $e");
+      if (mounted && _currentSongId == originalId) {
+        setState(() => _isLoadingDanmaku = false);
       }
     }
   }
@@ -294,6 +407,7 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     // Log.v(_tag, "build");
     final playerProvider = Provider.of<PlayerProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
@@ -526,9 +640,15 @@ class _LyricsPageState extends State<LyricsPage> with TickerProviderStateMixin {
     }
 
     return ScrollablePositionedList.builder(
+      key: ValueKey(_subtitles),
       itemCount: _subtitles.length + 2,
       itemScrollController: _itemScrollController,
       itemPositionsListener: _itemPositionsListener,
+      initialScrollIndex:
+          (_currentSubtitleIndex > -1 &&
+              _currentSubtitleIndex < _subtitles.length)
+          ? _currentSubtitleIndex + 1
+          : 0,
       physics: const ClampingScrollPhysics(),
       itemBuilder: (context, index) {
         if (index == 0 || index == _subtitles.length + 1) {

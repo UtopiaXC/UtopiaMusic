@@ -96,6 +96,7 @@ class PlayerProvider extends ChangeNotifier {
     );
     _recommendationManager = RecommendationManager(
       onPlaylistUpdate: (newPlaylist) async {
+        Log.i(_tag, "onPlaylistUpdate: newPlaylist length = ${newPlaylist.length}");
         await _databaseService.replacePlaylist(newPlaylist);
         await _reloadPlaylistFromDb();
         if (_currentSong != null) {
@@ -103,25 +104,6 @@ class PlayerProvider extends ChangeNotifier {
         }
       },
     );
-    // );
-    // _recommendationManager = RecommendationManager(
-    //   onPlaylistUpdate: (newPlaylist) async {
-    //     await _databaseService.replacePlaylist(newPlaylist);
-    //     await _reloadPlaylistFromDb();
-    //     if (_currentSong != null) {
-    //       int newIndex = _playlist.indexWhere(
-    //         (s) =>
-    //             s.bvid == _currentSong!.bvid &&
-    //             (s.cid == _currentSong!.cid ||
-    //                 s.cid == 0 ||
-    //                 _currentSong!.cid == 0),
-    //       );
-    //
-    //       if (newIndex == -1) newIndex = 0;
-    //       await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
-    //     }
-    //   },
-    //);
 
     _sleepTimerManager = SleepTimerManager(
       audioPlayerService: _audioPlayerService,
@@ -234,6 +216,7 @@ class PlayerProvider extends ChangeNotifier {
     Log.v(_tag, "_reloadPlaylistFromDb");
     bool shuffle = _playMode == PlayMode.shuffle;
     _playlist = await _databaseService.getPlaylist(isShuffleMode: shuffle);
+    Log.i(_tag, "_reloadPlaylistFromDb: loaded ${_playlist.length} songs");
     notifyListeners();
   }
 
@@ -261,23 +244,28 @@ class PlayerProvider extends ChangeNotifier {
     );
 
     try {
-      List<Song> newSongs = List.from(songs);
-      int existingIndex = newSongs.indexWhere(
-        (s) => s.bvid == initialSong.bvid && s.cid == initialSong.cid,
-      );
-
-      if (existingIndex == -1) {
-        existingIndex = newSongs.indexWhere(
-          (s) =>
-              s.bvid == initialSong.bvid &&
-              (s.cid == 0 || initialSong.cid == 0),
-        );
-      }
-
-      if (existingIndex != -1) {
-        newSongs[existingIndex] = initialSong;
+      List<Song> newSongs;
+      if (recommendationAutoPlay) {
+        newSongs = [initialSong];
       } else {
-        newSongs.insert(0, initialSong);
+        newSongs = List.from(songs);
+        int existingIndex = newSongs.indexWhere(
+          (s) => s.bvid == initialSong.bvid && s.cid == initialSong.cid,
+        );
+
+        if (existingIndex == -1) {
+          existingIndex = newSongs.indexWhere(
+            (s) =>
+                s.bvid == initialSong.bvid &&
+                (s.cid == 0 || initialSong.cid == 0),
+          );
+        }
+
+        if (existingIndex != -1) {
+          newSongs[existingIndex] = initialSong;
+        } else {
+          newSongs.insert(0, initialSong);
+        }
       }
 
       await _databaseService.replacePlaylist(newSongs);
@@ -292,6 +280,18 @@ class PlayerProvider extends ChangeNotifier {
 
       await _startPlay(index);
       expandPlayer();
+
+      if (recommendationAutoPlay) {
+        Log.i(_tag, "Triggering manual recommendation check after setPlaylistAndPlay");
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _recommendationManager.checkAndLoad(
+            currentSong: initialSong,
+            currentPlaylist: _playlist,
+            notifyLoading: notifyListeners,
+            notifyLoaded: notifyListeners,
+          );
+        });
+      }
     } catch (e) {
       Log.e(_tag, "setPlaylistAndPlay error", e);
     }
@@ -548,6 +548,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> setRecommendationAutoPlay(bool value) async {
     Log.v(_tag, "setRecommendationAutoPlay, value: $value");
     await _recommendationManager.setEnabled(value);
+    notifyListeners();
     if (value && _currentSong != null) {
       _recommendationManager.checkAndLoad(
         currentSong: _currentSong!,
@@ -606,7 +607,7 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> closePlayer() async {
     Log.v(_tag, "closePlayer");
-    await _audioPlayerService.stop();
+    await _audioPlayerService.resetState();
     _currentSong = null;
     _playlist = [];
     await _databaseService.clearPlaylist();
