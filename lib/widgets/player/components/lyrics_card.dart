@@ -21,24 +21,36 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "LYRICS_CARD";
 
+class _MergedDanmaku {
+  String content;
+  double time;
+  int count;
+
+  _MergedDanmaku({
+    required this.content,
+    required this.time,
+    required this.count,
+  });
+}
+
 class _LyricsCache {
   static const int _maxCacheSize = 3;
-  static final Map<String, List<SubtitleItem>> _subtitles = {};
+  static final Map<String, SubtitleResult> _subtitleResults = {};
   static final Map<String, List<model.DanmakuItem>> _danmakus = {};
 
-  static void setSubtitles(String key, List<SubtitleItem> data) {
-    if (_subtitles.containsKey(key)) {
-      _subtitles.remove(key);
-    } else if (_subtitles.length >= _maxCacheSize) {
-      _subtitles.remove(_subtitles.keys.first);
+  static void setSubtitleResult(String key, SubtitleResult data) {
+    if (_subtitleResults.containsKey(key)) {
+      _subtitleResults.remove(key);
+    } else if (_subtitleResults.length >= _maxCacheSize) {
+      _subtitleResults.remove(_subtitleResults.keys.first);
     }
-    _subtitles[key] = data;
+    _subtitleResults[key] = data;
   }
 
-  static List<SubtitleItem>? getSubtitles(String key) {
-    final data = _subtitles.remove(key);
+  static SubtitleResult? getSubtitleResult(String key) {
+    final data = _subtitleResults.remove(key);
     if (data != null) {
-      _subtitles[key] = data;
+      _subtitleResults[key] = data;
     }
     return data;
   }
@@ -61,7 +73,7 @@ class _LyricsCache {
   }
 
   static void clear() {
-    _subtitles.clear();
+    _subtitleResults.clear();
     _danmakus.clear();
   }
 }
@@ -84,9 +96,14 @@ class _LyricsPageState extends State<LyricsPage>
   final SubtitleApi _subtitleApi = SubtitleApi();
   final DanmakuApi _danmakuApi = DanmakuApi();
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
+
+  // Subtitle state
+  SubtitleResult? _subtitleResult;
   List<SubtitleItem> _subtitles = [];
   bool _isLoadingSubtitles = false;
   bool _hasSubtitles = false;
+
+  // Danmaku state
   List<model.DanmakuItem> _rawDanmakus = [];
   bool _isLoadingDanmaku = false;
   bool _hasDanmaku = false;
@@ -114,6 +131,8 @@ class _LyricsPageState extends State<LyricsPage>
     Log.v(_tag, "initState");
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final settingsProvider = Provider.of<SettingsProvider>(
       context,
@@ -145,9 +164,14 @@ class _LyricsPageState extends State<LyricsPage>
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateWakelock());
   }
 
+  void _onTabChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     Log.v(_tag, "dispose");
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _subtitleTimer?.cancel();
     _danmakuTimer?.cancel();
@@ -178,6 +202,7 @@ class _LyricsPageState extends State<LyricsPage>
     _danmakuTimer?.cancel();
 
     setState(() {
+      _subtitleResult = null;
       _subtitles = [];
       _isLoadingSubtitles = true;
       _hasSubtitles = false;
@@ -205,14 +230,15 @@ class _LyricsPageState extends State<LyricsPage>
     _subtitleTimer?.cancel();
     _danmakuTimer?.cancel();
 
-    final cachedSubtitles = _LyricsCache.getSubtitles(currentId);
+    final cachedResult = _LyricsCache.getSubtitleResult(currentId);
     final cachedDanmakus = _LyricsCache.getDanmakus(currentId);
 
-    if (cachedSubtitles != null) {
-      Log.v(_tag, "Using cached subtitles for $currentId");
+    if (cachedResult != null) {
+      Log.v(_tag, "Using cached subtitle result for $currentId");
       setState(() {
-        _subtitles = cachedSubtitles;
-        _hasSubtitles = cachedSubtitles.isNotEmpty;
+        _subtitleResult = cachedResult;
+        _subtitles = cachedResult.currentItems ?? [];
+        _hasSubtitles = cachedResult.hasSubtitles;
         _isLoadingSubtitles = false;
       });
     } else {
@@ -235,7 +261,7 @@ class _LyricsPageState extends State<LyricsPage>
       setState(() => _isLoadingDanmaku = true);
     }
 
-    if (cachedSubtitles != null && cachedDanmakus != null) {
+    if (cachedResult != null && cachedDanmakus != null) {
       return;
     }
 
@@ -250,7 +276,7 @@ class _LyricsPageState extends State<LyricsPage>
 
       if (!mounted || _currentSongId != currentId) return;
 
-      if (cachedSubtitles == null) {
+      if (cachedResult == null) {
         await _loadSubtitles(song, currentId, realCid);
       }
 
@@ -288,12 +314,13 @@ class _LyricsPageState extends State<LyricsPage>
     }
 
     try {
-      final subtitles = await _subtitleApi.getSubtitles(song.bvid, cid);
+      final result = await _subtitleApi.getSubtitleResult(song.bvid, cid);
       if (mounted && _currentSongId == originalId) {
-        _LyricsCache.setSubtitles(originalId, subtitles);
+        _LyricsCache.setSubtitleResult(originalId, result);
         setState(() {
-          _subtitles = subtitles;
-          _hasSubtitles = subtitles.isNotEmpty;
+          _subtitleResult = result;
+          _subtitles = result.currentItems ?? [];
+          _hasSubtitles = result.hasSubtitles;
           _isLoadingSubtitles = false;
         });
       }
@@ -341,8 +368,291 @@ class _LyricsPageState extends State<LyricsPage>
     }
   }
 
+  /// Switch to a different subtitle track
+  Future<void> _switchSubtitleTrack(int index) async {
+    if (_subtitleResult == null ||
+        index < 0 ||
+        index >= _subtitleResult!.tracks.length) {
+      return;
+    }
+
+    final track = _subtitleResult!.tracks[index];
+
+    // Load content if not cached
+    if (track.cachedItems == null) {
+      setState(() => _isLoadingSubtitles = true);
+      await _subtitleApi.loadTrackContent(track);
+    }
+
+    setState(() {
+      _subtitleResult!.selectedIndex = index;
+      _subtitles = track.cachedItems ?? [];
+      _hasSubtitles = _subtitles.isNotEmpty;
+      _currentSubtitleIndex = -1;
+      _isLoadingSubtitles = false;
+    });
+  }
+
+  void _showSubtitleSwitcher(BuildContext context) {
+    if (_subtitleResult == null || _subtitleResult!.tracks.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('没有可切换的字幕')));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.translate),
+                    const SizedBox(width: 12),
+                    Text(
+                      '切换字幕',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ...List.generate(_subtitleResult!.tracks.length, (index) {
+                final track = _subtitleResult!.tracks[index];
+                final isSelected = index == _subtitleResult!.selectedIndex;
+                return ListTile(
+                  leading: Icon(
+                    track.type == SubtitleType.ai
+                        ? Icons.smart_toy_outlined
+                        : Icons.person_outline,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                  title: Text(
+                    track.lanDoc,
+                    style: TextStyle(
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                  ),
+                  subtitle: Text(
+                    track.typeLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: track.type == SubtitleType.ai
+                          ? Colors.orange
+                          : Colors.green,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? Icon(
+                          Icons.check,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _switchSubtitleTrack(index);
+                  },
+                );
+              }),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDanmakuList(BuildContext context) {
+    if (_rawDanmakus.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('没有弹幕')));
+      return;
+    }
+
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+
+    // Merge duplicate danmaku at the same time
+    final mergedDanmakus = _mergeDuplicateDanmakus(_rawDanmakus);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.list),
+                      const SizedBox(width: 12),
+                      Text(
+                        '弹幕列表 (${_rawDanmakus.length})',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      if (mergedDanmakus.length != _rawDanmakus.length) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '合并后 ${mergedDanmakus.length}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Scrollbar(
+                    controller: scrollController,
+                    thumbVisibility: true,
+                    interactive: true,
+                    thickness: 6,
+                    radius: const Radius.circular(3),
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: mergedDanmakus.length,
+                      itemBuilder: (context, index) {
+                        final item = mergedDanmakus[index];
+                        final time = Duration(
+                          milliseconds: (item.time * 1000).toInt(),
+                        );
+                        final timeStr = _formatDuration(time);
+
+                        return ListTile(
+                          dense: true,
+                          leading: Text(
+                            timeStr,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                            ),
+                          ),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.content,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (item.count > 1) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  'x${item.count}',
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            playerProvider.player.seek(time);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Merge duplicate danmaku content (same text at similar time)
+  List<_MergedDanmaku> _mergeDuplicateDanmakus(
+    List<model.DanmakuItem> danmakus,
+  ) {
+    final Map<String, _MergedDanmaku> merged = {};
+
+    for (var d in danmakus) {
+      // Use content as key (merge all identical content regardless of time)
+      // Or use time bucket + content for time-sensitive merging
+      final key = d.content;
+
+      if (merged.containsKey(key)) {
+        merged[key]!.count++;
+        // Keep the earliest time
+        if (d.time < merged[key]!.time) {
+          merged[key]!.time = d.time;
+        }
+      } else {
+        merged[key] = _MergedDanmaku(
+          content: d.content,
+          time: d.time,
+          count: 1,
+        );
+      }
+    }
+
+    // Sort by time
+    final result = merged.values.toList();
+    result.sort((a, b) => a.time.compareTo(b.time));
+    return result;
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   void _syncDanmaku(Duration position) {
-    // Log.v(_tag, "_syncDanmaku, position: ${position.inMilliseconds}");
     if (_rawDanmakus.isEmpty || _danmakuController == null) return;
 
     final double currentSeconds = position.inMilliseconds / 1000.0;
@@ -386,7 +696,6 @@ class _LyricsPageState extends State<LyricsPage>
   }
 
   bool _calculateSubtitleIndex(Duration position) {
-    // Log.v(_tag, "_calculateSubtitleIndex, position: ${position.inMilliseconds}",);
     if (_subtitles.isEmpty) return false;
     final seconds = position.inMilliseconds / 1000.0;
     int index = -1;
@@ -438,7 +747,6 @@ class _LyricsPageState extends State<LyricsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    // Log.v(_tag, "build");
     final playerProvider = Provider.of<PlayerProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final song = playerProvider.currentSong;
@@ -465,6 +773,9 @@ class _LyricsPageState extends State<LyricsPage>
     final isDarkMode = themeData.brightness == Brightness.dark;
     final bool useLightText = isDarkMode || isBlurMode;
 
+    // Determine which action button to show
+    final bool isOnSubtitleTab = _tabController.index == 0;
+
     return Theme(
       data: themeData,
       child: Stack(
@@ -490,70 +801,124 @@ class _LyricsPageState extends State<LyricsPage>
                 children: [
                   Column(
                     children: [
-                      SizedBox(height: topPadding + 16),
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        width: 200,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: useLightText
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: TabBar(
-                          controller: _tabController,
-                          indicator: BoxDecoration(
-                            color: themeData.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          labelColor: themeData.colorScheme.onPrimary,
-                          unselectedLabelColor: useLightText
-                              ? Colors.white.withValues(alpha: 0.9)
-                              : Colors.black54,
-                          dividerColor: Colors.transparent,
-                          tabs: [
-                            Tab(text: S.of(context).common_ai_subtitle),
-                            Tab(text: S.of(context).common_danmuku),
+                      SizedBox(height: topPadding + 8),
+                      // Header row: back button + centered tab capsule + action button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            // Left: Back button
+                            IconButton(
+                              onPressed: widget.onBack,
+                              icon: Icon(
+                                Icons.keyboard_arrow_down,
+                                color: useLightText
+                                    ? Colors.white.withValues(alpha: 0.9)
+                                    : themeData.iconTheme.color,
+                                size: 28,
+                              ),
+                              tooltip: S.of(context).common_retract,
+                            ),
+                            // Center: Tab capsule (expanded to take remaining space)
+                            Expanded(
+                              child: Center(
+                                child: Container(
+                                  width: 200,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: useLightText
+                                        ? Colors.white.withValues(alpha: 0.1)
+                                        : Colors.black.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: TabBar(
+                                    controller: _tabController,
+                                    indicator: BoxDecoration(
+                                      color: themeData.colorScheme.primary,
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    indicatorSize: TabBarIndicatorSize.tab,
+                                    labelColor: themeData.colorScheme.onPrimary,
+                                    unselectedLabelColor: useLightText
+                                        ? Colors.white.withValues(alpha: 0.9)
+                                        : Colors.black54,
+                                    dividerColor: Colors.transparent,
+                                    tabs: [
+                                      Tab(
+                                        text: S.of(context).common_ai_subtitle,
+                                      ),
+                                      Tab(text: S.of(context).common_danmuku),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Right: Action button
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: IconButton(
+                                key: ValueKey(isOnSubtitleTab),
+                                onPressed: () {
+                                  if (isOnSubtitleTab) {
+                                    _showSubtitleSwitcher(context);
+                                  } else {
+                                    _showDanmakuList(context);
+                                  }
+                                },
+                                icon: Icon(
+                                  isOnSubtitleTab
+                                      ? Icons.translate
+                                      : Icons.list,
+                                  color: useLightText
+                                      ? Colors.white.withValues(alpha: 0.9)
+                                      : Colors.black54,
+                                ),
+                                tooltip: isOnSubtitleTab ? '切换字幕' : '弹幕列表',
+                              ),
+                            ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: 8),
 
                       Expanded(
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            StreamBuilder<Duration>(
-                              stream: playerProvider.player.positionStream,
-                              builder: (context, snapshot) {
-                                final position = snapshot.data ?? Duration.zero;
-                                if (_hasSubtitles && !_isDragging) {
-                                  bool changed = _calculateSubtitleIndex(
-                                    position,
-                                  );
-                                  if (changed &&
-                                      _autoScroll &&
-                                      _currentSubtitleIndex != -1) {
-                                    WidgetsBinding.instance
-                                        .addPostFrameCallback((_) {
-                                          if (_itemScrollController
-                                              .isAttached) {
-                                            _itemScrollController.scrollTo(
-                                              index: _currentSubtitleIndex + 1,
-                                              duration: const Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              curve: Curves.easeInOut,
-                                              alignment: 0.4,
-                                            );
-                                          }
-                                        });
+                            _KeepAliveWrapper(
+                              child: StreamBuilder<Duration>(
+                                stream: playerProvider.player.positionStream,
+                                builder: (context, snapshot) {
+                                  final position =
+                                      snapshot.data ?? Duration.zero;
+                                  if (_hasSubtitles && !_isDragging) {
+                                    bool changed = _calculateSubtitleIndex(
+                                      position,
+                                    );
+                                    if (changed &&
+                                        _autoScroll &&
+                                        _currentSubtitleIndex != -1) {
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                            if (_itemScrollController
+                                                .isAttached) {
+                                              _itemScrollController.scrollTo(
+                                                index:
+                                                    _currentSubtitleIndex + 1,
+                                                duration: const Duration(
+                                                  milliseconds: 300,
+                                                ),
+                                                curve: Curves.easeInOut,
+                                                alignment: 0.4,
+                                              );
+                                            }
+                                          });
+                                    }
                                   }
-                                }
 
-                                return _buildLyricsView(song, themeData);
-                              },
+                                  return _buildLyricsView(song, themeData);
+                                },
+                              ),
                             ),
                             _DanmakuPage(
                               isLoading: _isLoadingDanmaku,
@@ -613,19 +978,6 @@ class _LyricsPageState extends State<LyricsPage>
                       ),
                     ],
                   ),
-                  Positioned(
-                    top: topPadding + 12,
-                    left: 16,
-                    child: IconButton(
-                      onPressed: widget.onBack,
-                      icon: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: themeData.iconTheme.color,
-                        size: 28,
-                      ),
-                      tooltip: S.of(context).common_retract,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -636,7 +988,6 @@ class _LyricsPageState extends State<LyricsPage>
   }
 
   Widget _buildLyricsView(Song song, ThemeData theme) {
-    // Log.v(_tag, "_buildLyricsView, song: ${song.title}, bvid: ${song.bvid}");
     if (_isLoadingSubtitles) {
       return Center(
         child: CircularProgressIndicator(color: theme.colorScheme.primary),
@@ -711,6 +1062,27 @@ class _LyricsPageState extends State<LyricsPage>
         );
       },
     );
+  }
+}
+
+class _KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAliveWrapper({required this.child});
+
+  @override
+  State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

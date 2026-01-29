@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/widgets/common/cached_cover_image.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
 import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
@@ -69,35 +70,13 @@ class SongListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String optimizedCover = song.coverUrl.isNotEmpty
-        ? '${song.coverUrl}@100w_100h.webp'
-        : '';
-
     final content = Row(
       children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(useCardStyle ? 8 : 4),
-            image: song.coverUrl.isNotEmpty
-                ? DecorationImage(
-                    image: NetworkImage(optimizedCover),
-                    fit: BoxFit.cover,
-                    onError: (exception, stackTrace) {},
-                  )
-                : null,
-          ),
-          child: song.coverUrl.isEmpty
-              ? Center(
-                  child: Icon(
-                    Icons.music_note,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    size: 24,
-                  ),
-                )
-              : null,
+        CachedCoverImage.small(
+          imageUrl: song.coverUrl,
+          size: 48,
+          borderRadius: BorderRadius.circular(useCardStyle ? 8 : 4),
+          placeholderColor: Theme.of(context).colorScheme.primaryContainer,
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -181,10 +160,7 @@ class SongListItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: primaryColor.withOpacity(0.3),
-            width: 1.5,
-          ),
+          border: Border.all(color: primaryColor.withOpacity(0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: primaryColor.withOpacity(0.1),
@@ -203,10 +179,7 @@ class SongListItem extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () => _handleTap(context),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: content,
-            ),
+            child: Padding(padding: const EdgeInsets.all(12), child: content),
           ),
         ),
       );

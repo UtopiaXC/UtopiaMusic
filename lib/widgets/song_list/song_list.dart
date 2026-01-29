@@ -44,8 +44,9 @@ class SongList extends StatelessWidget {
         controller: scrollController,
         itemCount: songs.length + 1,
         padding: EdgeInsets.only(bottom: 120, top: useCardStyle ? 4 : 8),
-        separatorBuilder: (context, index) =>
-            useCardStyle ? const SizedBox.shrink() : const Divider(height: 1, indent: 72),
+        separatorBuilder: (context, index) => useCardStyle
+            ? const SizedBox.shrink()
+            : const Divider(height: 1, indent: 72),
         itemBuilder: (context, index) {
           if (index == songs.length) {
             if (isLoadingMore) {

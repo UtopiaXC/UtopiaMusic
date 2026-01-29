@@ -282,27 +282,44 @@ class DiscoverPageState extends State<DiscoverPage>
                   ),
                 ),
               ),
-              TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                onTap: handleTabTap,
-                dividerColor: Colors.transparent,
-                indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Theme.of(context).colorScheme.primaryContainer,
+              // Modern capsule-style TabBar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                labelColor: Theme.of(context).colorScheme.onPrimaryContainer,
-                unselectedLabelColor:
-                    Theme.of(context).colorScheme.onSurfaceVariant,
-                splashFactory: NoSplash.splashFactory,
-                overlayColor: WidgetStateProperty.all(Colors.transparent),
-                tabs: visibleCategories
-                    .map((type) => Tab(text: _getCategoryTitle(context, type)))
-                    .toList(),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  onTap: handleTabTap,
+                  dividerColor: Colors.transparent,
+                  indicator: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  labelColor: Theme.of(context).colorScheme.onPrimary,
+                  unselectedLabelColor: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant,
+                  splashFactory: NoSplash.splashFactory,
+                  overlayColor: WidgetStateProperty.all(Colors.transparent),
+                  tabs: visibleCategories
+                      .map(
+                        (type) => Tab(text: _getCategoryTitle(context, type)),
+                      )
+                      .toList(),
+                ),
               ),
               Expanded(
                 child: TabBarView(

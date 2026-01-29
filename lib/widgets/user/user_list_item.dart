@@ -91,10 +91,7 @@ class UserListItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: primaryColor.withOpacity(0.3),
-            width: 1.5,
-          ),
+          border: Border.all(color: primaryColor.withOpacity(0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: primaryColor.withOpacity(0.1),
@@ -113,10 +110,7 @@ class UserListItem extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: content,
-            ),
+            child: Padding(padding: const EdgeInsets.all(12), child: content),
           ),
         ),
       );
