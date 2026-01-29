@@ -40,7 +40,10 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     setState(() => _isLoading = true);
     final songs = await DatabaseService().getLocalPlaylistSongs(_playlist.id);
     final playlists = await DatabaseService().getLocalPlaylists();
-    final updatedPlaylist = playlists.firstWhere((p) => p.id == _playlist.id, orElse: () => _playlist);
+    final updatedPlaylist = playlists.firstWhere(
+      (p) => p.id == _playlist.id,
+      orElse: () => _playlist,
+    );
 
     if (mounted) {
       setState(() {
@@ -74,7 +77,11 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
         initialTitle: _playlist.title,
         initialDescription: _playlist.description,
         onSubmit: (title, description) async {
-          await DatabaseService().updateLocalPlaylist(_playlist.id, title, description);
+          await DatabaseService().updateLocalPlaylist(
+            _playlist.id,
+            title,
+            description,
+          );
           widget.onUpdate();
           _loadSongs();
         },
@@ -87,7 +94,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(S.of(context).common_confirm_title),
-        content: Text(S.of(context).pages_library_playlist_delete_confirm(_playlist.title)),
+        content: Text(
+          S.of(context).pages_library_playlist_delete_confirm(_playlist.title),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -136,7 +145,11 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(S.of(context).pages_library_playlist_download_started)),
+          SnackBar(
+            content: Text(
+              S.of(context).pages_library_playlist_download_started,
+            ),
+          ),
         );
       }
     }
@@ -151,7 +164,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text(S.of(context).common_replace_playlist),
-          content: Text(S.of(context).pages_library_playlist_play_replace_confirm),
+          content: Text(
+            S.of(context).pages_library_playlist_play_replace_confirm,
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -189,7 +204,11 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
         ? _songs.length - 1 - newIndex
         : newIndex;
 
-    await DatabaseService().updateLocalPlaylistSongOrder(_playlist.id, originalOldIndex, originalNewIndex);
+    await DatabaseService().updateLocalPlaylistSongOrder(
+      _playlist.id,
+      originalOldIndex,
+      originalNewIndex,
+    );
 
     await _loadSongs();
   }
@@ -202,7 +221,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
         title: Text(S.of(context).pages_library_playlist_rename_dialog_title),
         content: TextField(
           controller: controller,
-          decoration: InputDecoration(labelText: S.of(context).pages_library_playlist_rename_dialog_label),
+          decoration: InputDecoration(
+            labelText: S.of(context).pages_library_playlist_rename_dialog_label,
+          ),
           autofocus: true,
         ),
         actions: [
@@ -261,13 +282,17 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                             borderRadius: BorderRadius.circular(8),
                             image: _playlist.coverUrl != null
                                 ? DecorationImage(
-                              image: NetworkImage(_playlist.coverUrl!),
-                              fit: BoxFit.cover,
-                            )
+                                    image: NetworkImage(_playlist.coverUrl!),
+                                    fit: BoxFit.cover,
+                                  )
                                 : null,
                           ),
                           child: _playlist.coverUrl == null
-                              ? Icon(Icons.music_note, size: 48, color: colorScheme.onSurfaceVariant)
+                              ? Icon(
+                                  Icons.music_note,
+                                  size: 48,
+                                  color: colorScheme.onSurfaceVariant,
+                                )
                               : null,
                         ),
                         const SizedBox(width: 16),
@@ -283,10 +308,13 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _playlist.description.isEmpty ? S.of(context).common_none : _playlist.description,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
+                                _playlist.description.isEmpty
+                                    ? S.of(context).common_none
+                                    : _playlist.description,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -332,13 +360,18 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                     IconButton(
                       onPressed: _handleDelete,
                       icon: const Icon(Icons.delete),
-                      tooltip: S.of(context).pages_library_download_action_delete,
+                      tooltip: S
+                          .of(context)
+                          .pages_library_download_action_delete,
                     ),
                   ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
                 child: Row(
                   children: [
                     const Expanded(child: Divider()),
@@ -349,7 +382,10 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                         onTap: _toggleSortOrder,
                         borderRadius: BorderRadius.circular(20),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -373,85 +409,110 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                     ? const Center(child: CircularProgressIndicator())
                     : _displaySongs.isEmpty
                     ? GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onVerticalDragUpdate: (details) {
-                    if (details.primaryDelta! > 10) {
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: Center(child: Text(S.of(context).pages_library_playlist_empty)),
-                )
-                    : NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification is ScrollUpdateNotification) {
-                      if (notification.metrics.pixels <= 0 && notification.scrollDelta! < 0) {
-
-                      }
-                    }
-                    return false;
-                  },
-                  child: ReorderableListView.builder(
-                    scrollController: scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: _displaySongs.length,
-                    onReorder: _handleReorder,
-                    itemBuilder: (context, index) {
-                      final song = _displaySongs[index];
-                      return SongListItem(
-                        key: ValueKey('${song.bvid}_${song.cid}_$index'),
-                        song: song,
-                        contextList: _displaySongs,
-                        onPlayAction: () {
-                          Navigator.pop(context);
-                        },
-                        menuItems: [
-                          PopupMenuItem(
-                            value: 'rename',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.edit, size: 20),
-                                const SizedBox(width: 12),
-                                Text(S.of(context).pages_library_playlist_menu_rename),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'reset_title',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.restore, size: 20),
-                                const SizedBox(width: 12),
-                                Text(S.of(context).pages_library_playlist_menu_reset_title),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'remove_from_playlist',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.delete, size: 20),
-                                const SizedBox(width: 12),
-                                Text(S.of(context).pages_library_playlist_menu_remove),
-                              ],
-                            ),
-                          ),
-                        ],
-                        onMenuSelected: (value) async {
-                          if (value == 'rename') {
-                            _showRenameDialog(song);
-                          } else if (value == 'reset_title') {
-                            await DatabaseService().resetLocalPlaylistSongTitle(_playlist.id, song.bvid, song.cid);
-                            _loadSongs();
-                          } else if (value == 'remove_from_playlist') {
-                            await DatabaseService().removeSongFromLocalPlaylist(_playlist.id, song.bvid, song.cid);
-                            _loadSongs();
-                            widget.onUpdate();
+                        behavior: HitTestBehavior.translucent,
+                        onVerticalDragUpdate: (details) {
+                          if (details.primaryDelta! > 10) {
+                            Navigator.pop(context);
                           }
                         },
-                      );
-                    },
-                  ),
-                ),
+                        child: Center(
+                          child: Text(
+                            S.of(context).pages_library_playlist_empty,
+                          ),
+                        ),
+                      )
+                    : NotificationListener<ScrollNotification>(
+                        onNotification: (notification) {
+                          if (notification is ScrollUpdateNotification) {
+                            if (notification.metrics.pixels <= 0 &&
+                                notification.scrollDelta! < 0) {}
+                          }
+                          return false;
+                        },
+                        child: ReorderableListView.builder(
+                          scrollController: scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: _displaySongs.length,
+                          onReorder: _handleReorder,
+                          itemBuilder: (context, index) {
+                            final song = _displaySongs[index];
+                            return SongListItem(
+                              key: ValueKey('${song.bvid}_${song.cid}_$index'),
+                              song: song,
+                              contextList: _displaySongs,
+                              onPlayAction: () {
+                                Navigator.pop(context);
+                              },
+                              menuItems: [
+                                PopupMenuItem(
+                                  value: 'rename',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.edit, size: 20),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        S
+                                            .of(context)
+                                            .pages_library_playlist_menu_rename,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'reset_title',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.restore, size: 20),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        S
+                                            .of(context)
+                                            .pages_library_playlist_menu_reset_title,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'remove_from_playlist',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.delete, size: 20),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        S
+                                            .of(context)
+                                            .pages_library_playlist_menu_remove,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              onMenuSelected: (value) async {
+                                if (value == 'rename') {
+                                  _showRenameDialog(song);
+                                } else if (value == 'reset_title') {
+                                  await DatabaseService()
+                                      .resetLocalPlaylistSongTitle(
+                                        _playlist.id,
+                                        song.bvid,
+                                        song.cid,
+                                      );
+                                  _loadSongs();
+                                } else if (value == 'remove_from_playlist') {
+                                  await DatabaseService()
+                                      .removeSongFromLocalPlaylist(
+                                        _playlist.id,
+                                        song.bvid,
+                                        song.cid,
+                                      );
+                                  _loadSongs();
+                                  widget.onUpdate();
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ),
               ),
             ],
           ),

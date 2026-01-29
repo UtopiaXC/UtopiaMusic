@@ -19,10 +19,70 @@ class WbiUtil {
   static const int _maxRefreshRetries = 3;
 
   static const List<int> _mixinKeyEncTab = [
-    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
-    33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
-    61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11,
-    36, 20, 34, 44, 52,
+    46,
+    47,
+    18,
+    2,
+    53,
+    8,
+    23,
+    32,
+    15,
+    50,
+    10,
+    31,
+    58,
+    3,
+    45,
+    35,
+    27,
+    43,
+    5,
+    49,
+    33,
+    9,
+    42,
+    19,
+    29,
+    28,
+    14,
+    39,
+    12,
+    38,
+    41,
+    13,
+    37,
+    48,
+    7,
+    16,
+    24,
+    55,
+    40,
+    61,
+    26,
+    17,
+    0,
+    1,
+    60,
+    51,
+    30,
+    4,
+    22,
+    25,
+    54,
+    21,
+    56,
+    59,
+    6,
+    63,
+    57,
+    62,
+    11,
+    36,
+    20,
+    34,
+    44,
+    52,
   ];
 
   static bool _isKeyExpired() {
@@ -32,7 +92,9 @@ class WbiUtil {
     return DateTime.now().difference(_lastRefreshTime!) > _keyValidDuration;
   }
 
-  static Future<Map<String, dynamic>> signParams(Map<String, dynamic> params) async {
+  static Future<Map<String, dynamic>> signParams(
+    Map<String, dynamic> params,
+  ) async {
     await _ensureKeys();
     if (_imgKey == null || _subKey == null) {
       Log.w(_tag, "WBI keys missing, request may fail.");
@@ -79,7 +141,9 @@ class WbiUtil {
       suppressErrorDialog: true,
     );
 
-    if (data != null && data['data'] != null && data['data']['wbi_img'] != null) {
+    if (data != null &&
+        data['data'] != null &&
+        data['data']['wbi_img'] != null) {
       final wbiImg = data['data']['wbi_img'];
       final imgUrl = wbiImg['img_url'] as String;
       final subUrl = wbiImg['sub_url'] as String;
@@ -132,10 +196,10 @@ class WbiUtil {
   }
 
   static Map<String, dynamic> _encWbi(
-      Map<String, dynamic> params,
-      String imgKey,
-      String subKey,
-      ) {
+    Map<String, dynamic> params,
+    String imgKey,
+    String subKey,
+  ) {
     final mixinKey = _getMixinKey(imgKey + subKey);
     final currTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final newParams = Map<String, dynamic>.from(params);

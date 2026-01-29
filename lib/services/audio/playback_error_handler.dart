@@ -115,7 +115,8 @@ class PlaybackError {
 }
 
 class PlaybackErrorHandler {
-  static final PlaybackErrorHandler _instance = PlaybackErrorHandler._internal();
+  static final PlaybackErrorHandler _instance =
+      PlaybackErrorHandler._internal();
   factory PlaybackErrorHandler() => _instance;
   PlaybackErrorHandler._internal();
 
@@ -126,9 +127,9 @@ class PlaybackErrorHandler {
   static const Duration _snackbarCooldown = Duration(seconds: 2);
 
   Future<PlaybackErrorAction> handleError(
-      PlaybackError error, {
-        bool autoSkipEnabled = true,
-      }) async {
+    PlaybackError error, {
+    bool autoSkipEnabled = true,
+  }) async {
     Log.e(_tag, "Handling playback error: ${error.type} - ${error.message}");
 
     _consecutiveErrors++;
@@ -148,12 +149,13 @@ class PlaybackErrorHandler {
 
     switch (error.type) {
       case PlaybackErrorType.network:
-        _showSnackbar(error.message, action: SnackBarAction(
-          label: '重试',
-          onPressed: () {
-          },
-        ));
-        return error.canRetry ? PlaybackErrorAction.retry : PlaybackErrorAction.skip;
+        _showSnackbar(
+          error.message,
+          action: SnackBarAction(label: '重试', onPressed: () {}),
+        );
+        return error.canRetry
+            ? PlaybackErrorAction.retry
+            : PlaybackErrorAction.skip;
 
       case PlaybackErrorType.resourceUnavailable:
         if (autoSkipEnabled) {
@@ -180,7 +182,9 @@ class PlaybackErrorHandler {
       case PlaybackErrorType.unknown:
       default:
         _showSnackbar(error.message);
-        return autoSkipEnabled ? PlaybackErrorAction.skip : PlaybackErrorAction.stop;
+        return autoSkipEnabled
+            ? PlaybackErrorAction.skip
+            : PlaybackErrorAction.stop;
     }
   }
 
@@ -210,7 +214,11 @@ class PlaybackErrorHandler {
     }
   }
 
-  void _showErrorDialog(String title, String message, {bool showRetryAll = false}) {
+  void _showErrorDialog(
+    String title,
+    String message, {
+    bool showRetryAll = false,
+  }) {
     final context = navigatorKey.currentContext;
     if (context != null) {
       showDialog(
@@ -237,9 +245,4 @@ class PlaybackErrorHandler {
   }
 }
 
-enum PlaybackErrorAction {
-  retry,
-  skip,
-  skipAndRemove,
-  stop,
-}
+enum PlaybackErrorAction { retry, skip, skipAndRemove, stop }

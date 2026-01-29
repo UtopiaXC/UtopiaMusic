@@ -71,7 +71,7 @@ class RecommendationManager {
         Log.w(_tag, "No related videos found.");
       }
     } catch (e) {
-      Log.e("RecommendationManager", "AutoPlay Error", e);
+      Log.e(_tag, "AutoPlay Error", e);
     } finally {
       _isLoading = false;
       notifyLoaded();

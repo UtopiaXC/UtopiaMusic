@@ -27,7 +27,7 @@ class SecurityProvider extends ChangeNotifier {
   LockDelayOption _lockDelayOption = LockDelayOption.immediate;
   int _customLockDelayMinutes = 0;
   bool _privacyScreenEnabled = false;
-  
+
   bool _isLocked = false;
   bool _isAuthenticating = false;
   DateTime? _lastPausedTime;
@@ -45,14 +45,15 @@ class SecurityProvider extends ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _biometricEnabled = prefs.getBool(_biometricEnabledKey) ?? false;
-    
-    final optionIndex = prefs.getInt(_lockDelayOptionKey) ?? LockDelayOption.immediate.index;
+
+    final optionIndex =
+        prefs.getInt(_lockDelayOptionKey) ?? LockDelayOption.immediate.index;
     if (optionIndex >= 0 && optionIndex < LockDelayOption.values.length) {
       _lockDelayOption = LockDelayOption.values[optionIndex];
     }
-    
+
     _customLockDelayMinutes = prefs.getInt(_customLockDelayKey) ?? 0;
-    
+
     _privacyScreenEnabled = prefs.getBool(_privacyScreenEnabledKey) ?? false;
 
     if (_biometricEnabled) {
@@ -63,7 +64,6 @@ class SecurityProvider extends ChangeNotifier {
       } catch (e) {
         Log.w(_tag, 'Error enabling privacy screen: $e');
       }
-
     } else if (_privacyScreenEnabled) {
       try {
         await PrivacyScreen.instance.enable();
@@ -77,7 +77,7 @@ class SecurityProvider extends ChangeNotifier {
         Log.w(_tag, 'Error disabling privacy screen: $e');
       }
     }
-    
+
     notifyListeners();
   }
 
@@ -85,15 +85,19 @@ class SecurityProvider extends ChangeNotifier {
     Log.d(_tag, 'setBiometricEnabled called with enabled=$enabled');
     if (enabled) {
       final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
-      final bool canAuthenticate = canAuthenticateWithBiometrics || await _auth.isDeviceSupported();
-      
-      Log.d(_tag, 'canCheckBiometrics=$canAuthenticateWithBiometrics, isDeviceSupported=$canAuthenticate');
+      final bool canAuthenticate =
+          canAuthenticateWithBiometrics || await _auth.isDeviceSupported();
+
+      Log.d(
+        _tag,
+        'canCheckBiometrics=$canAuthenticateWithBiometrics, isDeviceSupported=$canAuthenticate',
+      );
 
       if (!canAuthenticate) {
         Log.d(_tag, 'Device not supported for authentication');
         return;
       }
-      
+
       try {
         Log.d(_tag, 'Starting authentication...');
         final bool didAuthenticate = await _auth.authenticate(
@@ -163,7 +167,7 @@ class SecurityProvider extends ChangeNotifier {
         Log.w(_tag, 'Error disabling privacy screen: $e');
       }
     }
-    
+
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_privacyScreenEnabledKey, enabled);
@@ -194,7 +198,7 @@ class SecurityProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     final difference = now.difference(_lastPausedTime!);
-    
+
     int delayMinutes = 0;
     switch (_lockDelayOption) {
       case LockDelayOption.immediate:
@@ -220,21 +224,22 @@ class SecurityProvider extends ChangeNotifier {
         break;
     }
 
-    if (_lockDelayOption == LockDelayOption.immediate || difference.inMinutes >= delayMinutes) {
+    if (_lockDelayOption == LockDelayOption.immediate ||
+        difference.inMinutes >= delayMinutes) {
       _isLocked = true;
       notifyListeners();
     }
-    
+
     _lastPausedTime = null;
   }
 
   Future<void> authenticate() async {
     if (_isAuthenticating) return;
-    
+
     _isAuthenticating = true;
     try {
       await _auth.stopAuthentication();
-      
+
       final bool didAuthenticate = await _auth.authenticate(
         localizedReason: '请验证身份以解锁应用',
         biometricOnly: true,
@@ -249,22 +254,22 @@ class SecurityProvider extends ChangeNotifier {
       _isAuthenticating = false;
     }
   }
-  
+
   Future<void> resetToDefaults() async {
     _biometricEnabled = false;
     _lockDelayOption = LockDelayOption.immediate;
     _customLockDelayMinutes = 0;
     _privacyScreenEnabled = false;
     _isLocked = false;
-    
+
     try {
       await PrivacyScreen.instance.disable();
     } catch (e) {
       Log.w(_tag, 'Error disabling privacy screen: $e');
     }
-    
+
     notifyListeners();
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_biometricEnabledKey);
     await prefs.remove(_lockDelayOptionKey);

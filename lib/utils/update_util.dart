@@ -250,7 +250,7 @@ class UpdateUtil {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${S.of(context).util_scheme_lauch_fail}: $e'),
+            content: Text('${S.of(context).util_scheme_launch_fail}: $e'),
           ),
         );
       }

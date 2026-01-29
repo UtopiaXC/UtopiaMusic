@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
 
 class GithubApi {
-  static const String _baseUrl = 'https://api.github.com/repos/UtopiaXC/UtopiaMusic/releases';
+  static const String _baseUrl =
+      'https://api.github.com/repos/UtopiaXC/UtopiaMusic/releases';
   final Dio _dio = Dio();
 
   Future<Map<String, dynamic>?> getLatestRelease() async {
@@ -34,8 +35,8 @@ class GithubApi {
         if (releases.isNotEmpty) {
           return releases.first as Map<String, dynamic>;
         } else {
-           // Empty list means no releases found
-           throw Exception('当前仓库没有发布版本');
+          // Empty list means no releases found
+          throw Exception('当前仓库没有发布版本');
         }
       }
     } on DioException catch (e) {

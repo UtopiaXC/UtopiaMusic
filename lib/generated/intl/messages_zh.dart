@@ -336,6 +336,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_settings_about_open_source_license":
         MessageLookupByLibrary.simpleMessage("开源许可证"),
     "pages_settings_about_qa": MessageLookupByLibrary.simpleMessage("常见问题"),
+    "pages_settings_appearance_always_turn_on":
+        MessageLookupByLibrary.simpleMessage("屏幕常亮"),
+    "pages_settings_appearance_always_turn_on_description":
+        MessageLookupByLibrary.simpleMessage("播放中阻止息屏"),
     "pages_settings_appearance_dark_mode": MessageLookupByLibrary.simpleMessage(
       "播放器",
     ),
@@ -414,7 +418,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_settings_tag_download_clear": MessageLookupByLibrary.simpleMessage(
       "清空全部下载",
     ),
-    "pages_settings_tag_download_defult_quality":
+    "pages_settings_tag_download_default_quality":
         MessageLookupByLibrary.simpleMessage("默认下载音质"),
     "pages_settings_tag_download_download_clear_downloaded":
         MessageLookupByLibrary.simpleMessage("清空全部下载"),
@@ -544,7 +548,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "pages_settings_tag_player_control_auto_play":
         MessageLookupByLibrary.simpleMessage("自动播放"),
-    "pages_settings_tag_player_control_auto_play_descriptionn":
+    "pages_settings_tag_player_control_auto_play_description":
         MessageLookupByLibrary.simpleMessage("退出软件时如果正在播放则打开软件时自动播放"),
     "pages_settings_tag_player_control_save_progress":
         MessageLookupByLibrary.simpleMessage("保存播放进度"),
@@ -574,11 +578,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_settings_tag_security_lock": MessageLookupByLibrary.simpleMessage(
       "锁定",
     ),
-    "pages_settings_tag_security_lock_dely":
+    "pages_settings_tag_security_lock_delay":
         MessageLookupByLibrary.simpleMessage("锁定延迟"),
-    "pages_settings_tag_security_lock_dely_custom_inpit":
+    "pages_settings_tag_security_lock_delay_custom_input":
         MessageLookupByLibrary.simpleMessage("输入分钟数"),
-    "pages_settings_tag_security_lock_dely_everytime":
+    "pages_settings_tag_security_lock_delay_everytime":
         MessageLookupByLibrary.simpleMessage("每次切换"),
     "pages_tag_discover": MessageLookupByLibrary.simpleMessage("发现"),
     "pages_tag_library": MessageLookupByLibrary.simpleMessage("曲库"),
@@ -638,7 +642,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "util_audio_quality_middle_detail": MessageLookupByLibrary.simpleMessage(
       "标准音质 (132K)",
     ),
-    "util_scheme_lauch_fail": MessageLookupByLibrary.simpleMessage("无法打开链接"),
+    "util_scheme_launch_fail": MessageLookupByLibrary.simpleMessage("无法打开链接"),
     "util_update_already_newest": MessageLookupByLibrary.simpleMessage(
       "当前已是最新版本",
     ),
@@ -723,7 +727,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "weight_player_timer_stop_at_end_message":
         MessageLookupByLibrary.simpleMessage("播放完当前曲目后停止"),
-    "weight_player_timer_timestemp_stop": MessageLookupByLibrary.simpleMessage(
+    "weight_player_timer_timestamp_stop": MessageLookupByLibrary.simpleMessage(
       "指定时间关闭",
     ),
     "weight_search_label_confirm_clean_history_message":
@@ -760,7 +764,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "weight_user_space_annual_vip": MessageLookupByLibrary.simpleMessage(
       "年度大会员",
     ),
-    "weight_user_space_created_faviourite_folder":
+    "weight_user_space_created_favourite_folder":
         MessageLookupByLibrary.simpleMessage("创建的收藏夹"),
     "weight_user_space_logout_conntent": MessageLookupByLibrary.simpleMessage(
       "确定要退出登录吗？",
@@ -770,13 +774,13 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "weight_user_space_most_play": MessageLookupByLibrary.simpleMessage("最多播放"),
     "weight_user_space_newest": MessageLookupByLibrary.simpleMessage("最新发布"),
-    "weight_user_space_no_faviourite_folder":
+    "weight_user_space_no_favourite_folder":
         MessageLookupByLibrary.simpleMessage("暂无收藏夹"),
     "weight_user_space_no_public_connection":
-        MessageLookupByLibrary.simpleMessage("当前用户没有公开的合集？"),
+        MessageLookupByLibrary.simpleMessage("当前用户没有公开的合集"),
     "weight_user_space_normal": MessageLookupByLibrary.simpleMessage("普通用户"),
-    "weight_user_space_subscribe_faviourite_folder":
-        MessageLookupByLibrary.simpleMessage("创建的收藏夹"),
+    "weight_user_space_subscribe_favourite_folder":
+        MessageLookupByLibrary.simpleMessage("收藏的收藏夹与合集"),
     "weight_user_space_vip": MessageLookupByLibrary.simpleMessage("大会员"),
     "weight_video_detail_added_to_download_queue":
         MessageLookupByLibrary.simpleMessage("已加入下载队列"),

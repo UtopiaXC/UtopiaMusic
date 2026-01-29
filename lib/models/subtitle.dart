@@ -3,9 +3,5 @@ class SubtitleItem {
   final double to;
   final String content;
 
-  SubtitleItem({
-    required this.from,
-    required this.to,
-    required this.content,
-  });
+  SubtitleItem({required this.from, required this.to, required this.content});
 }

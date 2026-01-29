@@ -11,8 +11,10 @@ class RawLog extends TalkerLog {
   RawLog(super.message, {super.logLevel});
 
   @override
-  String generateTextMessage({TimeFormat timeFormat = TimeFormat.timeAndSeconds}) {
-    return message?? '';
+  String generateTextMessage({
+    TimeFormat timeFormat = TimeFormat.timeAndSeconds,
+  }) {
+    return message ?? '';
   }
 }
 
@@ -111,9 +113,7 @@ class Log {
   }
 
   static void _dispatchLog(String message, LogLevel level) {
-    LogService.instance.talker.logTyped(
-      RawLog(message, logLevel: level),
-    );
+    LogService.instance.talker.logTyped(RawLog(message, logLevel: level));
   }
 
   static void d(dynamic classTag, [dynamic arg2]) {
@@ -159,11 +159,11 @@ class Log {
   }
 
   static void e(
-      dynamic classTag, [
-        dynamic arg2,
-        Object? error,
-        StackTrace? stackTrace,
-      ]) {
+    dynamic classTag, [
+    dynamic arg2,
+    Object? error,
+    StackTrace? stackTrace,
+  ]) {
     final (tag, msg) = _parseArgs(classTag, arg2);
     final formattedMsg = _formatMsg(tag, msg);
 
@@ -270,7 +270,8 @@ class LogService {
       _currentFileSize = 0;
       _logSink = _currentLogFile!.openWrite(mode: FileMode.write);
 
-      final startMsg = '=== Session Start: ${DateTime.now()} | Platform: ${defaultTargetPlatform.name} ===\n';
+      final startMsg =
+          '=== Session Start: ${DateTime.now()} | Platform: ${defaultTargetPlatform.name} ===\n';
       final bytes = utf8.encode(startMsg);
       _logSink!.add(bytes);
       _currentFileSize += bytes.length;

@@ -96,7 +96,10 @@ class PlayerProvider extends ChangeNotifier {
     );
     _recommendationManager = RecommendationManager(
       onPlaylistUpdate: (newPlaylist) async {
-        Log.i(_tag, "onPlaylistUpdate: newPlaylist length = ${newPlaylist.length}");
+        Log.i(
+          _tag,
+          "onPlaylistUpdate: newPlaylist length = ${newPlaylist.length}",
+        );
         await _databaseService.replacePlaylist(newPlaylist);
         await _reloadPlaylistFromDb();
         if (_currentSong != null) {
@@ -282,7 +285,10 @@ class PlayerProvider extends ChangeNotifier {
       expandPlayer();
 
       if (recommendationAutoPlay) {
-        Log.i(_tag, "Triggering manual recommendation check after setPlaylistAndPlay");
+        Log.i(
+          _tag,
+          "Triggering manual recommendation check after setPlaylistAndPlay",
+        );
         Future.delayed(const Duration(milliseconds: 500), () {
           _recommendationManager.checkAndLoad(
             currentSong: initialSong,

@@ -22,7 +22,8 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
-  final GlobalKey<DiscoverPageState> _discoverPageKey = GlobalKey<DiscoverPageState>();
+  final GlobalKey<DiscoverPageState> _discoverPageKey =
+      GlobalKey<DiscoverPageState>();
   bool _isInit = false;
 
   @override
@@ -31,13 +32,19 @@ class _MainLayoutState extends State<MainLayout> {
     super.initState();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     _pages = [
-      DiscoverPage(key: _discoverPageKey, onSongSelected: playerProvider.playSong),
+      DiscoverPage(
+        key: _discoverPageKey,
+        onSongSelected: playerProvider.playSong,
+      ),
       const MusicPage(),
       const SettingsPage(),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       Log.v(_tag, "PostFrameCallback");
-      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      final settingsProvider = Provider.of<SettingsProvider>(
+        context,
+        listen: false,
+      );
       if (!settingsProvider.isSettingsLoaded) {
         await Future.delayed(const Duration(milliseconds: 500));
       }
@@ -72,7 +79,10 @@ class _MainLayoutState extends State<MainLayout> {
 
     setState(() {
       _selectedIndex = index;
-      final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+      final playerProvider = Provider.of<PlayerProvider>(
+        context,
+        listen: false,
+      );
       if (playerProvider.isPlayerExpanded) {
         playerProvider.collapsePlayer();
       }
@@ -82,20 +92,22 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     Log.v(_tag, "build");
-    return LayoutBuilder(builder: (context, constraints) {
-      if (constraints.maxWidth > 600) {
-        return DesktopLayout(
-          selectedIndex: _selectedIndex,
-          pages: _pages,
-          onItemTapped: _onItemTapped,
-        );
-      } else {
-        return MobileLayout(
-          selectedIndex: _selectedIndex,
-          pages: _pages,
-          onItemTapped: _onItemTapped,
-        );
-      }
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 600) {
+          return DesktopLayout(
+            selectedIndex: _selectedIndex,
+            pages: _pages,
+            onItemTapped: _onItemTapped,
+          );
+        } else {
+          return MobileLayout(
+            selectedIndex: _selectedIndex,
+            pages: _pages,
+            onItemTapped: _onItemTapped,
+          );
+        }
+      },
+    );
   }
 }

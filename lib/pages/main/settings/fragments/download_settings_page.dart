@@ -302,7 +302,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
               ),
               ListTile(
                 title: Text(
-                  S.of(context).pages_settings_tag_download_defult_quality,
+                  S.of(context).pages_settings_tag_download_default_quality,
                 ),
                 trailing: DropdownButton<int>(
                   value: settingsProvider.defaultDownloadQuality,

@@ -70,11 +70,9 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
 
   Future<void> _handleDownload() async {
     if (_isDownloaded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(S.of(context).common_downloaded),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(S.of(context).common_downloaded)));
       return;
     }
 
@@ -112,9 +110,13 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
 
       await DownloadManager().startDownload(song);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(S.of(context).weight_video_detail_added_to_download_queue)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              S.of(context).weight_video_detail_added_to_download_queue,
+            ),
+          ),
+        );
       }
     }
   }

@@ -37,7 +37,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${S.of(context).util_scheme_lauch_fail}: $url'),
+            content: Text('${S.of(context).util_scheme_launch_fail}: $url'),
           ),
         );
       }

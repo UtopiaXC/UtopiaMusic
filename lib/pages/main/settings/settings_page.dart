@@ -71,9 +71,7 @@ class SettingsPage extends StatelessWidget {
               backgroundImage: isLoggedIn && userInfo != null
                   ? NetworkImage(userInfo.avatarUrl)
                   : null,
-              child: !isLoggedIn
-                  ? const Icon(Icons.person, size: 30)
-                  : null,
+              child: !isLoggedIn ? const Icon(Icons.person, size: 30) : null,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -93,7 +91,9 @@ class SettingsPage extends StatelessWidget {
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: _getLevelColor(userInfo.level),
                                 borderRadius: BorderRadius.circular(4),
@@ -110,16 +110,22 @@ class SettingsPage extends StatelessWidget {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primaryContainer,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                _getVipLabel(context,userInfo.vipType),
+                                _getVipLabel(context, userInfo.vipType),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
                                 ),
                               ),
                             ),
@@ -167,37 +173,79 @@ class SettingsPage extends StatelessWidget {
       case UserVipType.vip:
         return S.of(context).weight_user_space_vip;
       case UserVipType.annualVip:
-        return  S.of(context).weight_user_space_annual_vip;
+        return S.of(context).weight_user_space_annual_vip;
       default:
-        return  S.of(context).weight_user_space_normal;
+        return S.of(context).weight_user_space_normal;
     }
   }
 
   Widget _buildSettingsList(BuildContext context) {
     return Column(
       children: [
-        _buildSettingItem(context, S.of(context).pages_settings_tag_appearance, Icons.palette_outlined, const AppearanceSettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_search, Icons.search, const SearchSettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_player, Icons.play_circle_outline, const PlaySettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_download, Icons.download_outlined, const DownloadSettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_network, Icons.wifi, const NetworkSettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_security, Icons.security, const SecuritySettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_general, Icons.settings_outlined, const GeneralSettingsPage()),
-        _buildSettingItem(context, S.of(context).pages_settings_tag_about, Icons.info_outline, const AboutSettingsPage()),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_appearance,
+          Icons.palette_outlined,
+          const AppearanceSettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_search,
+          Icons.search,
+          const SearchSettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_player,
+          Icons.play_circle_outline,
+          const PlaySettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_download,
+          Icons.download_outlined,
+          const DownloadSettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_network,
+          Icons.wifi,
+          const NetworkSettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_security,
+          Icons.security,
+          const SecuritySettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_general,
+          Icons.settings_outlined,
+          const GeneralSettingsPage(),
+        ),
+        _buildSettingItem(
+          context,
+          S.of(context).pages_settings_tag_about,
+          Icons.info_outline,
+          const AboutSettingsPage(),
+        ),
       ],
     );
   }
 
-  Widget _buildSettingItem(BuildContext context, String title, IconData icon, Widget page) {
+  Widget _buildSettingItem(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Widget page,
+  ) {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => page),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => page));
       },
     );
   }

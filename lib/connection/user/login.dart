@@ -12,20 +12,14 @@ class LoginApi {
     try {
       final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-      final params = {
-        'appkey': Api.tvAppKey,
-        'local_id': '0',
-        'ts': '$ts',
-      };
+      final params = {'appkey': Api.tvAppKey, 'local_id': '0', 'ts': '$ts'};
 
       final signedParams = Request().signParams(params);
       final data = await Request().post(
         Api.urlTvLoginQRCodeAuthCode,
         baseUrl: Api.passportTvBase,
         data: signedParams,
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -54,9 +48,7 @@ class LoginApi {
         Api.urlTvLoginQRCodePoll,
         baseUrl: Api.passportTvBase,
         data: signedParams,
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       if (data != null && data is Map) {
         final code = data['code'];
@@ -72,21 +64,18 @@ class LoginApi {
               }
               final jar = await Request().cookieJar;
               await jar.saveFromResponse(Uri.parse(Api.urlBase), newCookies);
-              await jar.saveFromResponse(Uri.parse(Api.urlLoginBase), newCookies);
+              await jar.saveFromResponse(
+                Uri.parse(Api.urlLoginBase),
+                newCookies,
+              );
 
               Log.i(_tag, "Login Success: Cookies saved.");
             }
           }
 
-          return {
-            'code': 0,
-            'data': resultData,
-          };
+          return {'code': 0, 'data': resultData};
         } else {
-          return {
-            'code': code,
-            'message': data['message'],
-          };
+          return {'code': code, 'message': data['message']};
         }
       }
     } catch (e) {

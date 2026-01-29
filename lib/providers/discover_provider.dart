@@ -32,8 +32,9 @@ class DiscoverProvider extends ChangeNotifier {
   List<DiscoverCategoryType> get categoryOrder => _categoryOrder;
   Set<DiscoverCategoryType> get hiddenCategories => _hiddenCategories;
 
-  List<DiscoverCategoryType> get visibleCategories => 
-      _categoryOrder.where((type) => !_hiddenCategories.contains(type)).toList();
+  List<DiscoverCategoryType> get visibleCategories => _categoryOrder
+      .where((type) => !_hiddenCategories.contains(type))
+      .toList();
 
   DiscoverProvider() {
     _loadSettings();
@@ -41,7 +42,7 @@ class DiscoverProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     final List<String>? savedOrder = prefs.getStringList(_categoryOrderKey);
     if (savedOrder != null) {
       final List<DiscoverCategoryType> newOrder = [];
@@ -65,17 +66,20 @@ class DiscoverProvider extends ChangeNotifier {
 
     final List<String>? savedHidden = prefs.getStringList(_hiddenCategoriesKey);
     if (savedHidden != null) {
-      _hiddenCategories = savedHidden.map((str) {
-        try {
-          final index = int.parse(str);
-          if (index >= 0 && index < DiscoverCategoryType.values.length) {
-            return DiscoverCategoryType.values[index];
-          }
-        } catch (e) {}
-        return null;
-      }).whereType<DiscoverCategoryType>().toSet();
+      _hiddenCategories = savedHidden
+          .map((str) {
+            try {
+              final index = int.parse(str);
+              if (index >= 0 && index < DiscoverCategoryType.values.length) {
+                return DiscoverCategoryType.values[index];
+              }
+            } catch (e) {}
+            return null;
+          })
+          .whereType<DiscoverCategoryType>()
+          .toSet();
     }
-    
+
     notifyListeners();
   }
 
@@ -88,7 +92,9 @@ class DiscoverProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final List<String> orderToSave = _categoryOrder.map((e) => e.index.toString()).toList();
+    final List<String> orderToSave = _categoryOrder
+        .map((e) => e.index.toString())
+        .toList();
     await prefs.setStringList(_categoryOrderKey, orderToSave);
   }
 
@@ -101,7 +107,9 @@ class DiscoverProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final List<String> hiddenToSave = _hiddenCategories.map((e) => e.index.toString()).toList();
+    final List<String> hiddenToSave = _hiddenCategories
+        .map((e) => e.index.toString())
+        .toList();
     await prefs.setStringList(_hiddenCategoriesKey, hiddenToSave);
   }
 }

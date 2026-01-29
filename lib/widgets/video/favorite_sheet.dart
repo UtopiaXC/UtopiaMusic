@@ -180,7 +180,9 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
                         });
                       },
                       title: Text(title),
-                      subtitle: Text('$count${S.of(context).weight_video_detail_contants}'),
+                      subtitle: Text(
+                        '$count${S.of(context).weight_video_detail_contants}',
+                      ),
                       secondary: const Icon(Icons.folder),
                     );
                   },

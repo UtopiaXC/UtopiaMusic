@@ -1,6 +1,1 @@
-enum PlayMode {
-  sequence,
-  loop,
-  single,
-  shuffle,
-}
+enum PlayMode { sequence, loop, single, shuffle }

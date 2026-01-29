@@ -20,7 +20,7 @@ class AudioPlayerService {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
   static const String _defaultAudioQualityKey = 'default_audio_quality';
   final StreamController<int> _actualQualityController =
-  StreamController<int>.broadcast();
+      StreamController<int>.broadcast();
 
   Stream<int> get actualQualityStream => _actualQualityController.stream;
 
@@ -44,12 +44,12 @@ class AudioPlayerService {
   bool get _isIOS => !kIsWeb && Platform.isIOS;
 
   final StreamController<int> _indexController =
-  StreamController<int>.broadcast();
+      StreamController<int>.broadcast();
 
   Stream<int> get currentIndexStream => _indexController.stream;
 
   final StreamController<Map<String, dynamic>> _playbackErrorController =
-  StreamController<Map<String, dynamic>>.broadcast();
+      StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get playbackErrorStream =>
       _playbackErrorController.stream;
@@ -77,7 +77,7 @@ class AudioPlayerService {
     });
 
     _player.playbackEventStream.listen(
-          (event) {},
+      (event) {},
       onError: (Object e, StackTrace stackTrace) {
         Log.e(_tag, "Player codec error", e);
         _handleInvalidResourceAndPlayNext();
@@ -211,8 +211,8 @@ class AudioPlayerService {
 
   Song? get currentSong =>
       (_currentIndex >= 0 && _currentIndex < _globalQueue.length)
-          ? _globalQueue[_currentIndex]
-          : null;
+      ? _globalQueue[_currentIndex]
+      : null;
 
   AudioSource _createAudioSource(Song song) {
     return BiliAudioSource(
@@ -233,11 +233,11 @@ class AudioPlayerService {
   }
 
   Future<void> playWithQueue(
-      List<Song> queue,
-      int index, {
-        bool autoPlay = true,
-        Duration? initialPosition,
-      }) async {
+    List<Song> queue,
+    int index, {
+    bool autoPlay = true,
+    Duration? initialPosition,
+  }) async {
     try {
       _globalQueue = queue;
       _currentIndex = index;
@@ -284,17 +284,18 @@ class AudioPlayerService {
 
     final index = currentIndex ?? _currentIndex;
     await _iosNowPlayingService.updateCommandState(
-      hasNext: index < _globalQueue.length - 1 || _player.loopMode == LoopMode.all,
+      hasNext:
+          index < _globalQueue.length - 1 || _player.loopMode == LoopMode.all,
       hasPrevious: index > 0 || _player.loopMode == LoopMode.all,
     );
   }
 
   Future<void> _playListMobile(
-      List<Song> queue,
-      int index, {
-        bool autoPlay = true,
-        Duration? initialPosition,
-      }) async {
+    List<Song> queue,
+    int index, {
+    bool autoPlay = true,
+    Duration? initialPosition,
+  }) async {
     Log.v(_tag, "playListMobile");
     final List<AudioSource> sources = queue
         .map((s) => _createAudioSource(s))
@@ -323,10 +324,10 @@ class AudioPlayerService {
   }
 
   Future<void> _playSingleDesktop(
-      int index, {
-        bool autoPlay = true,
-        Duration? initialPosition,
-      }) async {
+    int index, {
+    bool autoPlay = true,
+    Duration? initialPosition,
+  }) async {
     if (index < 0 || index >= _globalQueue.length) return;
     final song = _globalQueue[index];
     final source = _createAudioSource(song);
@@ -565,6 +566,27 @@ class AudioPlayerService {
     } catch (_) {}
     _isHandlingError = false;
     _indexController.add(0);
+  }
+
+  // Reload audio source to avoid stuck due to connection reset when resume
+  Future<void> reloadAudioSource() async {
+    if (_globalQueue.isEmpty || currentSong == null) return;
+    if (_player.playing) return;
+
+    Log.i(_tag, "Reloading AudioSource for iOS resume...");
+    final currentPos = _player.position;
+    final wasPlaying = _player.playing;
+
+    try {
+      await playWithQueue(
+        _globalQueue,
+        _currentIndex,
+        autoPlay: wasPlaying,
+        initialPosition: currentPos,
+      );
+    } catch (e) {
+      Log.e(_tag, "Failed to reload audio source", e);
+    }
   }
 
   void dispose() {

@@ -46,7 +46,7 @@ dependencies:
   media_kit_libs_windows_audio: ^1.0.9
   media_kit_libs_ios_audio: ^1.1.4
   media_kit_libs_macos_audio: ^1.1.4
-  audio_session: ^0.1.21
+  audio_session: ^0.2.2
   just_audio_background: ^0.0.1-beta.17
   shared_preferences: ^2.5.4
   sqflite: ^2.4.2
@@ -70,6 +70,7 @@ dependencies:
   talker_flutter: ^5.1.13
   talker_dio_logger: ^5.1.13
   share_plus: ^12.0.1
+  wakelock_plus: ^1.4.0
 
 dev_dependencies:
   flutter_test:

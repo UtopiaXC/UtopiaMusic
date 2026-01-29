@@ -18,7 +18,8 @@ class RankFragment extends StatefulWidget {
   State<RankFragment> createState() => _RankFragmentState();
 }
 
-class _RankFragmentState extends State<RankFragment> with AutomaticKeepAliveClientMixin {
+class _RankFragmentState extends State<RankFragment>
+    with AutomaticKeepAliveClientMixin {
   final VideoApi _videoApi = VideoApi();
   final List<Song> _songs = [];
   bool _isLoading = false;
@@ -107,10 +108,7 @@ class _RankFragmentState extends State<RankFragment> with AutomaticKeepAliveClie
         controller: widget.scrollController,
         itemCount: _songs.length,
         itemBuilder: (context, index) {
-          return SongListItem(
-            song: _songs[index],
-            contextList: _songs,
-          );
+          return SongListItem(song: _songs[index], contextList: _songs);
         },
       ),
     );

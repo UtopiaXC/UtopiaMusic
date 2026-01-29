@@ -8,11 +8,14 @@ import 'package:utopia_music/utils/log.dart';
 const String _tag = "IOS_NOW_PLAYING_SERVICE";
 
 class IosNowPlayingService {
-  static final IosNowPlayingService _instance = IosNowPlayingService._internal();
+  static final IosNowPlayingService _instance =
+      IosNowPlayingService._internal();
   factory IosNowPlayingService() => _instance;
   IosNowPlayingService._internal();
 
-  static const MethodChannel _channel = MethodChannel('com.utopiaxc.utopia.music/now_playing');
+  static const MethodChannel _channel = MethodChannel(
+    'com.utopiaxc.utopia.music/now_playing',
+  );
 
   bool _isInitialized = false;
   Song? _currentSong;
@@ -157,7 +160,8 @@ class IosNowPlayingService {
     }
   }
 
-  void bindToPlayer(AudioPlayer player, {
+  void bindToPlayer(
+    AudioPlayer player, {
     required Function() onPlayCallback,
     required Function() onPauseCallback,
     required Function() onNextCallback,

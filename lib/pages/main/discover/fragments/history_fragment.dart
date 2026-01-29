@@ -24,10 +24,11 @@ class HistoryFragment extends StatefulWidget {
   State<HistoryFragment> createState() => _HistoryFragmentState();
 }
 
-class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAliveClientMixin {
+class _HistoryFragmentState extends State<HistoryFragment>
+    with AutomaticKeepAliveClientMixin {
   final UserApi _userApi = UserApi();
   final HtmlUnescape _unescape = HtmlUnescape();
-  
+
   List<Song> _songs = [];
   bool _isLoading = false;
   int _cursorMax = 0;
@@ -75,7 +76,7 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
     if (!_hasMore) return;
 
     setState(() => _isLoading = true);
-    
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isLoggedIn) {
       setState(() => _isLoading = false);
@@ -83,18 +84,18 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
     }
 
     final data = await _userApi.getHistory(_cursorMax, _cursorViewAt);
-    
+
     if (mounted) {
       if (data != null) {
         final list = data['list'] as List<dynamic>? ?? [];
         final cursor = data['cursor'];
-        
+
         if (list.isEmpty) {
           _hasMore = false;
         } else {
           final newSongs = list.map((item) => _mapToSong(item)).toList();
           _songs.addAll(newSongs);
-          
+
           if (cursor != null) {
             _cursorMax = cursor['max'] ?? 0;
             _cursorViewAt = cursor['view_at'] ?? 0;
@@ -108,23 +109,23 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
       setState(() => _isLoading = false);
     }
   }
-  
+
   Song _mapToSong(dynamic item) {
     String cover = item['cover'] ?? item['pic'] ?? '';
     if (cover.startsWith('http://')) {
       cover = cover.replaceFirst('http://', 'https://');
     }
-    
+
     String title = item['title'] ?? '';
     title = _unescape.convert(title);
-    
+
     String artist = item['author_name'] ?? item['owner']?['name'] ?? '';
     artist = _unescape.convert(artist);
 
     // History item usually has 'history' object with 'bvid' etc.
     // Or directly fields.
     // Structure: { title, author_name, cover, history: { bvid, cid, ... } }
-    
+
     String bvid = item['history']?['bvid'] ?? item['bvid'] ?? '';
     int cid = item['history']?['cid'] ?? item['cid'] ?? 0;
 
@@ -138,7 +139,7 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
       cid: cid,
     );
   }
-  
+
   void _showLoginDialog() {
     showDialog(
       context: context,
@@ -174,7 +175,7 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
             ),
           );
         }
-        
+
         return RefreshIndicator(
           key: widget.refreshIndicatorKey,
           onRefresh: () => _loadData(refresh: true),
@@ -191,22 +192,24 @@ class _HistoryFragmentState extends State<HistoryFragment> with AutomaticKeepAli
                 } else if (!_hasMore) {
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Center(child: Text(S.of(context).common_at_bottom, style: const TextStyle(color: Colors.grey))),
+                    child: Center(
+                      child: Text(
+                        S.of(context).common_at_bottom,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
                   );
                 } else {
                   return const SizedBox(height: 60);
                 }
               }
-              
+
               final song = _songs[index];
-              return SongListItem(
-                song: song,
-                contextList: _songs,
-              );
+              return SongListItem(song: song, contextList: _songs);
             },
           ),
         );
-      }
+      },
     );
   }
 }

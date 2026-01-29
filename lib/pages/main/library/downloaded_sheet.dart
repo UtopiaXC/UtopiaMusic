@@ -30,7 +30,9 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
   void initState() {
     super.initState();
     _loadDownloads();
-    _updateSubscription = _downloadManager.downloadUpdateStream.listen((update) {
+    _updateSubscription = _downloadManager.downloadUpdateStream.listen((
+      update,
+    ) {
       _updateProgress(update);
     });
   }
@@ -79,12 +81,12 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
       if (priorityA != priorityB) {
         return priorityA.compareTo(priorityB);
       }
-      
+
       int timeA = a['create_time'] ?? 0;
       int timeB = b['create_time'] ?? 0;
 
       if (statusA == 0 || statusA == 1) {
-         return timeA.compareTo(timeB);
+        return timeA.compareTo(timeB);
       }
       return timeB.compareTo(timeA);
     });
@@ -199,15 +201,19 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
   }
 
   void _playAll(int initialIndex) {
-    final songs = _allDownloads.map((d) => Song(
-      title: d['title'],
-      artist: d['artist'],
-      coverUrl: d['cover_url'],
-      lyrics: '',
-      colorValue: 0,
-      bvid: d['bvid'],
-      cid: d['cid'],
-    )).toList();
+    final songs = _allDownloads
+        .map(
+          (d) => Song(
+            title: d['title'],
+            artist: d['artist'],
+            coverUrl: d['cover_url'],
+            lyrics: '',
+            colorValue: 0,
+            bvid: d['bvid'],
+            cid: d['cid'],
+          ),
+        )
+        .toList();
 
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     if (playerProvider.playlist.isEmpty) {
@@ -266,10 +272,10 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
   @override
   Widget build(BuildContext context) {
     final double maxHeight = MediaQuery.of(context).size.height * 0.85;
-    
+
     bool hasDownloading = _allDownloads.any((d) => d['status'] == 1);
-    bool hasQueuedOrPaused = _allDownloads.any((d) => d['status'] == 0); 
-    
+    bool hasQueuedOrPaused = _allDownloads.any((d) => d['status'] == 0);
+
     return Container(
       constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
@@ -289,13 +295,18 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                 const SizedBox(width: 8),
                 Text(
                   S.of(context).pages_library_download_manager,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Spacer(),
                 if (_allDownloads.isNotEmpty)
                   TextButton(
                     onPressed: _handleDeleteAll,
-                    child: Text(S.of(context).pages_library_download_delete_all),
+                    child: Text(
+                      S.of(context).pages_library_download_delete_all,
+                    ),
                   ),
                 if (hasDownloading)
                   TextButton(
@@ -303,7 +314,7 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
                     child: Text(S.of(context).play_control_pause),
                   )
                 else if (hasQueuedOrPaused)
-                   TextButton(
+                  TextButton(
                     onPressed: _handleResumeAll,
                     child: Text(S.of(context).play_control_resume),
                   ),
@@ -315,161 +326,208 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _allDownloads.isEmpty
-                    ? Center(child: Text(S.of(context).pages_library_download_empty))
-                    : ListView.builder(
-                        itemCount: _allDownloads.length,
-                        itemBuilder: (context, index) {
-                          final item = _allDownloads[index];
-                          final status = item['status'] as int;
-                          final progress = item['progress'] as double? ?? 0.0;
-                          final title = item['title'] as String;
-                          final artist = item['artist'] as String;
-                          final coverUrl = item['cover_url'] as String;
-                          final quality = item['quality'] as int;
-                          final bvid = item['bvid'] as String;
-                          final cid = item['cid'] as int;
-                          
-                          String statusText = '';
-                          Widget? trailingInfo;
-                          
-                          if (status == 1) {
-                            statusText = '${S.of(context).pages_library_download_status_downloading}: ${(progress * 100).toInt()}%';
-                          } else if (status == 0) {
-                            statusText = S.of(context).pages_library_download_status_queued;
-                          } else if (status == 3) {
-                            statusText = S.of(context).pages_library_download_status_completed;
-                            final path = item['save_path'] as String;
-                            final file = File(path);
-                            trailingInfo = FutureBuilder<int>(
-                              future: file.exists().then((exists) => exists ? file.length() : 0),
-                              builder: (context, snapshot) {
-                                final size = snapshot.data ?? 0;
-                                return Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _formatSize(size),
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: Theme.of(context).dividerColor),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        QualityUtils.getQualityLabel(context,quality),
-                                        style: const TextStyle(fontSize: 10),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          } else if (status == 4) {
-                            statusText = S.of(context).pages_library_download_status_failed;
-                          }
+                ? Center(
+                    child: Text(S.of(context).pages_library_download_empty),
+                  )
+                : ListView.builder(
+                    itemCount: _allDownloads.length,
+                    itemBuilder: (context, index) {
+                      final item = _allDownloads[index];
+                      final status = item['status'] as int;
+                      final progress = item['progress'] as double? ?? 0.0;
+                      final title = item['title'] as String;
+                      final artist = item['artist'] as String;
+                      final coverUrl = item['cover_url'] as String;
+                      final quality = item['quality'] as int;
+                      final bvid = item['bvid'] as String;
+                      final cid = item['cid'] as int;
 
-                          return ListTile(
-                            leading: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                image: coverUrl.isNotEmpty
-                                    ? DecorationImage(
-                                        image: NetworkImage('$coverUrl@100w_100h.webp'),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
-                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                              ),
-                              child: coverUrl.isEmpty ? const Icon(Icons.music_note) : null,
-                            ),
-                            title: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              statusText,
-                              style: TextStyle(
-                                color: status == 1 ? Theme.of(context).colorScheme.primary : null,
-                              ),
-                            ),
-                            trailing: Row(
+                      String statusText = '';
+                      Widget? trailingInfo;
+
+                      if (status == 1) {
+                        statusText =
+                            '${S.of(context).pages_library_download_status_downloading}: ${(progress * 100).toInt()}%';
+                      } else if (status == 0) {
+                        statusText = S
+                            .of(context)
+                            .pages_library_download_status_queued;
+                      } else if (status == 3) {
+                        statusText = S
+                            .of(context)
+                            .pages_library_download_status_completed;
+                        final path = item['save_path'] as String;
+                        final file = File(path);
+                        trailingInfo = FutureBuilder<int>(
+                          future: file.exists().then(
+                            (exists) => exists ? file.length() : 0,
+                          ),
+                          builder: (context, snapshot) {
+                            final size = snapshot.data ?? 0;
+                            return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (status == 4)
-                                  IconButton(
-                                    icon: const Icon(Icons.refresh),
-                                    onPressed: () => _retryDownload(bvid, cid),
-                                    tooltip: S.of(context).common_retry,
+                                Text(
+                                  _formatSize(size),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
                                   ),
-                                if (trailingInfo != null) trailingInfo,
-                                PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert),
-                                  onSelected: (value) {
-                                    final song = Song(
-                                      title: title,
-                                      artist: artist,
-                                      coverUrl: coverUrl,
-                                      lyrics: '',
-                                      colorValue: 0,
-                                      bvid: bvid,
-                                      cid: cid,
-                                    );
-                                    
-                                    switch (value) {
-                                      case 'cancel':
-                                        _cancelDownload(bvid, cid);
-                                        break;
-                                      case 'delete':
-                                        _deleteDownload(bvid, cid);
-                                        break;
-                                      case 'add_to_playlist':
-                                        _playAll(index);
-                                        break;
-                                      case 'add_to_sheet':
-                                        _showAddToPlaylist(song);
-                                        break;
-                                      case 'detail':
-                                        _showDetail(bvid);
-                                        break;
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    if (status == 1 || status == 0)
-                                      PopupMenuItem(
-                                        value: 'cancel',
-                                        child: Text(S.of(context).pages_library_download_action_cancel),
-                                      ),
-                                    if (status == 3 || status == 4)
-                                      PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text(S.of(context).pages_library_download_action_delete),
-                                      ),
-                                    PopupMenuItem(
-                                      value: 'add_to_playlist',
-                                      child: Text(S.of(context).pages_library_download_action_add_to_playlist),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Theme.of(context).dividerColor,
                                     ),
-                                    PopupMenuItem(
-                                      value: 'add_to_sheet',
-                                      child: Text(S.of(context).pages_library_download_action_add_to_sheet),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    QualityUtils.getQualityLabel(
+                                      context,
+                                      quality,
                                     ),
-                                    PopupMenuItem(
-                                      value: 'detail',
-                                      child: Text(S.of(context).pages_library_download_action_detail),
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      } else if (status == 4) {
+                        statusText = S
+                            .of(context)
+                            .pages_library_download_status_failed;
+                      }
+
+                      return ListTile(
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            image: coverUrl.isNotEmpty
+                                ? DecorationImage(
+                                    image: NetworkImage(
+                                      '$coverUrl@100w_100h.webp',
                                     ),
-                                  ],
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                          ),
+                          child: coverUrl.isEmpty
+                              ? const Icon(Icons.music_note)
+                              : null,
+                        ),
+                        title: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          statusText,
+                          style: TextStyle(
+                            color: status == 1
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
+                          ),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (status == 4)
+                              IconButton(
+                                icon: const Icon(Icons.refresh),
+                                onPressed: () => _retryDownload(bvid, cid),
+                                tooltip: S.of(context).common_retry,
+                              ),
+                            if (trailingInfo != null) trailingInfo,
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert),
+                              onSelected: (value) {
+                                final song = Song(
+                                  title: title,
+                                  artist: artist,
+                                  coverUrl: coverUrl,
+                                  lyrics: '',
+                                  colorValue: 0,
+                                  bvid: bvid,
+                                  cid: cid,
+                                );
+
+                                switch (value) {
+                                  case 'cancel':
+                                    _cancelDownload(bvid, cid);
+                                    break;
+                                  case 'delete':
+                                    _deleteDownload(bvid, cid);
+                                    break;
+                                  case 'add_to_playlist':
+                                    _playAll(index);
+                                    break;
+                                  case 'add_to_sheet':
+                                    _showAddToPlaylist(song);
+                                    break;
+                                  case 'detail':
+                                    _showDetail(bvid);
+                                    break;
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                if (status == 1 || status == 0)
+                                  PopupMenuItem(
+                                    value: 'cancel',
+                                    child: Text(
+                                      S
+                                          .of(context)
+                                          .pages_library_download_action_cancel,
+                                    ),
+                                  ),
+                                if (status == 3 || status == 4)
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text(
+                                      S
+                                          .of(context)
+                                          .pages_library_download_action_delete,
+                                    ),
+                                  ),
+                                PopupMenuItem(
+                                  value: 'add_to_playlist',
+                                  child: Text(
+                                    S
+                                        .of(context)
+                                        .pages_library_download_action_add_to_playlist,
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'add_to_sheet',
+                                  child: Text(
+                                    S
+                                        .of(context)
+                                        .pages_library_download_action_add_to_sheet,
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'detail',
+                                  child: Text(
+                                    S
+                                        .of(context)
+                                        .pages_library_download_action_detail,
+                                  ),
                                 ),
                               ],
                             ),
-                            onTap: () => _playAll(index),
-                          );
-                        },
-                      ),
+                          ],
+                        ),
+                        onTap: () => _playAll(index),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

@@ -183,7 +183,10 @@ class _FeedFragmentState extends State<FeedFragment>
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Center(
-                      child: Text(S.of(context).common_at_bottom, style: const TextStyle(color: Colors.grey)),
+                      child: Text(
+                        S.of(context).common_at_bottom,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
                     ),
                   );
                 }

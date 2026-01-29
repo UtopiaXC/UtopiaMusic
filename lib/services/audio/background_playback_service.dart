@@ -8,7 +8,8 @@ import 'package:utopia_music/utils/log.dart';
 const String _tag = "BACKGROUND_PLAYBACK_SERVICE";
 
 class BackgroundPlaybackService with WidgetsBindingObserver {
-  static final BackgroundPlaybackService _instance = BackgroundPlaybackService._internal();
+  static final BackgroundPlaybackService _instance =
+      BackgroundPlaybackService._internal();
   factory BackgroundPlaybackService() => _instance;
   BackgroundPlaybackService._internal();
 
@@ -25,33 +26,38 @@ class BackgroundPlaybackService with WidgetsBindingObserver {
       WidgetsBinding.instance.addObserver(this);
       _audioSession = await AudioSession.instance;
 
-      await _audioSession!.configure(const AudioSessionConfiguration(
-        avAudioSessionCategory: AVAudioSessionCategory.playback,
-        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
-        avAudioSessionMode: AVAudioSessionMode.defaultMode,
-        avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
-        avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-        androidAudioAttributes: AndroidAudioAttributes(
-          contentType: AndroidAudioContentType.music,
-          usage: AndroidAudioUsage.media,
+      await _audioSession!.configure(
+        const AudioSessionConfiguration(
+          avAudioSessionCategory: AVAudioSessionCategory.playback,
+          avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
+          avAudioSessionMode: AVAudioSessionMode.defaultMode,
+          avAudioSessionRouteSharingPolicy:
+              AVAudioSessionRouteSharingPolicy.defaultPolicy,
+          avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+          androidAudioAttributes: AndroidAudioAttributes(
+            contentType: AndroidAudioContentType.music,
+            usage: AndroidAudioUsage.media,
+          ),
+          androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+          androidWillPauseWhenDucked: true,
         ),
-        androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
-        androidWillPauseWhenDucked: true,
-      ));
+      );
 
-      _interruptionSubscription = _audioSession!.interruptionEventStream.listen((event) {
-        _handleInterruption(event);
-      });
+      _interruptionSubscription = _audioSession!.interruptionEventStream.listen(
+        (event) {
+          _handleInterruption(event);
+        },
+      );
 
-      _becomingNoisySubscription = _audioSession!.becomingNoisyEventStream.listen((_) {
-        _handleBecomingNoisy();
-      });
+      _becomingNoisySubscription = _audioSession!.becomingNoisyEventStream
+          .listen((_) {
+            _handleBecomingNoisy();
+          });
 
       await _audioSession!.setActive(true);
 
       _isInitialized = true;
       Log.i(_tag, "Background playback service initialized");
-
     } catch (e) {
       Log.e(_tag, "Failed to initialize background playback service", e);
     }

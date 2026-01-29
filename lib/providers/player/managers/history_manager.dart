@@ -91,7 +91,7 @@ class HistoryManager {
               playedTime: getCurrentPositionSeconds(),
             );
           } catch (e) {
-            Log.e("HistoryManager", "Report failed", e);
+            Log.e(_tag, "Report failed", e);
           }
           _reportCounter = 0;
         }

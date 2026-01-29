@@ -27,7 +27,8 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateMixin {
+class _SearchPageState extends State<SearchPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   late TabController _tabController;
@@ -51,11 +52,11 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _searchFocusNode.requestFocus();
         if (_searchController.text.isEmpty) {
-           _showHistoryOverlay(); 
+          _showHistoryOverlay();
         }
       });
     });
-    
+
     _searchFocusNode.addListener(() {
       if (_searchFocusNode.hasFocus) {
         if (_searchController.text.isEmpty) {
@@ -66,8 +67,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       } else {
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted && !_searchFocusNode.hasFocus) {
-             _removeHistoryOverlay();
-             _removeSuggestOverlay();
+            _removeHistoryOverlay();
+            _removeSuggestOverlay();
           }
         });
       }
@@ -97,20 +98,23 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 
   Future<void> _addHistory(String keyword) async {
     if (keyword.isEmpty) return;
-    
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
     if (!settingsProvider.saveSearchHistory) return;
 
     final prefs = await SharedPreferences.getInstance();
     List<String> history = prefs.getStringList(_historyKey) ?? [];
     history.remove(keyword);
     history.insert(0, keyword);
-    
+
     final limit = settingsProvider.searchHistoryLimit;
     if (history.length > limit) {
       history = history.sublist(0, limit);
     }
-    
+
     await prefs.setStringList(_historyKey, history);
     if (mounted) {
       setState(() {
@@ -149,12 +153,12 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
-      
+
       final text = _searchController.text;
       if (text.isEmpty) {
         _removeSuggestOverlay();
         if (_searchFocusNode.hasFocus) {
-           _showHistoryOverlay();
+          _showHistoryOverlay();
         }
       } else {
         _removeHistoryOverlay();
@@ -164,7 +168,10 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   }
 
   Future<void> _fetchSuggestions(String keyword) async {
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
     if (!settingsProvider.showSearchSuggest) return;
 
     try {
@@ -189,8 +196,11 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   void _showHistoryOverlay() {
     _removeSuggestOverlay();
     if (_historyOverlay != null) return;
-    
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
     if (!settingsProvider.saveSearchHistory) return;
 
     if (_history.isEmpty) return;
@@ -244,7 +254,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     if (_suggestions.isEmpty) return;
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     final Size? leaderSize = _layerLink.leaderSize;
-    final double width = leaderSize?.width ?? MediaQuery.of(context).size.width - 80;
+    final double width =
+        leaderSize?.width ?? MediaQuery.of(context).size.width - 80;
 
     _suggestOverlay = OverlayEntry(
       builder: (context) => Stack(
@@ -322,8 +333,11 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        
-        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+
+        final playerProvider = Provider.of<PlayerProvider>(
+          context,
+          listen: false,
+        );
         if (playerProvider.isPlayerExpanded) {
           playerProvider.collapsePlayer();
         } else {
@@ -337,9 +351,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           final showFullPlayer = playerProvider.showFullPlayer;
           final isPlaying = playerProvider.isPlaying;
           if (isPlayerExpanded && _searchFocusNode.hasFocus) {
-             WidgetsBinding.instance.addPostFrameCallback((_) {
-               _searchFocusNode.unfocus();
-             });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _searchFocusNode.unfocus();
+            });
           }
 
           return Stack(
@@ -355,12 +369,14 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       decoration: InputDecoration(
                         hintText: S.of(context).pages_search_hint_search_input,
                         border: InputBorder.none,
-                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                        hintStyle: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       style: TextStyle(color: colorScheme.onSurface),
                       textInputAction: TextInputAction.search,
                       onSubmitted: _doSearch,
-                      autofocus: true, 
+                      autofocus: true,
                       onTap: () {
                         if (_searchController.text.isEmpty) {
                           _showHistoryOverlay();
@@ -401,9 +417,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            SearchLiveFragment(
-                              keyword: _currentKeyword,
-                            ),
+                            SearchLiveFragment(keyword: _currentKeyword),
                             SearchVideoFragment(
                               onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,
@@ -418,8 +432,10 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                       ),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        height: (currentSong != null && !isPlayerExpanded) 
-                            ? 80 + MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom
+                        height: (currentSong != null && !isPlayerExpanded)
+                            ? 80 +
+                                  MediaQuery.of(context).viewInsets.bottom +
+                                  MediaQuery.of(context).padding.bottom
                             : MediaQuery.of(context).viewInsets.bottom,
                       ),
                     ],
@@ -455,8 +471,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOutCubic,
-                    height: (currentSong != null && !isPlayerExpanded) 
-                        ? 80 + MediaQuery.of(context).padding.bottom 
+                    height: (currentSong != null && !isPlayerExpanded)
+                        ? 80 + MediaQuery.of(context).padding.bottom
                         : 0,
                     child: currentSong != null
                         ? SingleChildScrollView(
@@ -476,7 +492,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                                   onPrevious: () {},
                                   onClose: playerProvider.closePlayer,
                                 ),
-                                SizedBox(height: MediaQuery.of(context).padding.bottom),
+                                SizedBox(
+                                  height: MediaQuery.of(context).padding.bottom,
+                                ),
                               ],
                             ),
                           )

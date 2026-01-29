@@ -15,6 +15,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/widgets/player/components/player_background.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:utopia_music/utils/log.dart';
 
@@ -103,6 +104,7 @@ class _LyricsPageState extends State<LyricsPage>
   Timer? _subtitleTimer;
   Timer? _danmakuTimer;
   StreamSubscription? _danmakuSyncSubscription;
+  StreamSubscription? _playerStateSubscription;
 
   @override
   bool get wantKeepAlive => true;
@@ -113,6 +115,10 @@ class _LyricsPageState extends State<LyricsPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
     _danmakuSyncSubscription = playerProvider.player.positionStream.listen((
       position,
     ) {
@@ -130,6 +136,13 @@ class _LyricsPageState extends State<LyricsPage>
         }
       }
     });
+
+    _playerStateSubscription = playerProvider.player.playerStateStream.listen(
+      (_) => _updateWakelock(),
+    );
+    settingsProvider.addListener(_updateWakelock);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateWakelock());
   }
 
   @override
@@ -139,7 +152,24 @@ class _LyricsPageState extends State<LyricsPage>
     _subtitleTimer?.cancel();
     _danmakuTimer?.cancel();
     _danmakuSyncSubscription?.cancel();
+    _playerStateSubscription?.cancel();
+    Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    ).removeListener(_updateWakelock);
+    WakelockPlus.disable();
     super.dispose();
+  }
+
+  void _updateWakelock() {
+    if (!mounted) return;
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
+    final enable = playerProvider.isPlaying && settingsProvider.lyricsAlwaysOn;
+    WakelockPlus.toggle(enable: enable);
   }
 
   void _resetState() {
@@ -736,7 +766,7 @@ class _DanmakuPageState extends State<_DanmakuPage>
         option: DanmakuOption(
           opacity: 0.9,
           fontSize: 18,
-          area: 0.6,
+          area: 0.9,
           hideScroll: false,
           hideTop: false,
           hideBottom: false,

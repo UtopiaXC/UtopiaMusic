@@ -50,28 +50,34 @@ class VideoDetailApi {
     return [];
   }
 
-  Future<List<Song>> getVideoCollection(BuildContext context, String bvid, int aid) async {
+  Future<List<Song>> getVideoCollection(
+    BuildContext context,
+    String bvid,
+    int aid,
+  ) async {
     try {
       final detail = await getVideoDetail(bvid);
       if (detail != null && detail['ugc_season'] != null) {
-         final sections = detail['ugc_season']['sections'];
-         if (sections is List) {
-           List<Song> allSongs = [];
-           for (var section in sections) {
-             final episodes = section['episodes'];
-             if (episodes is List) {
-               allSongs.addAll(episodes.map((e) => _mapEpisodeToSong(context, e)).toList());
-             }
-           }
-           return allSongs;
-         }
+        final sections = detail['ugc_season']['sections'];
+        if (sections is List) {
+          List<Song> allSongs = [];
+          for (var section in sections) {
+            final episodes = section['episodes'];
+            if (episodes is List) {
+              allSongs.addAll(
+                episodes.map((e) => _mapEpisodeToSong(context, e)).toList(),
+              );
+            }
+          }
+          return allSongs;
+        }
       }
     } catch (e) {
       Log.w(_tag, 'Error fetching video collection: $e');
     }
     return [];
   }
-  
+
   Future<List<Song>> getVideoParts(BuildContext context, String bvid) async {
     try {
       final detail = await getVideoDetail(bvid);
@@ -96,7 +102,7 @@ class VideoDetailApi {
               String partTitle = page['part'] ?? '';
               partTitle = _unescape.convert(partTitle);
               int pageNum = page['page'] ?? 1;
-              
+
               return Song(
                 title: '$title - ${pageNum}P $partTitle',
                 artist: artist,
@@ -115,15 +121,18 @@ class VideoDetailApi {
     }
     return [];
   }
-  
-  Future<List<Map<String, dynamic>>> getVideoReplies(String bvid, {int page = 1}) async {
+
+  Future<List<Map<String, dynamic>>> getVideoReplies(
+    String bvid, {
+    int page = 1,
+  }) async {
     try {
       int aid = 0;
       final detail = await getVideoDetail(bvid);
       if (detail != null) {
         aid = detail['aid'] ?? 0;
       }
-      
+
       if (aid == 0) return [];
 
       final data = await Request().get(
@@ -134,7 +143,8 @@ class VideoDetailApi {
           'oid': aid,
           'pn': page,
           'ps': 20,
-          'sort': 1, // 1 for time, 2 for hot? usually 1 or 0. Let's use default or 1.
+          'sort':
+              1, // 1 for time, 2 for hot? usually 1 or 0. Let's use default or 1.
         },
       );
 
@@ -149,19 +159,17 @@ class VideoDetailApi {
     }
     return [];
   }
-  
-  Future<List<Map<String, dynamic>>> getReplyReplies(int oid, int rpid, {int page = 1}) async {
-     try {
+
+  Future<List<Map<String, dynamic>>> getReplyReplies(
+    int oid,
+    int rpid, {
+    int page = 1,
+  }) async {
+    try {
       final data = await Request().get(
         Api.urlVideoReplyReply,
         baseUrl: Api.urlBase,
-        params: {
-          'type': 1,
-          'oid': oid,
-          'root': rpid,
-          'pn': page,
-          'ps': 10,
-        },
+        params: {'type': 1, 'oid': oid, 'root': rpid, 'pn': page, 'ps': 10},
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -186,9 +194,7 @@ class VideoDetailApi {
           'like': like ? 1 : 2, // 1: like, 2: cancel like
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
@@ -207,9 +213,7 @@ class VideoDetailApi {
           'multiply': count,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
@@ -218,22 +222,34 @@ class VideoDetailApi {
     return false;
   }
 
-  Future<bool> actionFav(int aid, int addMediaId, {List<int>? delMediaIds}) async {
-    return actionFavList(aid, addMediaIds: [addMediaId], delMediaIds: delMediaIds);
+  Future<bool> actionFav(
+    int aid,
+    int addMediaId, {
+    List<int>? delMediaIds,
+  }) async {
+    return actionFavList(
+      aid,
+      addMediaIds: [addMediaId],
+      delMediaIds: delMediaIds,
+    );
   }
 
-  Future<bool> actionFavList(int aid, {List<int>? addMediaIds, List<int>? delMediaIds}) async {
+  Future<bool> actionFavList(
+    int aid, {
+    List<int>? addMediaIds,
+    List<int>? delMediaIds,
+  }) async {
     try {
       String addIds = '';
       if (addMediaIds != null && addMediaIds.isNotEmpty) {
         addIds = addMediaIds.join(',');
       }
-      
+
       String delIds = '';
       if (delMediaIds != null && delMediaIds.isNotEmpty) {
         delIds = delMediaIds.join(',');
       }
-      
+
       final data = await Request().post(
         Api.urlArchiveFav,
         baseUrl: Api.urlBase,
@@ -244,9 +260,7 @@ class VideoDetailApi {
           'del_media_ids': delIds,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       return data != null && data is Map && data['code'] == 0;
     } catch (e) {
@@ -260,10 +274,10 @@ class VideoDetailApi {
     if (cover.startsWith('http://')) {
       cover = cover.replaceFirst('http://', 'https://');
     }
-    
+
     String title = item['title'] ?? '';
     title = _unescape.convert(title);
-    
+
     String artist = '';
     if (item['owner'] != null) {
       artist = item['owner']['name'] ?? '';
@@ -280,20 +294,20 @@ class VideoDetailApi {
       cid: item['cid'] ?? 0,
     );
   }
-  
+
   Song _mapEpisodeToSong(BuildContext context, dynamic item) {
     String cover = item['arc']['pic'] ?? '';
     if (cover.startsWith('http://')) {
       cover = cover.replaceFirst('http://', 'https://');
     }
-    
+
     String title = item['title'] ?? '';
     title = _unescape.convert(title);
-    
+
     // Author info might not be in episode directly, usually same as collection owner
     // But here we just use what we have or empty
-    String artist = ''; 
-    
+    String artist = '';
+
     return Song(
       title: title,
       artist: artist, // Might need to be filled from outside

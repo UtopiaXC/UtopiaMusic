@@ -49,7 +49,9 @@ class _PlaylistFormSheetState extends State<PlaylistFormSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.initialTitle == null ? S.of(context).pages_library_playlist_create : S.of(context).pages_library_playlist_edit,
+            widget.initialTitle == null
+                ? S.of(context).pages_library_playlist_create
+                : S.of(context).pages_library_playlist_edit,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),

@@ -14,7 +14,7 @@ import 'package:utopia_music/utils/log.dart';
 const String _tag = "BILI_AUDIO_SOURCE";
 
 typedef FatalErrorCallback =
-void Function(String bvid, int cid, String message);
+    void Function(String bvid, int cid, String message);
 
 class BiliAudioSource extends StreamAudioSource {
   final String bvid;
@@ -40,13 +40,13 @@ class BiliAudioSource extends StreamAudioSource {
     required this.quality,
     this.onFatalError,
   }) : super(
-    tag: MediaItem(
-      id: '${bvid}_$initCid',
-      title: title,
-      artist: artist,
-      artUri: Uri.tryParse(coverUrl),
-    ),
-  ) {
+         tag: MediaItem(
+           id: '${bvid}_$initCid',
+           title: title,
+           artist: artist,
+           artUri: Uri.tryParse(coverUrl),
+         ),
+       ) {
     _realCid = initCid;
   }
 
@@ -71,96 +71,115 @@ class BiliAudioSource extends StreamAudioSource {
   Future<StreamAudioResponse> request([int? start, int? end]) async {
     Log.v(_tag, "request range: $start - $end");
     final startOffset = start ?? 0;
+    int retryCount = 0;
 
-    try {
-      if (_realCid == 0) {
-        try {
-          _realCid = await _searchApi.fetchCid(bvid);
-        } catch (e) {
-          Log.e(_tag, "Failed to resolve CID", e);
-        }
-      }
-      final targetCid = _realCid == 0 ? initCid : _realCid;
-      final localRes = await _downloadManager.checkLocalResource(
-        bvid,
-        targetCid,
-        quality,
-      );
-      if (localRes != null && localRes.file != null) {
-        final file = localRes.file!;
-        final fileLen = await file.length();
-
-        if (startOffset == 0) {
-          AudioPlayerService().notifyActualQuality(localRes.quality ?? quality);
-        }
-
-        return StreamAudioResponse(
-          sourceLength: fileLen,
-          contentLength: end != null
-              ? (end - startOffset + 1)
-              : (fileLen - startOffset),
-          offset: startOffset,
-          stream: file.openRead(startOffset, end),
-          contentType: _getMimeType(null),
-        );
-      }
-
-      final bool enableCache = (startOffset == 0 && targetCid != 0);
-
-      final netResponse = await _downloadManager.getNetworkStream(
-        bvid,
-        targetCid,
-        quality,
-        start: startOffset,
-      );
-
-      final response = netResponse.httpResponse;
-      final contentType = netResponse.mimeType;
-
-      if (startOffset == 0) {
-        AudioPlayerService().notifyActualQuality(netResponse.actualQuality);
-      }
-
-      int contentLength = response.contentLength;
-      int? sourceLength;
-
-      if (response.statusCode == 206) {
-        final rangeHeader = response.headers.value(HttpHeaders.contentRangeHeader);
-        if (rangeHeader != null) {
-          final parts = rangeHeader.split('/');
-          if (parts.length == 2 && parts[1] != '*') {
-            sourceLength = int.tryParse(parts[1]);
+    while (true) {
+      try {
+        if (_realCid == 0) {
+          try {
+            _realCid = await _searchApi.fetchCid(bvid);
+          } catch (e) {
+            Log.e(_tag, "Failed to resolve CID", e);
           }
         }
-      }
+        final targetCid = _realCid == 0 ? initCid : _realCid;
+        final localRes = await _downloadManager.checkLocalResource(
+          bvid,
+          targetCid,
+          quality,
+        );
+        if (localRes != null && localRes.file != null) {
+          final file = localRes.file!;
+          final fileLen = await file.length();
 
-      if (sourceLength == null) {
-        if (startOffset == 0 && contentLength > 0) {
-          sourceLength = contentLength;
-        } else if (contentLength > 0) {
-          sourceLength = contentLength + startOffset;
+          if (startOffset == 0) {
+            AudioPlayerService().notifyActualQuality(
+              localRes.quality ?? quality,
+            );
+          }
+
+          return StreamAudioResponse(
+            sourceLength: fileLen,
+            contentLength: end != null
+                ? (end - startOffset + 1)
+                : (fileLen - startOffset),
+            offset: startOffset,
+            stream: file.openRead(startOffset, end),
+            contentType: _getMimeType(null),
+          );
         }
-      }
 
-      if (startOffset == 0 && netResponse.lastPlayTime != null && netResponse.lastPlayTime! > 0) {
-        final context = navigatorKey.currentContext;
-        if (context != null) {
-          final settings = Provider.of<SettingsProvider>(context, listen: false);
-          if (settings.enableHistoryLocation) {
-            final player = AudioPlayerService().player;
-            if (player.position.inMilliseconds < 1000) {
-               Future.microtask(() async {
-                 final targetPos = Duration(milliseconds: netResponse.lastPlayTime!);
-                 Log.i(_tag, "Found online history, preparing to seek: $targetPos");
+        final bool enableCache = (startOffset == 0 && targetCid != 0);
 
-                 if (player.duration != null && player.duration! > targetPos) {
+        final netResponse = await _downloadManager.getNetworkStream(
+          bvid,
+          targetCid,
+          quality,
+          start: startOffset,
+        );
+
+        final response = netResponse.httpResponse;
+        final contentType = netResponse.mimeType;
+
+        if (startOffset == 0) {
+          AudioPlayerService().notifyActualQuality(netResponse.actualQuality);
+        }
+
+        int contentLength = response.contentLength;
+        int? sourceLength;
+
+        if (response.statusCode == 206) {
+          final rangeHeader = response.headers.value(
+            HttpHeaders.contentRangeHeader,
+          );
+          if (rangeHeader != null) {
+            final parts = rangeHeader.split('/');
+            if (parts.length == 2 && parts[1] != '*') {
+              sourceLength = int.tryParse(parts[1]);
+            }
+          }
+        }
+
+        if (sourceLength == null) {
+          if (startOffset == 0 && contentLength > 0) {
+            sourceLength = contentLength;
+          } else if (contentLength > 0) {
+            sourceLength = contentLength + startOffset;
+          }
+        }
+
+        if (startOffset == 0 &&
+            netResponse.lastPlayTime != null &&
+            netResponse.lastPlayTime! > 0) {
+          final context = navigatorKey.currentContext;
+          if (context != null) {
+            final settings = Provider.of<SettingsProvider>(
+              context,
+              listen: false,
+            );
+            if (settings.enableHistoryLocation) {
+              final player = AudioPlayerService().player;
+              if (player.position.inMilliseconds < 1000) {
+                Future.microtask(() async {
+                  final targetPos = Duration(
+                    milliseconds: netResponse.lastPlayTime!,
+                  );
+                  Log.i(
+                    _tag,
+                    "Found online history, preparing to seek: $targetPos",
+                  );
+
+                  if (player.duration != null && player.duration! > targetPos) {
                     await player.seek(targetPos);
                     Log.i(_tag, "Seeked immediately to $targetPos");
-                 } else {
+                  } else {
                     StreamSubscription? sub;
                     sub = player.durationStream.listen((duration) {
                       if (duration != null && duration > targetPos) {
-                        Log.i(_tag, "Duration available ($duration), seeking to $targetPos");
+                        Log.i(
+                          _tag,
+                          "Duration available ($duration), seeking to $targetPos",
+                        );
                         player.seek(targetPos);
                         sub?.cancel();
                       }
@@ -168,56 +187,63 @@ class BiliAudioSource extends StreamAudioSource {
                     Future.delayed(const Duration(seconds: 5), () {
                       sub?.cancel();
                     });
-                 }
-               });
+                  }
+                });
+              }
             }
           }
         }
-      }
 
-      Stream<List<int>> stream = response;
+        Stream<List<int>> stream = response;
 
-      if (enableCache && sourceLength != null && sourceLength > 0) {
-        return _handleCacheStream(
-          stream,
-          targetCid,
-          startOffset,
-          contentLength,
-          sourceLength,
-          bvid,
-          contentType,
-        );
-      } else {
-        return StreamAudioResponse(
-          sourceLength: sourceLength,
-          contentLength: contentLength,
-          offset: startOffset,
-          stream: stream,
-          contentType: contentType,
-        );
+        if (enableCache && sourceLength != null && sourceLength > 0) {
+          return _handleCacheStream(
+            stream,
+            targetCid,
+            startOffset,
+            contentLength,
+            sourceLength,
+            bvid,
+            contentType,
+          );
+        } else {
+          return StreamAudioResponse(
+            sourceLength: sourceLength,
+            contentLength: contentLength,
+            offset: startOffset,
+            stream: stream,
+            contentType: contentType,
+          );
+        }
+      } catch (e) {
+        if (retryCount < 2) {
+          retryCount++;
+          Log.w(_tag, "Request failed, retrying ($retryCount/2) in 200ms: $e");
+          await Future.delayed(Duration(milliseconds: 200 * retryCount));
+          continue;
+        }
+        Log.e(_tag, "BiliAudioSource Request Failed: $e");
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains("403") ||
+            errorStr.contains("404") ||
+            errorStr.contains("resource") ||
+            errorStr.contains("unavailable")) {
+          onFatalError?.call(bvid, _realCid, e.toString());
+        }
+        rethrow;
       }
-    } catch (e) {
-      Log.e(_tag, "BiliAudioSource Request Failed: $e");
-      final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains("403") ||
-          errorStr.contains("404") ||
-          errorStr.contains("resource") ||
-          errorStr.contains("unavailable")) {
-        onFatalError?.call(bvid, _realCid, e.toString());
-      }
-      rethrow;
     }
   }
 
   StreamAudioResponse _handleCacheStream(
-      Stream<List<int>> input,
-      int cid,
-      int offset,
-      int contentLength,
-      int sourceLength,
-      String bvid,
-      String contentType,
-      ) {
+    Stream<List<int>> input,
+    int cid,
+    int offset,
+    int contentLength,
+    int sourceLength,
+    String bvid,
+    String contentType,
+  ) {
     final tempPath = _downloadManager.getTempCachePath(bvid, cid);
     final tempFile = File(tempPath);
 
@@ -235,7 +261,10 @@ class BiliAudioSource extends StreamAudioSource {
             await fileSink!.flush();
             await fileSink!.close();
             if (writtenBytes > sourceLength * 0.8) {
-              Log.v(_tag, "Keeping partial cache ($writtenBytes/$sourceLength) for resume");
+              Log.v(
+                _tag,
+                "Keeping partial cache ($writtenBytes/$sourceLength) for resume",
+              );
               await _dbService.recordCacheAccess(
                 bvid,
                 cid,
@@ -275,7 +304,7 @@ class BiliAudioSource extends StreamAudioSource {
     });
 
     inputSubscription = input.listen(
-          (data) {
+      (data) {
         if (!outputController!.isClosed) {
           outputController.add(data);
         }
@@ -285,7 +314,9 @@ class BiliAudioSource extends StreamAudioSource {
             writtenBytes += data.length;
           } catch (e) {
             isWriting = false;
-            try { fileSink?.close(); } catch (_) {}
+            try {
+              fileSink?.close();
+            } catch (_) {}
             fileSink = null;
             _cleanupTempFile(tempFile);
           }
@@ -303,7 +334,10 @@ class BiliAudioSource extends StreamAudioSource {
               if (finalSize == sourceLength) {
                 _promoteTempFile(tempFile, cid, sourceLength);
               } else {
-                Log.v(_tag, "Partial download ($finalSize/$sourceLength), skip cache.");
+                Log.v(
+                  _tag,
+                  "Partial download ($finalSize/$sourceLength), skip cache.",
+                );
                 _cleanupTempFile(tempFile);
               }
             } else {
@@ -317,7 +351,9 @@ class BiliAudioSource extends StreamAudioSource {
       onError: (e) {
         if (!outputController!.isClosed) outputController?.addError(e);
         if (isWriting) {
-          try { fileSink?.close(); } catch (_) {}
+          try {
+            fileSink?.close();
+          } catch (_) {}
           _cleanupTempFile(tempFile);
         }
       },
@@ -362,7 +398,6 @@ class BiliAudioSource extends StreamAudioSource {
       );
 
       await _downloadManager.onCacheFileAdded(totalSize);
-
     } catch (e) {
       Log.w(_tag, "Promote failed: $e");
       _cleanupTempFile(tempFile);

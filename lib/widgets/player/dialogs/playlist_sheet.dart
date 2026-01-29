@@ -11,7 +11,6 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "PLAYLIST_SHEET";
 
-
 class PlaylistSheet extends StatefulWidget {
   final List<Song> playlist;
   final Song currentSong;
@@ -159,7 +158,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
                       '${S.of(context).weight_play_list_label_name} (${playlist.length})',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                     Spacer(),
+                    Spacer(),
                     IconButton(
                       icon: Icon(Icons.folder_special_outlined),
                       onPressed: _handleSavePlaylist,
