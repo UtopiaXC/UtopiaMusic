@@ -40,6 +40,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _playerBackgroundModeKey = 'player_background_mode_v2';
   static const String _debugModeKey = 'debug_mode';
   static const String _logLevelKey = 'log_level';
+  static const String _lyricsAlwaysOnKey = 'lyrics_always_on';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -65,6 +66,7 @@ class SettingsProvider extends ChangeNotifier {
   String _playerBackgroundMode = 'gradient';
   bool _debugMode = false;
   LogLevel _logLevel = LogLevel.warning;
+  bool _lyricsAlwaysOn = true;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -113,6 +115,8 @@ class SettingsProvider extends ChangeNotifier {
   bool get debugMode => _debugMode;
 
   LogLevel get logLevel => _logLevel;
+
+  bool get lyricsAlwaysOn => _lyricsAlwaysOn;
 
   SettingsProvider() {
     _loadSettings();
@@ -167,6 +171,7 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _logLevel = LogLevel.warning;
     }
+    _lyricsAlwaysOn = prefs.getBool(_lyricsAlwaysOnKey) ?? true;
     Log.setLevel(_logLevel);
 
     notifyListeners();
@@ -336,6 +341,13 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt(_logLevelKey, level.index);
   }
 
+  Future<void> setLyricsAlwaysOn(bool value) async {
+    _lyricsAlwaysOn = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_lyricsAlwaysOnKey, value);
+  }
+
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _seedColor = Colors.deepPurple;
@@ -360,6 +372,7 @@ class SettingsProvider extends ChangeNotifier {
     _playerBackgroundMode = 'gradient';
     _debugMode = false;
     _logLevel = LogLevel.warning;
+    _lyricsAlwaysOn = true;
     Log.setLevel(_logLevel);
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
@@ -386,6 +399,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_playerBackgroundModeKey);
     await prefs.remove(_debugModeKey);
     await prefs.remove(_logLevelKey);
+    await prefs.remove(_lyricsAlwaysOnKey);
   }
 
   Future<void> resetApp() async {
@@ -412,6 +426,7 @@ class SettingsProvider extends ChangeNotifier {
     _playerBackgroundMode = 'gradient';
     _debugMode = false;
     _logLevel = LogLevel.warning;
+    _lyricsAlwaysOn = true;
     notifyListeners();
     try {
       final audioService = AudioPlayerService();

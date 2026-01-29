@@ -36,7 +36,23 @@ class AppearanceSettingsPage extends StatelessWidget {
           ),
           _SettingsGroup(
             title: S.of(context).pages_settings_appearance_player,
-            children: [_buildPlayerBackgroundItem(context, settingsProvider)],
+            children: [
+              _buildPlayerBackgroundItem(context, settingsProvider),
+              SwitchListTile(
+                title: Text(
+                  S.of(context).pages_settings_appearance_always_turn_on,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_appearance_always_turn_on_description,
+                ),
+                value: settingsProvider.lyricsAlwaysOn,
+                onChanged: (bool value) {
+                  settingsProvider.setLyricsAlwaysOn(value);
+                },
+              ),
+            ],
           ),
         ],
       ),

@@ -37,7 +37,10 @@ class SearchApi {
       if (data != null && data is Map && data['code'] == 0) {
         if (data['data'] == null) {
           if (retryCount < maxRetries) {
-            Log.d(_tag, 'Search response data is null, retrying... ($retryCount)');
+            Log.d(
+              _tag,
+              'Search response data is null, retrying... ($retryCount)',
+            );
             await Future.delayed(const Duration(milliseconds: 500));
             return searchVideos(
               context,

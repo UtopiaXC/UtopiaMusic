@@ -11,6 +11,7 @@ import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/utils/font_utils.dart';
 import 'package:utopia_music/pages/main/lock_screen.dart';
+import 'package:utopia_music/services/audio/audio_player_service.dart';
 
 const String _tag = "APP";
 
@@ -48,6 +49,16 @@ class _UtopiaMusicAppState extends State<UtopiaMusicApp>
       securityProvider.setAppPaused();
     } else if (state == AppLifecycleState.resumed) {
       securityProvider.setAppResumed();
+      if (Platform.isIOS) {
+        // Try reload audio source if not playing on ios
+        final player = AudioPlayerService().player;
+        if (!player.playing) {
+          final currentPos = player.position;
+          if (currentPos > Duration.zero) {
+            AudioPlayerService().reloadAudioSource();
+          }
+        }
+      }
     } else if (state == AppLifecycleState.detached) {}
   }
 

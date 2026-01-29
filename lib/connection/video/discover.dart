@@ -13,9 +13,15 @@ class VideoApi {
   static const String _kFreshIdxKey = 'video_api_fresh_idx';
   final HtmlUnescape _unescape = HtmlUnescape();
 
-  Future<List<Song>> getRecommentVideos(BuildContext context, {int recursionDepth = 0}) async {
+  Future<List<Song>> getRecommentVideos(
+    BuildContext context, {
+    int recursionDepth = 0,
+  }) async {
     if (recursionDepth > 10) {
-      Log.w(_tag, 'Max recursion depth reached ($recursionDepth), stopping retry.');
+      Log.w(
+        _tag,
+        'Max recursion depth reached ($recursionDepth), stopping retry.',
+      );
       return [];
     }
 
@@ -66,7 +72,10 @@ class VideoApi {
     }
   }
 
-  Future<List<Song>> getRankingVideos(BuildContext context, {int rid = 0}) async {
+  Future<List<Song>> getRankingVideos(
+    BuildContext context, {
+    int rid = 0,
+  }) async {
     try {
       final data = await Request().get(
         Api.urlRanking,
@@ -81,7 +90,10 @@ class VideoApi {
             .map((item) => _mapToSong(context, item))
             .toList();
       } else {
-        Log.w(_tag, 'Failed to load ranking videos: ${data?['message']} (${data?['code']})');
+        Log.w(
+          _tag,
+          'Failed to load ranking videos: ${data?['message']} (${data?['code']})',
+        );
       }
     } catch (e) {
       Log.w(_tag, 'Error fetching ranking videos: $e');
@@ -89,7 +101,10 @@ class VideoApi {
     return [];
   }
 
-  Future<List<Song>> getRegionRankingVideos(BuildContext context, {required int rid}) async {
+  Future<List<Song>> getRegionRankingVideos(
+    BuildContext context, {
+    required int rid,
+  }) async {
     try {
       final data = await Request().get(
         Api.urlRankingRegion,
@@ -99,11 +114,12 @@ class VideoApi {
 
       if (data != null && data['code'] == 0) {
         final List<dynamic> list = data['data'] ?? [];
-        return list
-            .map((item) => _mapToSong(context, item))
-            .toList();
+        return list.map((item) => _mapToSong(context, item)).toList();
       } else {
-        Log.w(_tag, 'Failed to load region ranking videos: ${data?['message']} (${data?['code']})');
+        Log.w(
+          _tag,
+          'Failed to load region ranking videos: ${data?['message']} (${data?['code']})',
+        );
       }
     } catch (e) {
       Log.w(_tag, 'Error fetching region ranking videos: $e');
@@ -111,16 +127,15 @@ class VideoApi {
     return [];
   }
 
-  Future<Map<String, dynamic>> getFeed(BuildContext context, String offset) async {
+  Future<Map<String, dynamic>> getFeed(
+    BuildContext context,
+    String offset,
+  ) async {
     try {
       final data = await Request().get(
         Api.urlDynamicFeed,
         baseUrl: Api.urlBase,
-        params: {
-          'timezone_offset': '-480',
-          'type': 'video',
-          'offset': offset,
-        },
+        params: {'timezone_offset': '-480', 'type': 'video', 'offset': offset},
       );
 
       if (data != null) {
@@ -135,15 +150,21 @@ class VideoApi {
               final archive = major['archive'];
               final author = modules['module_author'];
 
-              songs.add(Song(
-                title: _unescape.convert(archive['title'] ?? S.of(context).common_no_title),
-                artist: _unescape.convert(author['name'] ?? S.of(context).common_unknown),
-                coverUrl: archive['cover'],
-                lyrics: '',
-                colorValue: 0xFF2196F3,
-                bvid: archive['bvid'],
-                cid: 0,
-              ));
+              songs.add(
+                Song(
+                  title: _unescape.convert(
+                    archive['title'] ?? S.of(context).common_no_title,
+                  ),
+                  artist: _unescape.convert(
+                    author['name'] ?? S.of(context).common_unknown,
+                  ),
+                  coverUrl: archive['cover'],
+                  lyrics: '',
+                  colorValue: 0xFF2196F3,
+                  bvid: archive['bvid'],
+                  cid: 0,
+                ),
+              );
             }
           }
           return {

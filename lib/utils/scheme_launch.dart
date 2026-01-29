@@ -30,7 +30,7 @@ class SchemeLauncher {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(S.of(context).util_scheme_lauch_fail)),
+            SnackBar(content: Text(S.of(context).util_scheme_launch_fail)),
           );
         }
       }
@@ -38,7 +38,7 @@ class SchemeLauncher {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${S.of(context).util_scheme_lauch_fail}: $e'),
+            content: Text('${S.of(context).util_scheme_launch_fail}: $e'),
           ),
         );
       }

@@ -67,7 +67,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
           _songs = songs;
           _isLoading = false;
           if (_songs.isEmpty) {
-             _hasError = true;
+            _hasError = true;
           }
         });
       }

@@ -337,7 +337,8 @@ class Request {
           }
 
           if (retryCount < _maxRetries) {
-            if (kDebugMode) Log.d(_tag, "Business error (code $code), retrying...");
+            if (kDebugMode)
+              Log.d(_tag, "Business error (code $code), retrying...");
             await Future.delayed(
               Duration(milliseconds: 500 * (retryCount + 1)),
             );

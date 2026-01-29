@@ -32,7 +32,10 @@ class SearchSuggest extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           onTap: () => onSelected(suggestion),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 0,
+          ),
           visualDensity: VisualDensity.compact,
         );
       },

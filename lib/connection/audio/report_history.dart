@@ -21,9 +21,7 @@ class ReportHistoryApi {
           'played_time': playedTime,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
         suppressErrorDialog: true,
       );
       return data != null && data is Map && data['code'] == 0;

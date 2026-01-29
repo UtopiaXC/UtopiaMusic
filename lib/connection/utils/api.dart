@@ -1,5 +1,5 @@
 class Api {
-  static const String urlSiteBase = 'https://www.bilibili.com' ;
+  static const String urlSiteBase = 'https://www.bilibili.com';
   static const String urlBase = 'https://api.bilibili.com';
   static const String urlLiveBase = 'https://api.live.bilibili.com';
   static const String urlLoginBase = 'https://passport.bilibili.com';
@@ -16,7 +16,8 @@ class Api {
   static const String urlRanking = '/x/web-interface/ranking/v2';
   static const String urlRankingRegion = '/x/web-interface/ranking/region';
   static const String urlPlayUrlWbi = '/x/player/wbi/playurl';
-  static const String urlPlayHistoryHeartbeat = '/x/click-interface/web/heartbeat';
+  static const String urlPlayHistoryHeartbeat =
+      '/x/click-interface/web/heartbeat';
   static const String urlSearch = '/x/web-interface/search/type';
   static const String urlSearchSuggest = '/main/suggest';
   static const String urlVideoDetailWbi = '/x/web-interface/wbi/view';

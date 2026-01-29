@@ -92,7 +92,7 @@ class PlaySettingsPage extends StatelessWidget {
                 subtitle: Text(
                   S
                       .of(context)
-                      .pages_settings_tag_player_control_auto_play_descriptionn,
+                      .pages_settings_tag_player_control_auto_play_description,
                 ),
                 value: playerProvider.autoPlay,
                 onChanged: (bool value) {

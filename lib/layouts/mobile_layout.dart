@@ -61,7 +61,9 @@ class MobileLayout extends StatelessWidget {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOutCubic,
-                      height: (currentSong != null && !isPlayerExpanded) ? 80 : 0,
+                      height: (currentSong != null && !isPlayerExpanded)
+                          ? 80
+                          : 0,
                       child: currentSong != null
                           ? SingleChildScrollView(
                               physics: const NeverScrollableScrollPhysics(),

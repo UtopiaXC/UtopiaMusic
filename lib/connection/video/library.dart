@@ -13,7 +13,7 @@ const String _tag = "LIBRARY_API";
 
 class LibraryApi {
   final HtmlUnescape _unescape = HtmlUnescape();
-  
+
   Future<List<dynamic>> getFavoriteFolders(int mid) async {
     try {
       final data = await Request().get(
@@ -105,7 +105,6 @@ class LibraryApi {
             'web_location': '0.0',
           },
         );
-
 
         if (data != null && data['code'] == 0) {
           final List<dynamic> medias = data['data']['medias'] ?? [];
@@ -224,7 +223,12 @@ class LibraryApi {
     return null;
   }
 
-  Future<bool> editFolder(int mediaId, String title, String intro, bool isPublic) async {
+  Future<bool> editFolder(
+    int mediaId,
+    String title,
+    String intro,
+    bool isPublic,
+  ) async {
     try {
       final data = await Request().post(
         Api.urlFavFolderEdit,
@@ -236,9 +240,7 @@ class LibraryApi {
           'privacy': isPublic ? 0 : 1,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data['code'] == 0) {
@@ -277,9 +279,7 @@ class LibraryApi {
           'resources': '$aid:2',
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data['code'] == 0) {

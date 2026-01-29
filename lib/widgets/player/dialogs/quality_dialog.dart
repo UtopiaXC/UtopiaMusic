@@ -11,7 +11,6 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "QUALITY_DIALOG";
 
-
 class QualityDialog extends StatefulWidget {
   final Song song;
 
@@ -21,7 +20,8 @@ class QualityDialog extends StatefulWidget {
   State<QualityDialog> createState() => _QualityDialogState();
 }
 
-class _QualityDialogState extends State<QualityDialog> with SingleTickerProviderStateMixin {
+class _QualityDialogState extends State<QualityDialog>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   AudioStreamInfo? _streamInfo;
   final AudioStreamApi _audioApi = AudioStreamApi();
@@ -123,8 +123,12 @@ class _QualityDialogState extends State<QualityDialog> with SingleTickerProvider
         final quality = qualities[index];
         final isSelected = settingsProvider.defaultAudioQuality == quality;
         return ListTile(
-          title: Text(QualityUtils.getQualityLabel(context, quality, detailed: true)),
-          trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+          title: Text(
+            QualityUtils.getQualityLabel(context, quality, detailed: true),
+          ),
+          trailing: isSelected
+              ? const Icon(Icons.check, color: Colors.blue)
+              : null,
           onTap: () {
             settingsProvider.setDefaultAudioQuality(quality);
             Navigator.pop(context);
@@ -162,7 +166,9 @@ class _QualityDialogState extends State<QualityDialog> with SingleTickerProvider
       );
     }
     final available = _streamInfo!.availableQualities;
-    final current = context.select<PlayerProvider, int>((p) => p.currentPlayingQuality);
+    final current = context.select<PlayerProvider, int>(
+      (p) => p.currentPlayingQuality,
+    );
 
     return Column(
       children: [
@@ -182,18 +188,27 @@ class _QualityDialogState extends State<QualityDialog> with SingleTickerProvider
               final isCurrent = quality == current;
 
               return ListTile(
-                title: Text(QualityUtils.getQualityLabel(context, quality, detailed: true)),
+                title: Text(
+                  QualityUtils.getQualityLabel(
+                    context,
+                    quality,
+                    detailed: true,
+                  ),
+                ),
                 subtitle: isCurrent
                     ? Text(
-                  S.of(context).weight_player_audio_quilty_for_this_using,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 12,
-                  ),
-                )
+                        S.of(context).weight_player_audio_quilty_for_this_using,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 12,
+                        ),
+                      )
                     : null,
                 trailing: isCurrent
-                    ? Icon(Icons.volume_up, color: Theme.of(context).colorScheme.primary)
+                    ? Icon(
+                        Icons.volume_up,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
                     : null,
                 enabled: false,
               );

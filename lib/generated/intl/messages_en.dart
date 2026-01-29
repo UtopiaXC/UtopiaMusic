@@ -384,6 +384,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_settings_about_open_source_license":
         MessageLookupByLibrary.simpleMessage("Open Source License"),
     "pages_settings_about_qa": MessageLookupByLibrary.simpleMessage("Q&A"),
+    "pages_settings_appearance_always_turn_on":
+        MessageLookupByLibrary.simpleMessage("Keep Screen On"),
+    "pages_settings_appearance_always_turn_on_description":
+        MessageLookupByLibrary.simpleMessage(
+          "If playing, the screen will not turn off.",
+        ),
     "pages_settings_appearance_dark_mode": MessageLookupByLibrary.simpleMessage(
       "Dark Mode",
     ),
@@ -466,7 +472,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_settings_tag_download_clear": MessageLookupByLibrary.simpleMessage(
       "Clear All Downloads",
     ),
-    "pages_settings_tag_download_defult_quality":
+    "pages_settings_tag_download_default_quality":
         MessageLookupByLibrary.simpleMessage("Default Download Quality"),
     "pages_settings_tag_download_download_clear_downloaded":
         MessageLookupByLibrary.simpleMessage("Clear All Downloads"),
@@ -614,7 +620,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "pages_settings_tag_player_control_auto_play":
         MessageLookupByLibrary.simpleMessage("Auto Play"),
-    "pages_settings_tag_player_control_auto_play_descriptionn":
+    "pages_settings_tag_player_control_auto_play_description":
         MessageLookupByLibrary.simpleMessage(
           "Auto play on startup if playing when exited",
         ),
@@ -650,11 +656,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "pages_settings_tag_security_lock": MessageLookupByLibrary.simpleMessage(
       "Lock",
     ),
-    "pages_settings_tag_security_lock_dely":
+    "pages_settings_tag_security_lock_delay":
         MessageLookupByLibrary.simpleMessage("Lock Delay"),
-    "pages_settings_tag_security_lock_dely_custom_inpit":
+    "pages_settings_tag_security_lock_delay_custom_input":
         MessageLookupByLibrary.simpleMessage("Input Minutes"),
-    "pages_settings_tag_security_lock_dely_everytime":
+    "pages_settings_tag_security_lock_delay_everytime":
         MessageLookupByLibrary.simpleMessage("Every Switch"),
     "pages_tag_discover": MessageLookupByLibrary.simpleMessage("Discover"),
     "pages_tag_library": MessageLookupByLibrary.simpleMessage("Library"),
@@ -724,7 +730,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "util_audio_quality_middle_detail": MessageLookupByLibrary.simpleMessage(
       "Standard (132K)",
     ),
-    "util_scheme_lauch_fail": MessageLookupByLibrary.simpleMessage(
+    "util_scheme_launch_fail": MessageLookupByLibrary.simpleMessage(
       "Cannot open link",
     ),
     "util_update_already_newest": MessageLookupByLibrary.simpleMessage(
@@ -831,7 +837,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Stop after current song finishes",
         ),
-    "weight_player_timer_timestemp_stop": MessageLookupByLibrary.simpleMessage(
+    "weight_player_timer_timestamp_stop": MessageLookupByLibrary.simpleMessage(
       "Specific Time",
     ),
     "weight_search_label_confirm_clean_history_message":
@@ -870,7 +876,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "weight_user_space_annual_vip": MessageLookupByLibrary.simpleMessage(
       "Annual Premium",
     ),
-    "weight_user_space_created_faviourite_folder":
+    "weight_user_space_created_favourite_folder":
         MessageLookupByLibrary.simpleMessage("Created Favorites"),
     "weight_user_space_logout_conntent": MessageLookupByLibrary.simpleMessage(
       "Are you sure to logout?",
@@ -882,13 +888,15 @@ class MessageLookup extends MessageLookupByLibrary {
       "Most Played",
     ),
     "weight_user_space_newest": MessageLookupByLibrary.simpleMessage("Newest"),
-    "weight_user_space_no_faviourite_folder":
+    "weight_user_space_no_favourite_folder":
         MessageLookupByLibrary.simpleMessage("No Favorites"),
     "weight_user_space_no_public_connection":
         MessageLookupByLibrary.simpleMessage("No public collections?"),
     "weight_user_space_normal": MessageLookupByLibrary.simpleMessage("User"),
-    "weight_user_space_subscribe_faviourite_folder":
-        MessageLookupByLibrary.simpleMessage("Subscribed Favorites"),
+    "weight_user_space_subscribe_favourite_folder":
+        MessageLookupByLibrary.simpleMessage(
+          "Subscribed Favorites And Collections",
+        ),
     "weight_user_space_vip": MessageLookupByLibrary.simpleMessage("Premium"),
     "weight_video_detail_added_to_download_queue":
         MessageLookupByLibrary.simpleMessage("Added to download queue"),

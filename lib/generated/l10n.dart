@@ -1245,10 +1245,10 @@ class S {
   }
 
   /// `Auto play on startup if playing when exited`
-  String get pages_settings_tag_player_control_auto_play_descriptionn {
+  String get pages_settings_tag_player_control_auto_play_description {
     return Intl.message(
       'Auto play on startup if playing when exited',
-      name: 'pages_settings_tag_player_control_auto_play_descriptionn',
+      name: 'pages_settings_tag_player_control_auto_play_description',
       desc: '',
       args: [],
     );
@@ -1319,6 +1319,26 @@ class S {
     return Intl.message(
       'Show comments page in video detail',
       name: 'pages_settings_tag_player_comment_description',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Keep Screen On`
+  String get pages_settings_appearance_always_turn_on {
+    return Intl.message(
+      'Keep Screen On',
+      name: 'pages_settings_appearance_always_turn_on',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `If playing, the screen will not turn off.`
+  String get pages_settings_appearance_always_turn_on_description {
+    return Intl.message(
+      'If playing, the screen will not turn off.',
+      name: 'pages_settings_appearance_always_turn_on_description',
       desc: '',
       args: [],
     );
@@ -1445,10 +1465,10 @@ class S {
   }
 
   /// `Default Download Quality`
-  String get pages_settings_tag_download_defult_quality {
+  String get pages_settings_tag_download_default_quality {
     return Intl.message(
       'Default Download Quality',
-      name: 'pages_settings_tag_download_defult_quality',
+      name: 'pages_settings_tag_download_default_quality',
       desc: '',
       args: [],
     );
@@ -1645,30 +1665,30 @@ class S {
   }
 
   /// `Lock Delay`
-  String get pages_settings_tag_security_lock_dely {
+  String get pages_settings_tag_security_lock_delay {
     return Intl.message(
       'Lock Delay',
-      name: 'pages_settings_tag_security_lock_dely',
+      name: 'pages_settings_tag_security_lock_delay',
       desc: '',
       args: [],
     );
   }
 
   /// `Every Switch`
-  String get pages_settings_tag_security_lock_dely_everytime {
+  String get pages_settings_tag_security_lock_delay_everytime {
     return Intl.message(
       'Every Switch',
-      name: 'pages_settings_tag_security_lock_dely_everytime',
+      name: 'pages_settings_tag_security_lock_delay_everytime',
       desc: '',
       args: [],
     );
   }
 
   /// `Input Minutes`
-  String get pages_settings_tag_security_lock_dely_custom_inpit {
+  String get pages_settings_tag_security_lock_delay_custom_input {
     return Intl.message(
       'Input Minutes',
-      name: 'pages_settings_tag_security_lock_dely_custom_inpit',
+      name: 'pages_settings_tag_security_lock_delay_custom_input',
       desc: '',
       args: [],
     );
@@ -2425,30 +2445,30 @@ class S {
   }
 
   /// `Created Favorites`
-  String get weight_user_space_created_faviourite_folder {
+  String get weight_user_space_created_favourite_folder {
     return Intl.message(
       'Created Favorites',
-      name: 'weight_user_space_created_faviourite_folder',
+      name: 'weight_user_space_created_favourite_folder',
       desc: '',
       args: [],
     );
   }
 
-  /// `Subscribed Favorites`
-  String get weight_user_space_subscribe_faviourite_folder {
+  /// `Subscribed Favorites And Collections`
+  String get weight_user_space_subscribe_favourite_folder {
     return Intl.message(
-      'Subscribed Favorites',
-      name: 'weight_user_space_subscribe_faviourite_folder',
+      'Subscribed Favorites And Collections',
+      name: 'weight_user_space_subscribe_favourite_folder',
       desc: '',
       args: [],
     );
   }
 
   /// `No Favorites`
-  String get weight_user_space_no_faviourite_folder {
+  String get weight_user_space_no_favourite_folder {
     return Intl.message(
       'No Favorites',
-      name: 'weight_user_space_no_faviourite_folder',
+      name: 'weight_user_space_no_favourite_folder',
       desc: '',
       args: [],
     );
@@ -2710,10 +2730,10 @@ class S {
   }
 
   /// `Specific Time`
-  String get weight_player_timer_timestemp_stop {
+  String get weight_player_timer_timestamp_stop {
     return Intl.message(
       'Specific Time',
-      name: 'weight_player_timer_timestemp_stop',
+      name: 'weight_player_timer_timestamp_stop',
       desc: '',
       args: [],
     );
@@ -2990,10 +3010,10 @@ class S {
   }
 
   /// `Cannot open link`
-  String get util_scheme_lauch_fail {
+  String get util_scheme_launch_fail {
     return Intl.message(
       'Cannot open link',
-      name: 'util_scheme_lauch_fail',
+      name: 'util_scheme_launch_fail',
       desc: '',
       args: [],
     );

@@ -54,10 +54,7 @@ class DesktopLayout extends StatelessWidget {
           Expanded(
             child: Stack(
               children: [
-                IndexedStack(
-                  index: selectedIndex,
-                  children: pages,
-                ),
+                IndexedStack(index: selectedIndex, children: pages),
                 if (showFullPlayer && currentSong != null)
                   AnimatedSlide(
                     offset: isPlayerExpanded ? Offset.zero : const Offset(0, 1),

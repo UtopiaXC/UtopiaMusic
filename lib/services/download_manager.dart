@@ -111,7 +111,7 @@ class DownloadManager {
   int _activeDownloads = 0;
   final Map<String, bool> _activeTaskIds = {};
   final StreamController<DownloadUpdate> _progressController =
-  StreamController.broadcast();
+      StreamController.broadcast();
 
   Stream<DownloadUpdate> get downloadUpdateStream => _progressController.stream;
 
@@ -145,10 +145,10 @@ class DownloadManager {
   }
 
   Future<ResourceResponse?> checkLocalResource(
-      String bvid,
-      int initCid,
-      int quality,
-      ) async {
+    String bvid,
+    int initCid,
+    int quality,
+  ) async {
     await _initDirs();
 
     int cid = initCid;
@@ -180,7 +180,9 @@ class DownloadManager {
           );
           return ResourceResponse(file: file);
         } else {
-          try { await file.delete(); } catch (_) {}
+          try {
+            await file.delete();
+          } catch (_) {}
           await _dbService.removeCacheMeta(cacheMeta['key']);
         }
       }
@@ -190,11 +192,11 @@ class DownloadManager {
   }
 
   Future<NetworkStreamResponse> getNetworkStream(
-      String bvid,
-      int initCid,
-      int quality, {
-        int start = 0,
-      }) async {
+    String bvid,
+    int initCid,
+    int quality, {
+    int start = 0,
+  }) async {
     Log.v(
       _tag,
       "getNetworkStream, bvid: $bvid, cid: $initCid, quality: $quality",
@@ -238,7 +240,9 @@ class DownloadManager {
         final response = await request.close();
         if (response.statusCode >= 400) {
           if (response.statusCode == 403 || response.statusCode == 404) {
-            throw ResourceException("HTTP ${response.statusCode}: Resource unavailable");
+            throw ResourceException(
+              "HTTP ${response.statusCode}: Resource unavailable",
+            );
           }
           throw NetworkException("HTTP Error", statusCode: response.statusCode);
         }
@@ -275,7 +279,9 @@ class DownloadManager {
       if (await dir.exists()) {
         await for (var file in dir.list()) {
           if (file is File && file.path.endsWith('.tmp')) {
-            try { await file.delete(); } catch (_) {}
+            try {
+              await file.delete();
+            } catch (_) {}
           }
         }
       }
@@ -317,7 +323,9 @@ class DownloadManager {
       try {
         await for (var file in dir.list()) {
           if (file is File) {
-            try { await file.delete(); } catch (_) {}
+            try {
+              await file.delete();
+            } catch (_) {}
           }
         }
       } catch (_) {}
@@ -345,17 +353,24 @@ class DownloadManager {
     if (await isDownloaded(songWithCid.bvid, songWithCid.cid)) return;
 
     final id = '${songWithCid.bvid}_${songWithCid.cid}';
-    if (_queue.any((task) => '${task.song.bvid}_${task.song.cid}' == id)) return;
+    if (_queue.any((task) => '${task.song.bvid}_${task.song.cid}' == id))
+      return;
     if (_activeTaskIds.containsKey(id)) return;
 
     int targetQuality = quality ?? await _resolveBestQuality(songWithCid);
-    final fileName = '${songWithCid.bvid}_${songWithCid.cid}_$targetQuality.audio';
+    final fileName =
+        '${songWithCid.bvid}_${songWithCid.cid}_$targetQuality.audio';
     final savePath = '$_downloadDir/$fileName';
 
     await _dbService.insertDownload(songWithCid, savePath, targetQuality);
     _progressController.add(DownloadUpdate(id, 0.0, 0));
-    _queue.add(_DownloadTask(
-        song: songWithCid, savePath: savePath, quality: targetQuality));
+    _queue.add(
+      _DownloadTask(
+        song: songWithCid,
+        savePath: savePath,
+        quality: targetQuality,
+      ),
+    );
     _processQueue();
   }
 
@@ -369,7 +384,7 @@ class DownloadManager {
       );
       if (available.isNotEmpty) {
         available.sort(
-              (a, b) =>
+          (a, b) =>
               QualityUtils.getScore(b).compareTo(QualityUtils.getScore(a)),
         );
         int preferredScore = QualityUtils.getScore(targetQuality);
@@ -507,7 +522,9 @@ class DownloadManager {
     if (await dir.exists()) {
       await for (var file in dir.list()) {
         if (file.path.contains('${bvid}_$cid')) {
-          try { await file.delete(); } catch (_) {}
+          try {
+            await file.delete();
+          } catch (_) {}
         }
       }
     }
@@ -523,11 +540,17 @@ class DownloadManager {
 
       final actualCacheSize = await getUsedCacheSize();
 
-      Log.d(_tag, "Cache cleanup check: actual=$actualCacheSize, max=$_maxCacheSize");
+      Log.d(
+        _tag,
+        "Cache cleanup check: actual=$actualCacheSize, max=$_maxCacheSize",
+      );
 
       if (actualCacheSize <= _maxCacheSize) return;
 
-      Log.i(_tag, "Cache size ($actualCacheSize) exceeds limit ($_maxCacheSize), starting cleanup...");
+      Log.i(
+        _tag,
+        "Cache size ($actualCacheSize) exceeds limit ($_maxCacheSize), starting cleanup...",
+      );
 
       final metas = await _dbService.getCompletedCacheMeta();
       if (metas.isEmpty) {
@@ -537,8 +560,9 @@ class DownloadManager {
 
       List<Map<String, dynamic>> sortedMetas = List.from(metas);
       final now = DateTime.now().millisecondsSinceEpoch;
-      sortedMetas.sort((a, b) =>
-          _calculateScore(a, now).compareTo(_calculateScore(b, now)));
+      sortedMetas.sort(
+        (a, b) => _calculateScore(a, now).compareTo(_calculateScore(b, now)),
+      );
 
       int currentSize = actualCacheSize;
       final targetSize = (_maxCacheSize * 0.8).toInt();
@@ -547,7 +571,10 @@ class DownloadManager {
         if (currentSize <= targetSize) break;
 
         final fileName = _getStaticCacheFileName(
-            meta['bvid'], meta['cid'], meta['quality']);
+          meta['bvid'],
+          meta['cid'],
+          meta['quality'],
+        );
         final file = File('$_cacheDir/$fileName');
 
         if (await file.exists()) {
@@ -563,8 +590,10 @@ class DownloadManager {
         await _dbService.removeCacheMeta(meta['key']);
       }
 
-      Log.i(_tag, "Cache cleanup completed. Size: $actualCacheSize -> $currentSize");
-
+      Log.i(
+        _tag,
+        "Cache cleanup completed. Size: $actualCacheSize -> $currentSize",
+      );
     } catch (e) {
       Log.e(_tag, "Cache cleanup error: $e");
     } finally {
@@ -582,7 +611,10 @@ class DownloadManager {
       await for (var entity in dir.list()) {
         if (entity is File && entity.path.endsWith('.audio')) {
           final fileName = entity.path.split('/').last;
-          final parts = fileName.replaceAll('song_', '').replaceAll('.audio', '').split('_');
+          final parts = fileName
+              .replaceAll('song_', '')
+              .replaceAll('.audio', '')
+              .split('_');
           if (parts.length >= 3) {
             final bvid = parts[0];
             final cid = int.tryParse(parts[1]) ?? 0;

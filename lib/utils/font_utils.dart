@@ -31,11 +31,7 @@ class FontUtils {
     }
 
     if (Platform.isAndroid) {
-      return const [
-        'Source Han Sans SC',
-        'Noto Sans CJK SC',
-        'sans-serif',
-      ];
+      return const ['Source Han Sans SC', 'Noto Sans CJK SC', 'sans-serif'];
     }
 
     return const ['sans-serif'];

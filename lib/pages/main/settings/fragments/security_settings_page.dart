@@ -53,7 +53,7 @@ class SecuritySettingsPage extends StatelessWidget {
               if (securityProvider.biometricEnabled)
                 ListTile(
                   title: Text(
-                    S.of(context).pages_settings_tag_security_lock_dely,
+                    S.of(context).pages_settings_tag_security_lock_delay,
                   ),
                   subtitle: Text(
                     _getLockDelayText(
@@ -107,7 +107,7 @@ class SecuritySettingsPage extends StatelessWidget {
   ) {
     switch (option) {
       case LockDelayOption.immediate:
-        return S.of(context).pages_settings_tag_security_lock_dely_everytime;
+        return S.of(context).pages_settings_tag_security_lock_delay_everytime;
       case LockDelayOption.oneMinute:
         return '1 ${S.of(context).time_minute}';
       case LockDelayOption.threeMinutes:
@@ -139,7 +139,7 @@ class SecuritySettingsPage extends StatelessWidget {
             decoration: InputDecoration(
               hintText: S
                   .of(context)
-                  .pages_settings_tag_security_lock_dely_custom_inpit,
+                  .pages_settings_tag_security_lock_delay_custom_input,
               border: OutlineInputBorder(),
               suffixText: S.of(context).time_minute,
             ),

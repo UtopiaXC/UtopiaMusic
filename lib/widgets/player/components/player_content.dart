@@ -19,8 +19,9 @@ class PlayerContent extends StatelessWidget {
 
         if (imageSize < 0) imageSize = 0;
 
-        final String optimizedCover =
-            song.coverUrl.isNotEmpty ? '${song.coverUrl}@600w_600h.webp' : '';
+        final String optimizedCover = song.coverUrl.isNotEmpty
+            ? '${song.coverUrl}@600w_600h.webp'
+            : '';
 
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,

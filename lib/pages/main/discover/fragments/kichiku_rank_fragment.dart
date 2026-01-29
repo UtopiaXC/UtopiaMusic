@@ -18,7 +18,8 @@ class KichikuRankFragment extends StatefulWidget {
   State<KichikuRankFragment> createState() => _KichikuRankFragmentState();
 }
 
-class _KichikuRankFragmentState extends State<KichikuRankFragment> with AutomaticKeepAliveClientMixin {
+class _KichikuRankFragmentState extends State<KichikuRankFragment>
+    with AutomaticKeepAliveClientMixin {
   final VideoApi _videoApi = VideoApi();
   final List<Song> _songs = [];
   bool _isLoading = false;
@@ -42,7 +43,10 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
     });
 
     try {
-      final newSongs = await _videoApi.getRankingVideos(context, rid: 119); // 119 for kichiku
+      final newSongs = await _videoApi.getRankingVideos(
+        context,
+        rid: 119,
+      ); // 119 for kichiku
       if (mounted) {
         setState(() {
           _songs.addAll(newSongs);
@@ -107,10 +111,7 @@ class _KichikuRankFragmentState extends State<KichikuRankFragment> with Automati
         controller: widget.scrollController,
         itemCount: _songs.length,
         itemBuilder: (context, index) {
-          return SongListItem(
-            song: _songs[index],
-            contextList: _songs,
-          );
+          return SongListItem(song: _songs[index], contextList: _songs);
         },
       ),
     );

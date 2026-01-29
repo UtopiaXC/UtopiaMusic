@@ -8,10 +8,7 @@ const String _tag = "USER_API";
 class UserApi {
   Future<Map<String, dynamic>?> getUserInfo() async {
     try {
-      final data = await Request().get(
-        Api.urlNav,
-        baseUrl: Api.urlBase,
-      );
+      final data = await Request().get(Api.urlNav, baseUrl: Api.urlBase);
 
       if (data != null && data is Map && data['code'] == 0) {
         return data['data'];
@@ -61,12 +58,7 @@ class UserApi {
       final data = await Request().get(
         Api.urlUserVideo,
         baseUrl: Api.urlBase,
-        params: {
-          'mid': mid,
-          'pn': page,
-          'ps': 20,
-          'order': order,
-        },
+        params: {'mid': mid, 'pn': page, 'ps': 20, 'order': order},
         useWbi: true,
       );
 
@@ -84,11 +76,7 @@ class UserApi {
       final data = await Request().get(
         Api.urlFavFolderCreatedList,
         baseUrl: Api.urlBase,
-        params: {
-          'up_mid': mid,
-          'pn': page,
-          'ps': 20,
-        },
+        params: {'up_mid': mid, 'pn': page, 'ps': 20},
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -100,16 +88,15 @@ class UserApi {
     return [];
   }
 
-  Future<List<Map<String, dynamic>>> getUserCreatedFavFoldersAll(int mid, int rid) async {
+  Future<List<Map<String, dynamic>>> getUserCreatedFavFoldersAll(
+    int mid,
+    int rid,
+  ) async {
     try {
       final data = await Request().get(
         Api.urlFavFolderCreatedListAll,
         baseUrl: Api.urlBase,
-        params: {
-          'up_mid': mid,
-          'type': 2,
-          'rid': rid,
-        },
+        params: {'up_mid': mid, 'type': 2, 'rid': rid},
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -129,12 +116,7 @@ class UserApi {
       final data = await Request().get(
         Api.urlFavFolderCollectedList,
         baseUrl: Api.urlBase,
-        params: {
-          'up_mid': mid,
-          'pn': page,
-          'ps': 20,
-          'platform': 'web',
-        },
+        params: {'up_mid': mid, 'pn': page, 'ps': 20, 'platform': 'web'},
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -146,7 +128,10 @@ class UserApi {
     return [];
   }
 
-  Future<Map<String, dynamic>?> getUserSeasonsSeriesList(int mid, int page) async {
+  Future<Map<String, dynamic>?> getUserSeasonsSeriesList(
+    int mid,
+    int page,
+  ) async {
     try {
       final data = await Request().get(
         Api.urlCreatedCollections,
@@ -179,9 +164,7 @@ class UserApi {
           're_src': 11,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -198,12 +181,7 @@ class UserApi {
       final data = await Request().get(
         Api.urlUserFollowings,
         baseUrl: Api.urlBase,
-        params: {
-          'vmid': mid,
-          'pn': page,
-          'ps': 20,
-          'order': 'desc',
-        },
+        params: {'vmid': mid, 'pn': page, 'ps': 20, 'order': 'desc'},
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -237,7 +215,11 @@ class UserApi {
     return null;
   }
 
-  Future<bool> createFavFolder(String title, String intro, bool isPublic) async {
+  Future<bool> createFavFolder(
+    String title,
+    String intro,
+    bool isPublic,
+  ) async {
     try {
       final data = await Request().post(
         Api.urlFavFolderAdd,
@@ -248,9 +230,7 @@ class UserApi {
           'privacy': isPublic ? 0 : 1,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -262,7 +242,12 @@ class UserApi {
     return false;
   }
 
-  Future<bool> editFavFolder(int mediaId, String title, String intro, bool isPublic) async {
+  Future<bool> editFavFolder(
+    int mediaId,
+    String title,
+    String intro,
+    bool isPublic,
+  ) async {
     try {
       final data = await Request().post(
         Api.urlFavFolderEdit,
@@ -274,9 +259,7 @@ class UserApi {
           'privacy': isPublic ? 0 : 1,
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -297,9 +280,7 @@ class UserApi {
           'media_ids': mediaId.toString(),
           'csrf': await Request().getCsrf(),
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       if (data != null && data is Map && data['code'] == 0) {
@@ -316,11 +297,7 @@ class UserApi {
       final data = await Request().get(
         Api.urlSearch,
         baseUrl: Api.urlBase,
-        params: {
-          'search_type': 'bili_user',
-          'keyword': keyword,
-          'page': page,
-        },
+        params: {'search_type': 'bili_user', 'keyword': keyword, 'page': page},
       );
 
       if (data != null && data is Map && data['code'] == 0) {

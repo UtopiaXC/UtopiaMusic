@@ -4,10 +4,7 @@ import 'package:utopia_music/generated/l10n.dart';
 class SearchLiveFragment extends StatelessWidget {
   final String keyword;
 
-  const SearchLiveFragment({
-    super.key,
-    required this.keyword,
-  });
+  const SearchLiveFragment({super.key, required this.keyword});
 
   @override
   Widget build(BuildContext context) {

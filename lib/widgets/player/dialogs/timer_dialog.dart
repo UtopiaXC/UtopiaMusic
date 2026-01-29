@@ -7,7 +7,6 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "TIMER_DIALOG";
 
-
 class TimerDialog extends StatefulWidget {
   const TimerDialog({super.key});
 
@@ -15,7 +14,8 @@ class TimerDialog extends StatefulWidget {
   State<TimerDialog> createState() => _TimerDialogState();
 }
 
-class _TimerDialogState extends State<TimerDialog> with SingleTickerProviderStateMixin {
+class _TimerDialogState extends State<TimerDialog>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _stopAfterCurrent = false;
 
@@ -97,13 +97,15 @@ class _TimerDialogState extends State<TimerDialog> with SingleTickerProviderStat
                     _stopAfterCurrent = value ?? false;
                   });
                 },
-                title: Text(S.of(context).weight_player_timer_stop_at_end_message),
+                title: Text(
+                  S.of(context).weight_player_timer_stop_at_end_message,
+                ),
               ),
               TabBar(
                 controller: _tabController,
                 tabs: [
                   Tab(text: S.of(context).weight_player_timer_discount_stop),
-                  Tab(text: S.of(context).weight_player_timer_timestemp_stop),
+                  Tab(text: S.of(context).weight_player_timer_timestamp_stop),
                 ],
               ),
               Expanded(
@@ -123,11 +125,26 @@ class _TimerDialogState extends State<TimerDialog> with SingleTickerProviderStat
     Log.v(_tag, "_buildCountdownTab");
     return ListView(
       children: [
-        ListTile(title: Text('15 ${S.of(context).time_minute}'), onTap: () => _setTimer(15)),
-        ListTile(title: Text('30 ${S.of(context).time_minute}'), onTap: () => _setTimer(30)),
-        ListTile(title: Text('60 ${S.of(context).time_minute}'), onTap: () => _setTimer(60)),
-        ListTile(title: Text('90 ${S.of(context).time_minute}'), onTap: () => _setTimer(90)),
-        ListTile(title: Text(S.of(context).common_custom), onTap: _showCustomTimerDialog),
+        ListTile(
+          title: Text('15 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(15),
+        ),
+        ListTile(
+          title: Text('30 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(30),
+        ),
+        ListTile(
+          title: Text('60 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(60),
+        ),
+        ListTile(
+          title: Text('90 ${S.of(context).time_minute}'),
+          onTap: () => _setTimer(90),
+        ),
+        ListTile(
+          title: Text(S.of(context).common_custom),
+          onTap: _showCustomTimerDialog,
+        ),
       ],
     );
   }
@@ -153,7 +170,10 @@ class _TimerDialogState extends State<TimerDialog> with SingleTickerProviderStat
             }
 
             if (mounted) {
-              final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+              final playerProvider = Provider.of<PlayerProvider>(
+                context,
+                listen: false,
+              );
               playerProvider.setStopTime(
                 selectedDateTime,
                 stopAfterCurrent: _stopAfterCurrent,

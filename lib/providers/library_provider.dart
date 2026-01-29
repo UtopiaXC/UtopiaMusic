@@ -16,8 +16,9 @@ class LibraryProvider extends ChangeNotifier {
 
   List<PlaylistCategoryType> get categoryOrder => _categoryOrder;
   Set<PlaylistCategoryType> get hiddenCategories => _hiddenCategories;
-  List<PlaylistCategoryType> get visibleCategories => 
-      _categoryOrder.where((type) => !_hiddenCategories.contains(type)).toList();
+  List<PlaylistCategoryType> get visibleCategories => _categoryOrder
+      .where((type) => !_hiddenCategories.contains(type))
+      .toList();
 
   int _refreshSignal = 0;
   int get refreshSignal => _refreshSignal;
@@ -55,17 +56,20 @@ class LibraryProvider extends ChangeNotifier {
 
     final List<String>? savedHidden = prefs.getStringList(_hiddenCategoriesKey);
     if (savedHidden != null) {
-      _hiddenCategories = savedHidden.map((str) {
-        try {
-          final index = int.parse(str);
-          if (index >= 0 && index < PlaylistCategoryType.values.length) {
-            return PlaylistCategoryType.values[index];
-          }
-        } catch (e) {}
-        return null;
-      }).whereType<PlaylistCategoryType>().toSet();
+      _hiddenCategories = savedHidden
+          .map((str) {
+            try {
+              final index = int.parse(str);
+              if (index >= 0 && index < PlaylistCategoryType.values.length) {
+                return PlaylistCategoryType.values[index];
+              }
+            } catch (e) {}
+            return null;
+          })
+          .whereType<PlaylistCategoryType>()
+          .toSet();
     }
-    
+
     notifyListeners();
   }
 
@@ -78,7 +82,9 @@ class LibraryProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final List<String> orderToSave = _categoryOrder.map((e) => e.index.toString()).toList();
+    final List<String> orderToSave = _categoryOrder
+        .map((e) => e.index.toString())
+        .toList();
     await prefs.setStringList(_categoryOrderKey, orderToSave);
   }
 
@@ -91,7 +97,9 @@ class LibraryProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    final List<String> hiddenToSave = _hiddenCategories.map((e) => e.index.toString()).toList();
+    final List<String> hiddenToSave = _hiddenCategories
+        .map((e) => e.index.toString())
+        .toList();
     await prefs.setStringList(_hiddenCategoriesKey, hiddenToSave);
   }
 

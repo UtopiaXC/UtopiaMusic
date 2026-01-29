@@ -812,7 +812,7 @@ class _SpaceSheetState extends State<SpaceSheet>
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(
-                  S.of(context).weight_user_space_created_faviourite_folder,
+                  S.of(context).weight_user_space_created_favourite_folder,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -875,7 +875,7 @@ class _SpaceSheetState extends State<SpaceSheet>
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(
-                  S.of(context).weight_user_space_subscribe_faviourite_folder,
+                  S.of(context).weight_user_space_subscribe_favourite_folder,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -916,7 +916,7 @@ class _SpaceSheetState extends State<SpaceSheet>
                       backgroundColor: Colors.transparent,
                       builder: (context) => OnlinePlaylistDetailSheet(
                         playlistInfo: playlist,
-                        isCollection: false,
+                        isCollection: true,
                       ),
                     );
                   },
@@ -939,7 +939,7 @@ class _SpaceSheetState extends State<SpaceSheet>
             SliverFillRemaining(
               child: Center(
                 child: Text(
-                  S.of(context).weight_user_space_no_faviourite_folder,
+                  S.of(context).weight_user_space_no_favourite_folder,
                 ),
               ),
             ),

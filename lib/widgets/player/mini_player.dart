@@ -8,6 +8,7 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "MINI_PLAYER_CARD";
+
 class MiniPlayer extends StatelessWidget {
   final Song song;
   final VoidCallback onTap;
@@ -37,24 +38,27 @@ class MiniPlayer extends StatelessWidget {
     Song? previousSong;
     Song? nextSong;
     final playlist = playerProvider.playlist;
-    final currentIndex = playlist.indexWhere((s) => s.bvid == song.bvid && s.cid == song.cid);
+    final currentIndex = playlist.indexWhere(
+      (s) => s.bvid == song.bvid && s.cid == song.cid,
+    );
 
     if (currentIndex != -1 && playlist.isNotEmpty) {
-       if (playerProvider.hasPrevious) {
-         int prevIndex = currentIndex - 1;
-         if (prevIndex < 0) prevIndex = playlist.length - 1;
-         previousSong = playlist[prevIndex];
-       }
-       if (playerProvider.hasNext) {
-         int nextIndex = currentIndex + 1;
-         if (nextIndex >= playlist.length) nextIndex = 0;
-         nextSong = playlist[nextIndex];
-       }
+      if (playerProvider.hasPrevious) {
+        int prevIndex = currentIndex - 1;
+        if (prevIndex < 0) prevIndex = playlist.length - 1;
+        previousSong = playlist[prevIndex];
+      }
+      if (playerProvider.hasNext) {
+        int nextIndex = currentIndex + 1;
+        if (nextIndex >= playlist.length) nextIndex = 0;
+        nextSong = playlist[nextIndex];
+      }
     }
 
     Widget buildContent(Song displaySong) {
-      final String optimizedCover =
-          displaySong.coverUrl.isNotEmpty ? '${displaySong.coverUrl}@100w_100h.webp' : '';
+      final String optimizedCover = displaySong.coverUrl.isNotEmpty
+          ? '${displaySong.coverUrl}@100w_100h.webp'
+          : '';
 
       return Container(
         height: 64,
@@ -112,15 +116,20 @@ class MiniPlayer extends StatelessWidget {
                     height: 24,
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final textStyle = Theme.of(context).textTheme.titleMedium;
-                        final textSpan = TextSpan(text: displaySong.title, style: textStyle);
+                        final textStyle = Theme.of(
+                          context,
+                        ).textTheme.titleMedium;
+                        final textSpan = TextSpan(
+                          text: displaySong.title,
+                          style: textStyle,
+                        );
                         final textPainter = TextPainter(
                           text: textSpan,
                           textDirection: TextDirection.ltr,
                           maxLines: 1,
                         );
                         textPainter.layout();
-                        
+
                         if (textPainter.width > constraints.maxWidth) {
                           return Marquee(
                             text: displaySong.title,
@@ -133,7 +142,9 @@ class MiniPlayer extends StatelessWidget {
                             startPadding: 0.0,
                             accelerationDuration: const Duration(seconds: 1),
                             accelerationCurve: Curves.linear,
-                            decelerationDuration: const Duration(milliseconds: 500),
+                            decelerationDuration: const Duration(
+                              milliseconds: 500,
+                            ),
                             decelerationCurve: Curves.easeOut,
                           );
                         } else {
@@ -169,9 +180,13 @@ class MiniPlayer extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: playerProvider.hasNext ? () => playerProvider.playNext() : null,
+              onPressed: playerProvider.hasNext
+                  ? () => playerProvider.playNext()
+                  : null,
               icon: const Icon(Icons.skip_next),
-              color: playerProvider.hasNext ? null : Theme.of(context).disabledColor,
+              color: playerProvider.hasNext
+                  ? null
+                  : Theme.of(context).disabledColor,
             ),
             const SizedBox(width: 8),
           ],
@@ -188,7 +203,9 @@ class MiniPlayer extends StatelessWidget {
       },
       child: SwipeablePlayerCard(
         onNext: playerProvider.hasNext ? () => playerProvider.playNext() : null,
-        onPrevious: playerProvider.hasPrevious ? () => playerProvider.playPrevious() : null,
+        onPrevious: playerProvider.hasPrevious
+            ? () => playerProvider.playPrevious()
+            : null,
         previousChild: previousSong != null ? buildContent(previousSong) : null,
         nextChild: nextSong != null ? buildContent(nextSong) : null,
         child: buildContent(song),

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/pages/main/library/widgets/online_playlist_detail_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_detail_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
@@ -15,11 +14,7 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "PLAYLIST_CATEGORY_WIDGET";
 
-enum PlaylistCategoryType {
-  favorites,
-  collections,
-  local,
-}
+enum PlaylistCategoryType { favorites, collections, local }
 
 class PlaylistInfo {
   final String id;
@@ -63,7 +58,6 @@ class PlaylistCategoryWidget extends StatefulWidget {
 
 class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-
   bool _isExpanded = false;
   bool _isLoading = false;
   bool _hasLoaded = false;
@@ -105,14 +99,21 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
       _loadData(forceRefresh: true);
     }
   }
+
   Future<void> _loadData({bool forceRefresh = false}) async {
     if (!forceRefresh && _hasLoaded) {
       return;
     }
 
-    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    final libraryProvider = Provider.of<LibraryProvider>(
+      context,
+      listen: false,
+    );
     bool isLocalRefreshOnly = libraryProvider.isLocalRefreshOnly;
-    if (!forceRefresh && widget.type != PlaylistCategoryType.local && isLocalRefreshOnly && _playlists.isNotEmpty) {
+    if (!forceRefresh &&
+        widget.type != PlaylistCategoryType.local &&
+        isLocalRefreshOnly &&
+        _playlists.isNotEmpty) {
       return;
     }
 
@@ -135,14 +136,18 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
       final localPlaylists = await DatabaseService().getLocalPlaylists();
       if (mounted) {
         setState(() {
-          _playlists = localPlaylists.map((p) => PlaylistInfo(
-            id: p.id.toString(),
-            title: p.title,
-            coverUrl: p.coverUrl ?? '',
-            count: p.songCount,
-            isLocal: true,
-            originalData: p,
-          )).toList();
+          _playlists = localPlaylists
+              .map(
+                (p) => PlaylistInfo(
+                  id: p.id.toString(),
+                  title: p.title,
+                  coverUrl: p.coverUrl ?? '',
+                  count: p.songCount,
+                  isLocal: true,
+                  originalData: p,
+                ),
+              )
+              .toList();
           _isLoading = false;
           _hasLoaded = true;
         });
@@ -203,7 +208,8 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
             String cover = item['cover'] ?? '';
             int count = item['media_count'] ?? 0;
 
-            if (widget.type == PlaylistCategoryType.favorites && (cover.isEmpty || cover.contains('bfs/archive/'))) {
+            if (widget.type == PlaylistCategoryType.favorites &&
+                (cover.isEmpty || cover.contains('bfs/archive/'))) {
               try {
                 final info = await _libraryApi.getFavoriteFolderInfo(id);
                 if (info != null) {
@@ -214,14 +220,16 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
               }
             }
 
-            processedList.add(PlaylistInfo(
-              id: id,
-              title: title,
-              coverUrl: cover,
-              count: count,
-              isLocal: false,
-              originalData: item,
-            ));
+            processedList.add(
+              PlaylistInfo(
+                id: id,
+                title: title,
+                coverUrl: cover,
+                count: count,
+                isLocal: false,
+                originalData: item,
+              ),
+            );
           }
 
           setState(() {
@@ -249,7 +257,10 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
         onSubmit: (title, description) async {
           await DatabaseService().createLocalPlaylist(title, description);
           if (mounted) {
-            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
+            Provider.of<LibraryProvider>(
+              context,
+              listen: false,
+            ).refreshLibrary(localOnly: true);
           }
         },
       ),
@@ -265,7 +276,10 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
         builder: (context) => PlaylistDetailSheet(
           playlist: playlist.originalData as LocalPlaylist,
           onUpdate: () {
-            Provider.of<LibraryProvider>(context, listen: false).refreshLibrary(localOnly: true);
+            Provider.of<LibraryProvider>(
+              context,
+              listen: false,
+            ).refreshLibrary(localOnly: true);
           },
         ),
       );
@@ -334,9 +348,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
           children: [
             Text(
               widget.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const Spacer(),
             if (widget.showDragHandle && widget.dragIndex != null)
@@ -357,17 +371,25 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
 
   Widget _buildCoverFlow() {
     if (_errorMessage == 'not_logged_in') {
-      return _buildErrorState(S.of(context).pages_library_category_not_logged_in, S.of(context).pages_library_category_login, () {
-        if (widget.onLoginTap != null) {
-          widget.onLoginTap!();
-        } else {
-          Provider.of<AuthProvider>(context, listen: false).login();
-        }
-      });
+      return _buildErrorState(
+        S.of(context).pages_library_category_not_logged_in,
+        S.of(context).pages_library_category_login,
+        () {
+          if (widget.onLoginTap != null) {
+            widget.onLoginTap!();
+          } else {
+            Provider.of<AuthProvider>(context, listen: false).login();
+          }
+        },
+      );
     }
 
     if (_errorMessage != null) {
-      return _buildErrorState(_errorMessage!, S.of(context).common_refresh, () => _loadData(forceRefresh: true));
+      return _buildErrorState(
+        _errorMessage!,
+        S.of(context).common_refresh,
+        () => _loadData(forceRefresh: true),
+      );
     }
 
     if (_isLoading) {
@@ -379,9 +401,17 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
 
     if (_playlists.isEmpty) {
       if (widget.type == PlaylistCategoryType.local) {
-        return _buildEmptyState(S.of(context).pages_library_category_empty_local, S.of(context).common_create, _handleCreateLocalPlaylist);
+        return _buildEmptyState(
+          S.of(context).pages_library_category_empty_local,
+          S.of(context).common_create,
+          _handleCreateLocalPlaylist,
+        );
       } else {
-        return _buildEmptyState(S.of(context).pages_library_category_empty_online(widget.title), S.of(context).pages_library_category_go_bilibili, _launchBilibili);
+        return _buildEmptyState(
+          S.of(context).pages_library_category_empty_online(widget.title),
+          S.of(context).pages_library_category_go_bilibili,
+          _launchBilibili,
+        );
       }
     }
 
@@ -408,12 +438,14 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                       height: 110,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         image: playlist.coverUrl.isNotEmpty
                             ? DecorationImage(
-                          image: NetworkImage(playlist.coverUrl),
-                          fit: BoxFit.cover,
-                        )
+                                image: NetworkImage(playlist.coverUrl),
+                                fit: BoxFit.cover,
+                              )
                             : null,
                         boxShadow: [
                           BoxShadow(
@@ -426,12 +458,23 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                       child: Stack(
                         children: [
                           if (playlist.coverUrl.isEmpty)
-                            Center(child: Icon(Icons.music_note, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            Center(
+                              child: Icon(
+                                Icons.music_note,
+                                size: 48,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           Positioned(
                             right: 4,
                             bottom: 4,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.6),
                                 borderRadius: BorderRadius.circular(4),
@@ -468,7 +511,11 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
     );
   }
 
-  Widget _buildErrorState(String message, String buttonText, VoidCallback onPressed) {
+  Widget _buildErrorState(
+    String message,
+    String buttonText,
+    VoidCallback onPressed,
+  ) {
     return Container(
       height: 140,
       alignment: Alignment.center,
@@ -482,16 +529,17 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          FilledButton.tonal(
-            onPressed: onPressed,
-            child: Text(buttonText),
-          ),
+          FilledButton.tonal(onPressed: onPressed, child: Text(buttonText)),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(String message, String buttonText, VoidCallback onPressed) {
+  Widget _buildEmptyState(
+    String message,
+    String buttonText,
+    VoidCallback onPressed,
+  ) {
     return Container(
       height: 140,
       alignment: Alignment.center,
@@ -505,10 +553,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          FilledButton.tonal(
-            onPressed: onPressed,
-            child: Text(buttonText),
-          ),
+          FilledButton.tonal(onPressed: onPressed, child: Text(buttonText)),
         ],
       ),
     );
@@ -556,23 +601,36 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                     height: 48,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       image: playlist.coverUrl.isNotEmpty
                           ? DecorationImage(
-                        image: NetworkImage(playlist.coverUrl),
-                        fit: BoxFit.cover,
-                      )
+                              image: NetworkImage(playlist.coverUrl),
+                              fit: BoxFit.cover,
+                            )
                           : null,
                     ),
                     child: Stack(
                       children: [
                         if (playlist.coverUrl.isEmpty)
-                          Center(child: Icon(Icons.music_note, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                          Center(
+                            child: Icon(
+                              Icons.music_note,
+                              size: 24,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         Positioned(
                           right: 2,
                           bottom: 2,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(2),
@@ -591,7 +649,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                     ),
                   ),
                   title: Text(playlist.title),
-                  subtitle: Text('${playlist.count}${S.of(context).common_count_of_songs}'),
+                  subtitle: Text(
+                    '${playlist.count}${S.of(context).common_count_of_songs}',
+                  ),
                   trailing: ReorderableDragStartListener(
                     index: index,
                     child: const Icon(Icons.drag_handle),
@@ -620,23 +680,36 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                   height: 48,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     image: playlist.coverUrl.isNotEmpty
                         ? DecorationImage(
-                      image: NetworkImage(playlist.coverUrl),
-                      fit: BoxFit.cover,
-                    )
+                            image: NetworkImage(playlist.coverUrl),
+                            fit: BoxFit.cover,
+                          )
                         : null,
                   ),
                   child: Stack(
                     children: [
                       if (playlist.coverUrl.isEmpty)
-                        Center(child: Icon(Icons.music_note, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        Center(
+                          child: Icon(
+                            Icons.music_note,
+                            size: 24,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       Positioned(
                         right: 2,
                         bottom: 2,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 2,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(2),
@@ -655,7 +728,9 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                   ),
                 ),
                 title: Text(playlist.title),
-                subtitle: Text('${playlist.count}${S.of(context).common_count_of_songs}'),
+                subtitle: Text(
+                  '${playlist.count}${S.of(context).common_count_of_songs}',
+                ),
                 onTap: () => _handlePlaylistTap(playlist),
               );
             },

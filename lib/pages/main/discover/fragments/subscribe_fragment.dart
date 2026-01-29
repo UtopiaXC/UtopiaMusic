@@ -20,7 +20,8 @@ class SubscribeFragment extends StatefulWidget {
   State<SubscribeFragment> createState() => _SubscribeFragmentState();
 }
 
-class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKeepAliveClientMixin {
+class _SubscribeFragmentState extends State<SubscribeFragment>
+    with AutomaticKeepAliveClientMixin {
   final UserApi _userApi = UserApi();
   List<dynamic> _users = [];
   bool _isLoading = false;
@@ -49,10 +50,10 @@ class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKee
     if (!_hasMore) return;
 
     setState(() => _isLoading = true);
-    
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final mid = authProvider.userInfo?.mid ?? 0;
-    
+
     if (mid == 0) {
       setState(() => _isLoading = false);
       return;
@@ -86,7 +87,7 @@ class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKee
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         if (!authProvider.isLoggedIn) {
@@ -112,7 +113,8 @@ class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKee
           onRefresh: () => _loadData(refresh: true),
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+              if (notification.metrics.pixels >=
+                  notification.metrics.maxScrollExtent - 200) {
                 _loadData();
               }
               return false;
@@ -133,7 +135,12 @@ class _SubscribeFragmentState extends State<SubscribeFragment> with AutomaticKee
                     } else if (!_hasMore) {
                       return Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Center(child: Text(S.of(context).common_at_bottom, style: const TextStyle(color: Colors.grey))),
+                        child: Center(
+                          child: Text(
+                            S.of(context).common_at_bottom,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ),
                       );
                     } else {
                       return const SizedBox(height: 60);
