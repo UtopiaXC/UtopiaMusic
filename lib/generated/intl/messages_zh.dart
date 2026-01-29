@@ -493,6 +493,10 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("网络错误或无法解析时重试的次数"),
     "pages_settings_tag_network_play_history":
         MessageLookupByLibrary.simpleMessage("历史记录"),
+    "pages_settings_tag_network_play_history_location":
+        MessageLookupByLibrary.simpleMessage("定位在线播放历史"),
+    "pages_settings_tag_network_play_history_location_description":
+        MessageLookupByLibrary.simpleMessage("开始播放时从远程历史记录中恢复播放进度"),
     "pages_settings_tag_network_play_history_report":
         MessageLookupByLibrary.simpleMessage("上报播放记录"),
     "pages_settings_tag_network_play_history_report_delay":

@@ -11,12 +11,14 @@ class AudioStreamInfo {
   final int quality;
   final String extension;
   final List<int> availableQualities;
+  final int? lastPlayTime;
 
   AudioStreamInfo({
     required this.url,
     required this.quality,
     required this.extension,
     required this.availableQualities,
+    this.lastPlayTime,
   });
 
   String get mimeType {
@@ -87,6 +89,7 @@ class AudioStreamApi {
       if (data != null) {
         if (data['code'] == 0) {
           final dash = data['data']['dash'];
+          final lastPlayTime = data['data']['last_play_time'];
           if (dash != null) {
             List<dynamic> allAudio = [];
             if (dash['audio'] != null && dash['audio'] is List) {
@@ -162,6 +165,7 @@ class AudioStreamApi {
                 quality: selectedAudio['id'] as int,
                 extension: extension,
                 availableQualities: availableQualities,
+                lastPlayTime: lastPlayTime,
               );
             }
           }

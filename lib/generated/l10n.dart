@@ -1534,6 +1534,26 @@ class S {
     );
   }
 
+  /// `Locate Online Play History`
+  String get pages_settings_tag_network_play_history_location {
+    return Intl.message(
+      'Locate Online Play History',
+      name: 'pages_settings_tag_network_play_history_location',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Resume playback from Bilibili history`
+  String get pages_settings_tag_network_play_history_location_description {
+    return Intl.message(
+      'Resume playback from Bilibili history',
+      name: 'pages_settings_tag_network_play_history_location_description',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Report Play History`
   String get pages_settings_tag_network_play_history_report {
     return Intl.message(

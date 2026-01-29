@@ -53,11 +53,13 @@ class NetworkStreamResponse {
   final HttpClientResponse httpResponse;
   final String mimeType;
   final int actualQuality;
+  final int? lastPlayTime;
 
   NetworkStreamResponse({
     required this.httpResponse,
     required this.mimeType,
     required this.actualQuality,
+    this.lastPlayTime,
   });
 }
 
@@ -98,7 +100,7 @@ class DownloadManager {
   static const String _concurrentDownloadsKey = 'max_concurrent_downloads';
   static const String _defaultDownloadQualityKey = 'default_download_quality';
 
-  int _maxCacheSize = 500 * 1024 * 1024;
+  int _maxCacheSize = 200 * 1024 * 1024;
   int _maxConcurrentDownloads = 3;
   bool get isCacheEnabled => _maxCacheSize > 0;
   bool _isCleaningUp = false;
@@ -245,6 +247,7 @@ class DownloadManager {
           httpResponse: response,
           mimeType: streamInfo.mimeType,
           actualQuality: streamInfo.quality,
+          lastPlayTime: streamInfo.lastPlayTime,
         );
       } catch (e) {
         retryCount++;
@@ -284,7 +287,7 @@ class DownloadManager {
 
   Future<int> getMaxCacheSize() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_maxCacheSizeKey) ?? 500;
+    return prefs.getInt(_maxCacheSizeKey) ?? 200;
   }
 
   Future<void> setMaxCacheSize(int mb) async {

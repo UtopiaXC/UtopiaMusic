@@ -36,6 +36,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _showSearchSuggestKey = 'show_search_suggest';
   static const String _enableHistoryReportKey = 'enable_history_report';
   static const String _historyReportDelayKey = 'history_report_delay';
+  static const String _enableHistoryLocationKey = 'enable_history_location';
   static const String _playerBackgroundModeKey = 'player_background_mode_v2';
   static const String _debugModeKey = 'debug_mode';
   static const String _logLevelKey = 'log_level';
@@ -46,7 +47,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _saveSearchHistory = true;
   int _searchHistoryLimit = 10;
   int _maxRetries = 2;
-  int _requestDelay = 50;
+  int _requestDelay = 10;
   Locale? _locale;
   int _cacheLimit = 200;
   bool _autoCheckUpdate = true;
@@ -60,6 +61,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _showSearchSuggest = true;
   bool _enableHistoryReport = false;
   int _historyReportDelay = 3;
+  bool _enableHistoryLocation = true;
   String _playerBackgroundMode = 'gradient';
   bool _debugMode = false;
   LogLevel _logLevel = LogLevel.warning;
@@ -104,6 +106,8 @@ class SettingsProvider extends ChangeNotifier {
 
   int get historyReportDelay => _historyReportDelay;
 
+  bool get enableHistoryLocation => _enableHistoryLocation;
+
   String get playerBackgroundMode => _playerBackgroundMode;
 
   bool get debugMode => _debugMode;
@@ -128,7 +132,7 @@ class SettingsProvider extends ChangeNotifier {
     _saveSearchHistory = prefs.getBool(_saveSearchHistoryKey) ?? true;
     _searchHistoryLimit = prefs.getInt(_searchHistoryLimitKey) ?? 10;
     _maxRetries = prefs.getInt(_maxRetriesKey) ?? 2;
-    _requestDelay = prefs.getInt(_requestDelayKey) ?? 50;
+    _requestDelay = prefs.getInt(_requestDelayKey) ?? 10;
 
     final localeCode = prefs.getString(_localeKey);
     if (localeCode != null) {
@@ -148,6 +152,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = prefs.getBool(_showSearchSuggestKey) ?? true;
     _enableHistoryReport = prefs.getBool(_enableHistoryReportKey) ?? false;
     _historyReportDelay = prefs.getInt(_historyReportDelayKey) ?? 3;
+    _enableHistoryLocation = prefs.getBool(_enableHistoryLocationKey) ?? true;
     String? mode = prefs.getString(_playerBackgroundModeKey);
     if (mode == null) {
       _playerBackgroundMode = 'gradient';
@@ -302,6 +307,13 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt(_historyReportDelayKey, value);
   }
 
+  Future<void> setEnableHistoryLocation(bool value) async {
+    _enableHistoryLocation = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enableHistoryLocationKey, value);
+  }
+
   Future<void> setPlayerBackgroundMode(String value) async {
     _playerBackgroundMode = value;
     notifyListeners();
@@ -331,7 +343,7 @@ class SettingsProvider extends ChangeNotifier {
     _saveSearchHistory = true;
     _searchHistoryLimit = 10;
     _maxRetries = 2;
-    _requestDelay = 50;
+    _requestDelay = 10;
     _locale = null;
     _cacheLimit = 200;
     _autoCheckUpdate = true;
@@ -344,6 +356,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = true;
     _enableHistoryReport = false;
     _historyReportDelay = 3;
+    _enableHistoryLocation = true;
     _playerBackgroundMode = 'gradient';
     _debugMode = false;
     _logLevel = LogLevel.warning;
@@ -369,6 +382,7 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_showSearchSuggestKey);
     await prefs.remove(_enableHistoryReportKey);
     await prefs.remove(_historyReportDelayKey);
+    await prefs.remove(_enableHistoryLocationKey);
     await prefs.remove(_playerBackgroundModeKey);
     await prefs.remove(_debugModeKey);
     await prefs.remove(_logLevelKey);
@@ -381,7 +395,7 @@ class SettingsProvider extends ChangeNotifier {
     _saveSearchHistory = true;
     _searchHistoryLimit = 10;
     _maxRetries = 2;
-    _requestDelay = 50;
+    _requestDelay = 10;
     _locale = null;
     _cacheLimit = 200;
     _autoCheckUpdate = true;
@@ -394,6 +408,7 @@ class SettingsProvider extends ChangeNotifier {
     _showSearchSuggest = true;
     _enableHistoryReport = false;
     _historyReportDelay = 3;
+    _enableHistoryLocation = true;
     _playerBackgroundMode = 'gradient';
     _debugMode = false;
     _logLevel = LogLevel.warning;

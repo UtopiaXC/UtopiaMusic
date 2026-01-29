@@ -108,6 +108,11 @@ class HistoryManager {
     }
   }
 
+  Future<int> getSavedProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('last_played_position') ?? 0;
+  }
+
   void dispose() {
     Log.v(_tag, "dispose");
     _stopTimer();

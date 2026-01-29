@@ -170,6 +170,8 @@
   "pages_settings_tag_network_request_delay": "Request Delay",
   "pages_settings_tag_network_request_delay_description": "Reduce risk of being blocked",
   "pages_settings_tag_network_play_history": "History",
+  "pages_settings_tag_network_play_history_location": "Locate Online Play History",
+  "pages_settings_tag_network_play_history_location_description": "Resume playback from Bilibili history",
   "pages_settings_tag_network_play_history_report": "Report Play History",
   "pages_settings_tag_network_play_history_report_description": "Sync play history to Bilibili",
   "pages_settings_tag_network_play_history_report_delay": "Report Delay",

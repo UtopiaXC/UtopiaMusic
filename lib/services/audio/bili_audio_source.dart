@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:provider/provider.dart';
+import 'package:utopia_music/main.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
@@ -136,6 +139,39 @@ class BiliAudioSource extends StreamAudioSource {
           sourceLength = contentLength;
         } else if (contentLength > 0) {
           sourceLength = contentLength + startOffset;
+        }
+      }
+
+      if (startOffset == 0 && netResponse.lastPlayTime != null && netResponse.lastPlayTime! > 0) {
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          final settings = Provider.of<SettingsProvider>(context, listen: false);
+          if (settings.enableHistoryLocation) {
+            final player = AudioPlayerService().player;
+            if (player.position.inMilliseconds < 1000) {
+               Future.microtask(() async {
+                 final targetPos = Duration(milliseconds: netResponse.lastPlayTime!);
+                 Log.i(_tag, "Found online history, preparing to seek: $targetPos");
+
+                 if (player.duration != null && player.duration! > targetPos) {
+                    await player.seek(targetPos);
+                    Log.i(_tag, "Seeked immediately to $targetPos");
+                 } else {
+                    StreamSubscription? sub;
+                    sub = player.durationStream.listen((duration) {
+                      if (duration != null && duration > targetPos) {
+                        Log.i(_tag, "Duration available ($duration), seeking to $targetPos");
+                        player.seek(targetPos);
+                        sub?.cancel();
+                      }
+                    });
+                    Future.delayed(const Duration(seconds: 5), () {
+                      sub?.cancel();
+                    });
+                 }
+               });
+            }
+          }
         }
       }
 

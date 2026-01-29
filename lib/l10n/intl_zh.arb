@@ -170,6 +170,8 @@
   "pages_settings_tag_network_request_delay": "延迟请求",
   "pages_settings_tag_network_request_delay_description": "降低风控风险",
   "pages_settings_tag_network_play_history": "历史记录",
+  "pages_settings_tag_network_play_history_location": "定位在线播放历史",
+  "pages_settings_tag_network_play_history_location_description": "开始播放时从远程历史记录中恢复播放进度",
   "pages_settings_tag_network_play_history_report": "上报播放记录",
   "pages_settings_tag_network_play_history_report_description": "将播放历史同步到B站",
   "pages_settings_tag_network_play_history_report_delay": "上报延迟",

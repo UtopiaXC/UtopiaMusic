@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/main.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/bili_audio_source.dart';
 import 'package:utopia_music/services/audio/ios_now_playing_service.dart';
 import 'package:utopia_music/services/download_manager.dart';

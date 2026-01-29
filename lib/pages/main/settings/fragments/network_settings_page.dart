@@ -83,6 +83,20 @@ class NetworkSettingsPage extends StatelessWidget {
             children: [
               SwitchListTile(
                 title: Text(
+                  S.of(context).pages_settings_tag_network_play_history_location,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_network_play_history_location_description,
+                ),
+                value: settingsProvider.enableHistoryLocation,
+                onChanged: (bool value) {
+                  settingsProvider.setEnableHistoryLocation(value);
+                },
+              ),
+              SwitchListTile(
+                title: Text(
                   S.of(context).pages_settings_tag_network_play_history_report,
                 ),
                 subtitle: Text(

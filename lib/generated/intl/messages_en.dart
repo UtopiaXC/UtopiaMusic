@@ -555,6 +555,12 @@ class MessageLookup extends MessageLookupByLibrary {
         ),
     "pages_settings_tag_network_play_history":
         MessageLookupByLibrary.simpleMessage("History"),
+    "pages_settings_tag_network_play_history_location":
+        MessageLookupByLibrary.simpleMessage("Locate Online Play History"),
+    "pages_settings_tag_network_play_history_location_description":
+        MessageLookupByLibrary.simpleMessage(
+          "Resume playback from Bilibili history",
+        ),
     "pages_settings_tag_network_play_history_report":
         MessageLookupByLibrary.simpleMessage("Report Play History"),
     "pages_settings_tag_network_play_history_report_delay":
