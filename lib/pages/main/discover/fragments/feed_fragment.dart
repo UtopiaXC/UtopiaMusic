@@ -169,7 +169,6 @@ class _FeedFragmentState extends State<FeedFragment>
             controller: widget.scrollController,
             itemCount: _songs.length + 1,
             itemBuilder: (context, index) {
-              // 到达列表底部
               if (index == _songs.length) {
                 if (_hasMore) {
                   if (!_isLoading) {

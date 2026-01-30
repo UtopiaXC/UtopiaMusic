@@ -63,7 +63,7 @@ class DatabaseService {
     }
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -115,6 +115,7 @@ class DatabaseService {
 
     await _createCacheMetaTable(db);
     await _createDownloadsTable(db);
+    await _createListCacheTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -148,6 +149,9 @@ class DatabaseService {
 
         await db.execute('DELETE FROM cache_meta');
       } catch (_) {}
+    }
+    if (oldVersion < 7) {
+      await _createListCacheTable(db);
     }
   }
 
@@ -186,6 +190,105 @@ class DatabaseService {
         create_time INTEGER
       )
     ''');
+  }
+
+  Future<void> _createListCacheTable(DatabaseExecutor db) async {
+    Log.v(_tag, "_createListCacheTable");
+    await db.execute('''
+      CREATE TABLE list_cache(
+        cache_key TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        access_count INTEGER DEFAULT 1,
+        last_access INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        size_bytes INTEGER DEFAULT 0
+      )
+    ''');
+  }
+
+  Future<void> saveListCache(String key, String jsonData) async {
+    Log.v(_tag, "saveListCache, key: $key");
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final sizeBytes = jsonData.length * 2;
+
+    await db.insert('list_cache', {
+      'cache_key': key,
+      'data': jsonData,
+      'access_count': 1,
+      'last_access': now,
+      'created_at': now,
+      'size_bytes': sizeBytes,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<String?> getListCache(String key) async {
+    Log.v(_tag, "getListCache, key: $key");
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    final result = await db.query(
+      'list_cache',
+      where: 'cache_key = ?',
+      whereArgs: [key],
+    );
+
+    if (result.isEmpty) return null;
+    await db.rawUpdate(
+      'UPDATE list_cache SET access_count = access_count + 1, last_access = ? WHERE cache_key = ?',
+      [now, key],
+    );
+
+    return result.first['data'] as String?;
+  }
+
+  Future<void> deleteListCache(String key) async {
+    Log.v(_tag, "deleteListCache, key: $key");
+    final db = await database;
+    await db.delete('list_cache', where: 'cache_key = ?', whereArgs: [key]);
+  }
+
+  Future<int> getListCacheSize() async {
+    Log.v(_tag, "getListCacheSize");
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT SUM(size_bytes) as total FROM list_cache',
+    );
+    return (result.first['total'] as int?) ?? 0;
+  }
+
+  Future<void> clearListCache() async {
+    Log.v(_tag, "clearListCache");
+    final db = await database;
+    await db.delete('list_cache');
+  }
+
+  Future<void> cleanupListCacheLFU(int bytesToFree) async {
+    Log.v(_tag, "cleanupListCacheLFU, bytesToFree: $bytesToFree");
+    final db = await database;
+
+    final entries = await db.query(
+      'list_cache',
+      orderBy: 'access_count ASC, last_access ASC',
+    );
+
+    int freedBytes = 0;
+    final keysToRemove = <String>[];
+
+    for (var entry in entries) {
+      if (freedBytes >= bytesToFree) break;
+      keysToRemove.add(entry['cache_key'] as String);
+      freedBytes += (entry['size_bytes'] as int?) ?? 0;
+    }
+
+    for (var key in keysToRemove) {
+      await db.delete('list_cache', where: 'cache_key = ?', whereArgs: [key]);
+    }
+
+    Log.v(
+      _tag,
+      "LFU cleanup: removed ${keysToRemove.length} entries, freed $freedBytes bytes",
+    );
   }
 
   Future<List<Song>> getPlaylist({bool isShuffleMode = false}) async {

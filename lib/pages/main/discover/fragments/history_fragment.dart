@@ -121,11 +121,6 @@ class _HistoryFragmentState extends State<HistoryFragment>
 
     String artist = item['author_name'] ?? item['owner']?['name'] ?? '';
     artist = _unescape.convert(artist);
-
-    // History item usually has 'history' object with 'bvid' etc.
-    // Or directly fields.
-    // Structure: { title, author_name, cover, history: { bvid, cid, ... } }
-
     String bvid = item['history']?['bvid'] ?? item['bvid'] ?? '';
     int cid = item['history']?['cid'] ?? item['cid'] ?? 0;
 

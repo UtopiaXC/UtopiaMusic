@@ -285,19 +285,6 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           _recommendationAutoPlay = true;
         });
         await _saveSettings();
-        final playerProvider = Provider.of<PlayerProvider>(
-          context,
-          listen: false,
-        );
-        if (_relatedVideos.isNotEmpty) {
-          final currentSong = playerProvider.currentSong;
-          if (currentSong != null && currentSong.bvid == widget.bvid) {
-            List<Song> newPlaylist = [currentSong, ..._relatedVideos];
-            await playerProvider.player.setShuffleModeEnabled(false);
-            await playerProvider.player.setLoopMode(LoopMode.off);
-            await playerProvider.setPlaylistAndPlay(newPlaylist, currentSong);
-          }
-        }
       }
     } else {
       setState(() {
@@ -426,9 +413,10 @@ class _VideoDetailPageState extends State<VideoDetailPage>
 
     if (playerProvider.playlist.isEmpty) {
       List<Song> contextList = [song];
+      final isRecommendationMode = playerProvider.recommendationAutoPlay;
       if (widget.contextList != null && widget.contextList!.isNotEmpty) {
         contextList = widget.contextList!;
-      } else if (_recommendationAutoPlay && _relatedVideos.isNotEmpty) {
+      } else if (isRecommendationMode && _relatedVideos.isNotEmpty) {
         contextList.addAll(_relatedVideos);
       } else if (_hasCollection && _collectionVideos.isNotEmpty) {
         contextList = _collectionVideos;
@@ -449,7 +437,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       );
     } else {
       List<Song> contextList = [song];
-      if (_recommendationAutoPlay && _relatedVideos.isNotEmpty) {
+      final isRecommendationMode = playerProvider.recommendationAutoPlay;
+      if (isRecommendationMode && _relatedVideos.isNotEmpty) {
         contextList.addAll(_relatedVideos);
       } else if (_hasCollection && _collectionVideos.isNotEmpty) {
         contextList = _collectionVideos;

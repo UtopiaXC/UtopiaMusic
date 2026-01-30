@@ -34,23 +34,43 @@ class RecommendationManager {
     await prefs.setBool(_prefKey, value);
   }
 
+  Song? _pendingSong;
+
   Future<void> checkAndLoad({
     required Song currentSong,
     required List<Song> currentPlaylist,
     required Function() notifyLoading,
     required Function() notifyLoaded,
   }) async {
-    Log.v(_tag, "checkAndLoad");
+    Log.v(_tag, "checkAndLoad for: ${currentSong.title}");
     if (!_enabled) {
       Log.v(_tag, "AutoPlay disabled, skipping.");
       return;
     }
-    if (_isLoading) {
-      Log.v(_tag, "Already loading, skipping.");
+
+    if (_isLoading &&
+        _pendingSong != null &&
+        _pendingSong!.bvid == currentSong.bvid) {
+      Log.v(_tag, "Already loading for this song, skipping.");
       return;
     }
 
+    if (_isLoading) {
+      Log.v(_tag, "Already loading, queuing this song.");
+      _pendingSong = currentSong;
+      return;
+    }
+
+    await _loadRecommendations(currentSong, notifyLoading, notifyLoaded);
+  }
+
+  Future<void> _loadRecommendations(
+    Song currentSong,
+    Function() notifyLoading,
+    Function() notifyLoaded,
+  ) async {
     _isLoading = true;
+    _pendingSong = currentSong;
     notifyLoading();
 
     try {
@@ -65,6 +85,14 @@ class RecommendationManager {
         currentSong.bvid,
       );
 
+      if (_pendingSong == null || _pendingSong!.bvid != currentSong.bvid) {
+        Log.w(
+          _tag,
+          "Song changed while loading, discarding stale recommendations.",
+        );
+        return;
+      }
+
       if (related.isNotEmpty) {
         await _updatePlaylistResetHistory(currentSong, related);
       } else {
@@ -74,7 +102,19 @@ class RecommendationManager {
       Log.e(_tag, "AutoPlay Error", e);
     } finally {
       _isLoading = false;
+      final pendingAfterLoad = _pendingSong;
+      _pendingSong = null;
       notifyLoaded();
+
+      if (pendingAfterLoad != null &&
+          pendingAfterLoad.bvid != currentSong.bvid) {
+        Log.v(_tag, "Loading queued song: ${pendingAfterLoad.title}");
+        await _loadRecommendations(
+          pendingAfterLoad,
+          notifyLoading,
+          notifyLoaded,
+        );
+      }
     }
   }
 

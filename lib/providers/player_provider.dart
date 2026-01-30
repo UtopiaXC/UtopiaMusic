@@ -103,7 +103,18 @@ class PlayerProvider extends ChangeNotifier {
         await _databaseService.replacePlaylist(newPlaylist);
         await _reloadPlaylistFromDb();
         if (_currentSong != null) {
-          await _audioPlayerService.updateQueueKeepPlaying(_playlist, 0);
+          int currentIndex = _playlist.indexWhere(
+            (s) =>
+                s.bvid == _currentSong!.bvid &&
+                (s.cid == _currentSong!.cid ||
+                    s.cid == 0 ||
+                    _currentSong!.cid == 0),
+          );
+          if (currentIndex == -1) currentIndex = 0;
+          await _audioPlayerService.updateQueueKeepPlaying(
+            _playlist,
+            currentIndex,
+          );
         }
       },
     );
@@ -247,8 +258,11 @@ class PlayerProvider extends ChangeNotifier {
     );
 
     try {
+      // Save the recommendation state at the start for consistency
+      final shouldTriggerRecommendation = recommendationAutoPlay;
+
       List<Song> newSongs;
-      if (recommendationAutoPlay) {
+      if (shouldTriggerRecommendation) {
         newSongs = [initialSong];
       } else {
         newSongs = List.from(songs);
@@ -281,22 +295,24 @@ class PlayerProvider extends ChangeNotifier {
       );
       if (index == -1) index = 0;
 
+      // Start playback immediately
       await _startPlay(index);
       expandPlayer();
 
-      if (recommendationAutoPlay) {
+      // Trigger recommendation load immediately (non-blocking)
+      // Use the saved state to ensure consistency
+      if (shouldTriggerRecommendation) {
         Log.i(
           _tag,
-          "Triggering manual recommendation check after setPlaylistAndPlay",
+          "Triggering immediate recommendation check after setPlaylistAndPlay",
         );
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _recommendationManager.checkAndLoad(
-            currentSong: initialSong,
-            currentPlaylist: _playlist,
-            notifyLoading: notifyListeners,
-            notifyLoaded: notifyListeners,
-          );
-        });
+        // Don't await - let it run in parallel
+        _recommendationManager.checkAndLoad(
+          currentSong: initialSong,
+          currentPlaylist: _playlist,
+          notifyLoading: notifyListeners,
+          notifyLoaded: notifyListeners,
+        );
       }
     } catch (e) {
       Log.e(_tag, "setPlaylistAndPlay error", e);

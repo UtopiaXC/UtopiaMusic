@@ -156,21 +156,19 @@ class SongListItem extends StatelessWidget {
     if (useCardStyle) {
       final primaryColor = Theme.of(context).colorScheme.primary;
       return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: primaryColor.withOpacity(0.3), width: 1.5),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.15),
+            width: 0.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withOpacity(0.1),
-              blurRadius: 10,
+              color: primaryColor.withValues(alpha: 0.08),
+              blurRadius: 8,
               offset: const Offset(0, 2),
-            ),
-            BoxShadow(
-              color: primaryColor.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -188,7 +186,7 @@ class SongListItem extends StatelessWidget {
     return InkWell(
       onTap: () => _handleTap(context),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: content,
       ),
     );

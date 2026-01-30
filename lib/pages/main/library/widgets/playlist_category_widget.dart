@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/utils/log.dart';
+import 'package:utopia_music/widgets/common/cached_cover_image.dart';
 
 const String _tag = "PLAYLIST_CATEGORY_WIDGET";
 
@@ -100,6 +102,8 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
     }
   }
 
+  String get _cacheKey => 'library_${widget.type.name}';
+
   Future<void> _loadData({bool forceRefresh = false}) async {
     if (!forceRefresh && _hasLoaded) {
       return;
@@ -117,11 +121,139 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
       return;
     }
 
+    if (!forceRefresh && widget.type != PlaylistCategoryType.local) {
+      final cached = await _loadFromCache();
+      if (cached != null && cached.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _playlists = cached;
+            _hasLoaded = true;
+            _isLoading = false;
+          });
+        }
+        _refreshInBackground();
+        return;
+      }
+    }
+
     if (widget.type == PlaylistCategoryType.local) {
       await _loadLocalPlaylists();
     } else {
       await _loadOnlinePlaylists();
     }
+  }
+
+  Future<List<PlaylistInfo>?> _loadFromCache() async {
+    try {
+      final jsonStr = await DatabaseService().getListCache(_cacheKey);
+      if (jsonStr == null) return null;
+
+      final List<dynamic> jsonList = json.decode(jsonStr);
+      return jsonList
+          .map(
+            (item) => PlaylistInfo(
+              id: item['id'] ?? '',
+              title: item['title'] ?? '',
+              coverUrl: item['coverUrl'] ?? '',
+              count: item['count'] ?? 0,
+              isLocal: item['isLocal'] ?? false,
+              originalData: item['originalData'],
+            ),
+          )
+          .toList();
+    } catch (e) {
+      Log.w(_tag, 'Failed to load from cache: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveToCache(List<PlaylistInfo> playlists) async {
+    try {
+      final jsonList = playlists
+          .map(
+            (p) => {
+              'id': p.id,
+              'title': p.title,
+              'coverUrl': p.coverUrl,
+              'count': p.count,
+              'isLocal': p.isLocal,
+              'originalData': p.originalData,
+            },
+          )
+          .toList();
+      final jsonStr = json.encode(jsonList);
+      await DatabaseService().saveListCache(_cacheKey, jsonStr);
+    } catch (e) {
+      Log.w(_tag, 'Failed to save to cache: $e');
+    }
+  }
+
+  Future<void> _refreshInBackground() async {
+    if (widget.type == PlaylistCategoryType.local) return;
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!authProvider.isLoggedIn) return;
+
+      int mid = authProvider.userInfo?.mid ?? 0;
+      List<dynamic> rawList = [];
+
+      if (widget.type == PlaylistCategoryType.favorites) {
+        rawList = await _libraryApi.getFavoriteFolders(mid);
+      } else {
+        rawList = await _libraryApi.getCollections(mid);
+      }
+
+      if (!mounted || rawList.isEmpty) return;
+
+      List<PlaylistInfo> processedList = [];
+      for (var item in rawList) {
+        String id = item['id']?.toString() ?? '';
+        String title = item['title'] ?? '';
+        String cover = item['cover'] ?? '';
+        int count = item['media_count'] ?? 0;
+
+        if (widget.type == PlaylistCategoryType.favorites &&
+            (cover.isEmpty || cover.contains('bfs/archive/'))) {
+          try {
+            final info = await _libraryApi.getFavoriteFolderInfo(id);
+            if (info != null) {
+              cover = info['cover'] ?? cover;
+            }
+          } catch (e) {
+            Log.w(_tag, 'Failed to fetch info for folder $id: $e');
+          }
+        }
+
+        processedList.add(
+          PlaylistInfo(
+            id: id,
+            title: title,
+            coverUrl: cover,
+            count: count,
+            isLocal: false,
+            originalData: item,
+          ),
+        );
+      }
+
+      await _saveToCache(processedList);
+      if (mounted && !_listsEqual(_playlists, processedList)) {
+        setState(() {
+          _playlists = processedList;
+        });
+      }
+    } catch (e) {
+      Log.w(_tag, 'Background refresh failed: $e');
+    }
+  }
+
+  bool _listsEqual(List<PlaylistInfo> a, List<PlaylistInfo> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id || a[i].count != b[i].count) return false;
+    }
+    return true;
   }
 
   Future<void> _loadLocalPlaylists() async {
@@ -232,6 +364,7 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
             );
           }
 
+          await _saveToCache(processedList);
           setState(() {
             _playlists = processedList;
             _isLoading = false;
@@ -433,64 +566,39 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        image: playlist.coverUrl.isNotEmpty
-                            ? DecorationImage(
-                                image: NetworkImage(playlist.coverUrl),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          if (playlist.coverUrl.isEmpty)
-                            Center(
-                              child: Icon(
-                                Icons.music_note,
-                                size: 48,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                    Stack(
+                      children: [
+                        CachedCoverImage.medium(
+                          imageUrl: playlist.coverUrl,
+                          size: 110,
+                          borderRadius: BorderRadius.circular(12),
+                          placeholderColor: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                        ),
+                        Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
                             ),
-                          Positioned(
-                            right: 4,
-                            bottom: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '${playlist.count}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${playlist.count}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -596,57 +704,13 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
                 key: ValueKey(playlist.id),
                 index: index,
                 child: ListTile(
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      image: playlist.coverUrl.isNotEmpty
-                          ? DecorationImage(
-                              image: NetworkImage(playlist.coverUrl),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: Stack(
-                      children: [
-                        if (playlist.coverUrl.isEmpty)
-                          Center(
-                            child: Icon(
-                              Icons.music_note,
-                              size: 24,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        Positioned(
-                          right: 2,
-                          bottom: 2,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 2,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: Text(
-                              '${playlist.count}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  leading: CachedCoverImage.small(
+                    imageUrl: playlist.coverUrl,
+                    size: 48,
+                    borderRadius: BorderRadius.circular(8),
+                    placeholderColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   ),
                   title: Text(playlist.title),
                   subtitle: Text(
@@ -675,57 +739,13 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
             itemBuilder: (context, index) {
               final playlist = _playlists[index];
               return ListTile(
-                leading: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    image: playlist.coverUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(playlist.coverUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: Stack(
-                    children: [
-                      if (playlist.coverUrl.isEmpty)
-                        Center(
-                          child: Icon(
-                            Icons.music_note,
-                            size: 24,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      Positioned(
-                        right: 2,
-                        bottom: 2,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 2,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          child: Text(
-                            '${playlist.count}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                leading: CachedCoverImage.small(
+                  imageUrl: playlist.coverUrl,
+                  size: 48,
+                  borderRadius: BorderRadius.circular(8),
+                  placeholderColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                 ),
                 title: Text(playlist.title),
                 subtitle: Text(

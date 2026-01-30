@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
+import 'package:utopia_music/services/cache_manager_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 import 'package:utopia_music/generated/l10n.dart';
@@ -20,25 +21,33 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
   String _usedCacheSizeStr = "...";
   int _maxConcurrentDownloads = 3;
   String _downloadSizeStr = '...';
+  int _otherCacheSize = 50;
+  String _otherCacheSizeStr = '...';
+
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DownloadManager _downloadManager = DownloadManager();
+  final CacheManagerService _cacheManagerService = CacheManagerService();
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _cacheManagerService.init().then((_) => _loadSettings());
   }
 
   Future<void> _loadSettings() async {
     final maxLimit = await _audioPlayerService.getMaxCacheSize();
     final usedBytes = await _audioPlayerService.getUsedCacheSize();
     final maxConcurrent = await _downloadManager.getMaxConcurrentDownloads();
+    final otherCacheMax = await _cacheManagerService.getMaxCacheSize();
+    final otherCacheUsed = await _cacheManagerService.getUsedCacheSize();
 
     if (mounted) {
       setState(() {
         _currentCacheSize = maxLimit;
         _usedCacheSizeStr = _formatSize(usedBytes);
         _maxConcurrentDownloads = maxConcurrent;
+        _otherCacheSize = otherCacheMax;
+        _otherCacheSizeStr = _formatSize(otherCacheUsed);
       });
       _updateDownloadSize();
     }
@@ -81,6 +90,98 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
         _maxConcurrentDownloads = count;
       });
     }
+  }
+
+  Future<void> _updateOtherCacheSize(int size) async {
+    final success = await _cacheManagerService.setMaxCacheSize(size);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('缓存大小不能小于 10 MB')));
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _otherCacheSize = size;
+      });
+    }
+  }
+
+  Future<void> _handleClearOtherCache() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清空其他缓存'),
+        content: const Text('这将清除图片缓存和页面状态缓存，确定要继续吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(S.of(context).common_cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(S.of(context).common_confirm),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _cacheManagerService.clearAllCache();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('其他缓存已清除')));
+        await _loadSettings();
+      }
+    }
+  }
+
+  void _showOtherCacheSizeDialog() {
+    final controller = TextEditingController(text: _otherCacheSize.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置其他缓存上限'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(suffixText: 'MB'),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '最小值: 10 MB',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(S.of(context).common_cancel),
+          ),
+          TextButton(
+            onPressed: () {
+              final size = int.tryParse(controller.text);
+              if (size != null) {
+                _updateOtherCacheSize(size);
+              }
+              Navigator.pop(context);
+            },
+            child: Text(S.of(context).common_confirm),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleClearCache() async {
@@ -275,6 +376,56 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                 ),
                 trailing: Icon(Icons.delete_outline, size: 20),
                 onTap: _handleClearCache,
+              ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '其他缓存',
+            children: [
+              ListTile(
+                title: const Text('其他缓存上限'),
+                subtitle: const Text('图片、页面状态等缓存'),
+                trailing: DropdownButton<int>(
+                  value:
+                      [
+                        10,
+                        50,
+                        100,
+                        200,
+                        500,
+                        1000,
+                        4096,
+                      ].contains(_otherCacheSize)
+                      ? _otherCacheSize
+                      : -1,
+                  underline: const SizedBox(),
+                  alignment: Alignment.centerRight,
+                  items: const [
+                    DropdownMenuItem(value: 10, child: Text('10 MB')),
+                    DropdownMenuItem(value: 50, child: Text('50 MB')),
+                    DropdownMenuItem(value: 100, child: Text('100 MB')),
+                    DropdownMenuItem(value: 200, child: Text('200 MB')),
+                    DropdownMenuItem(value: 500, child: Text('500 MB')),
+                    DropdownMenuItem(value: 1000, child: Text('1 GB')),
+                    DropdownMenuItem(value: 4096, child: Text('4 GB')),
+                    DropdownMenuItem(value: -1, child: Text('自定义')),
+                  ],
+                  onChanged: (value) {
+                    if (value == -1) {
+                      _showOtherCacheSizeDialog();
+                    } else if (value != null) {
+                      _updateOtherCacheSize(value);
+                    }
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('清空其他缓存'),
+                subtitle: Text(
+                  '${S.of(context).pages_settings_tag_download_cache_used}: $_otherCacheSizeStr',
+                ),
+                trailing: const Icon(Icons.delete_outline, size: 20),
+                onTap: _handleClearOtherCache,
               ),
             ],
           ),

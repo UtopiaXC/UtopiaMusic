@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/models/song.dart';
+import 'package:utopia_music/utils/log.dart';
+import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:utopia_music/widgets/song_list/song_list.dart';
 import 'package:utopia_music/generated/l10n.dart';
+
+const String _tag = "RECOMMEND_FRAGMENT";
 
 class RecommendFragment extends StatefulWidget {
   final Function(Song) onSongSelected;
@@ -27,6 +32,7 @@ class _RecommendFragmentState extends State<RecommendFragment>
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _hasError = false;
+  bool _hasCacheLoaded = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -34,14 +40,44 @@ class _RecommendFragmentState extends State<RecommendFragment>
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initWithCache();
     widget.scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _saveScrollPosition();
     widget.scrollController.removeListener(_onScroll);
     super.dispose();
+  }
+
+  Future<void> _initWithCache() async {
+    final discoverProvider = Provider.of<DiscoverProvider>(
+      context,
+      listen: false,
+    );
+    if (discoverProvider.firstVisibleCategory ==
+        DiscoverCategoryType.recommend) {
+      final cached = await discoverProvider.loadFirstTabCache();
+      if (cached.isNotEmpty && mounted) {
+        final scrollPos = await discoverProvider.loadScrollPosition();
+        setState(() {
+          _songs = cached;
+          _isLoading = false;
+          _hasCacheLoaded = true;
+        });
+        if (scrollPos > 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (widget.scrollController.hasClients && mounted) {
+              widget.scrollController.jumpTo(scrollPos);
+            }
+          });
+        }
+        _refreshInBackground();
+        return;
+      }
+    }
+    await _loadData();
   }
 
   void _onScroll() {
@@ -52,6 +88,43 @@ class _RecommendFragmentState extends State<RecommendFragment>
         !_isLoading &&
         !_hasError) {
       _loadMoreData();
+    }
+  }
+
+  Future<void> _saveScrollPosition() async {
+    final discoverProvider = Provider.of<DiscoverProvider>(
+      context,
+      listen: false,
+    );
+    if (discoverProvider.firstVisibleCategory ==
+            DiscoverCategoryType.recommend &&
+        widget.scrollController.hasClients) {
+      await discoverProvider.saveScrollPosition(widget.scrollController.offset);
+    }
+  }
+
+  Future<void> _saveToCache() async {
+    final discoverProvider = Provider.of<DiscoverProvider>(
+      context,
+      listen: false,
+    );
+    if (discoverProvider.firstVisibleCategory ==
+        DiscoverCategoryType.recommend) {
+      await discoverProvider.saveFirstTabCache(_songs);
+    }
+  }
+
+  Future<void> _refreshInBackground() async {
+    try {
+      final songs = await _videoApi.getRecommentVideos(context);
+      if (mounted && songs.isNotEmpty) {
+        setState(() {
+          _songs = songs;
+        });
+        await _saveToCache();
+      }
+    } catch (e) {
+      Log.w(_tag, "Fail to get recomment videos, $e");
     }
   }
 
@@ -70,6 +143,9 @@ class _RecommendFragmentState extends State<RecommendFragment>
             _hasError = true;
           }
         });
+        if (_songs.isNotEmpty) {
+          await _saveToCache();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -92,6 +168,8 @@ class _RecommendFragmentState extends State<RecommendFragment>
           _songs.addAll(newSongs);
           _isLoadingMore = false;
         });
+        // Update cache with new data
+        await _saveToCache();
       }
     } catch (e) {
       if (mounted) {

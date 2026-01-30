@@ -302,8 +302,9 @@ class AudioPlayerService {
         .toList();
 
     try {
-      await _player.setAudioSources(
-        sources,
+      final playlist = ConcatenatingAudioSource(children: sources);
+      await _player.setAudioSource(
+        playlist,
         initialIndex: index,
         initialPosition: initialPosition,
       );

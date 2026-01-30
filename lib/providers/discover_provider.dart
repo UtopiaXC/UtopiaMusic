@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/models/song.dart';
+import 'package:utopia_music/utils/log.dart';
 
 enum DiscoverCategoryType {
   recommend,
@@ -111,5 +115,83 @@ class DiscoverProvider extends ChangeNotifier {
         .map((e) => e.index.toString())
         .toList();
     await prefs.setStringList(_hiddenCategoriesKey, hiddenToSave);
+  }
+
+  static const String _cacheKey = 'discover_first_tab_cache';
+  static const String _scrollPositionKey = 'discover_first_tab_scroll';
+  static const String _tag = 'DISCOVER_PROVIDER';
+
+  final DatabaseService _db = DatabaseService();
+  DiscoverCategoryType get firstVisibleCategory => visibleCategories.isNotEmpty
+      ? visibleCategories.first
+      : DiscoverCategoryType.recommend;
+
+  Future<void> saveFirstTabCache(List<Song> songs) async {
+    try {
+      final jsonList = songs
+          .take(30)
+          .map(
+            (s) => {
+              'title': s.title,
+              'originTitle': s.originTitle,
+              'artist': s.artist,
+              'coverUrl': s.coverUrl,
+              'lyrics': s.lyrics,
+              'bvid': s.bvid,
+              'cid': s.cid,
+              'colorValue': s.colorValue,
+            },
+          )
+          .toList();
+      final jsonStr = json.encode(jsonList);
+      await _db.saveListCache(_cacheKey, jsonStr);
+      Log.v(_tag, 'Saved first tab cache: ${songs.length} songs (max 30)');
+    } catch (e) {
+      Log.w(_tag, 'Failed to save first tab cache: $e');
+    }
+  }
+
+  Future<List<Song>> loadFirstTabCache() async {
+    try {
+      final jsonStr = await _db.getListCache(_cacheKey);
+      if (jsonStr == null) return [];
+
+      final List<dynamic> jsonList = json.decode(jsonStr);
+      final songs = jsonList
+          .map(
+            (item) => Song(
+              title: item['title'] ?? '',
+              originTitle: item['originTitle'],
+              artist: item['artist'] ?? '',
+              coverUrl: item['coverUrl'] ?? '',
+              lyrics: item['lyrics'] ?? '',
+              bvid: item['bvid'] ?? '',
+              cid: item['cid'] ?? 0,
+              colorValue: item['colorValue'] ?? 0,
+            ),
+          )
+          .toList();
+      Log.v(_tag, 'Loaded first tab cache: ${songs.length} songs');
+      return songs;
+    } catch (e) {
+      Log.w(_tag, 'Failed to load first tab cache: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveScrollPosition(double position) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_scrollPositionKey, position);
+  }
+
+  Future<double> loadScrollPosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_scrollPositionKey) ?? 0.0;
+  }
+
+  Future<void> clearFirstTabCache() async {
+    await _db.deleteListCache(_cacheKey);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_scrollPositionKey);
   }
 }

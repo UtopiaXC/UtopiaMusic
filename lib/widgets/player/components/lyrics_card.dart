@@ -1133,12 +1133,13 @@ class _DanmakuPageState extends State<_DanmakuPage>
     return Padding(
       padding: const EdgeInsets.only(top: 72.0),
       child: DanmakuScreen(
-        key: ValueKey(widget.rawDanmakus.hashCode),
+        key: ValueKey('danmaku_${widget.rawDanmakus.length}'),
         createdController: widget.onControllerCreated,
         option: DanmakuOption(
           opacity: 0.9,
           fontSize: 18,
           area: 0.9,
+          duration: 8,
           hideScroll: false,
           hideTop: false,
           hideBottom: false,

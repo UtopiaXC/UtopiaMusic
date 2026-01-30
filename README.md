@@ -11,14 +11,14 @@
 <br>
 警告：本项目大量使用Gemini等生成式AI。  
 我本人移动端上此前只做过原生安卓开发和安卓OS开发，对flutter可以说是一窍不通，因此本项目基本vibecode。  
-开发工具：idea + Gemini Code Assist插件  
+开发工具：idea + Gemini Code Assist插件。  
 <br>
 20260128 做人做企业不能忘本，向已死的互联网海盗精神致敬。  
 <br>
-20260130：尝试了一下Antigravity + Claude Opus 4.5，我只能说这个太好用了，又快又准，帮我重构和实现了好多功能，太无敌了。  
+20260130：尝试了一下Antigravity + Claude Opus 4.5，我只能说这个太好用了，又快又准，帮我重构和实现了好多功能，太无敌了。现在项目基本完事了，就剩下一些小功能和维护动作了，感觉可以开始写文档了。    
 
 ## 下载
-
+请在下载后的24小时内删除  
 [最新测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
 
 ## 演示视频
@@ -39,7 +39,7 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 [SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)  
 [wood3n/biu](https://github.com/wood3n/biu)  
 [bbplayer-app/BBPlayer](https://github.com/bbplayer-app/BBPlayer)  
-[guozhigq/pilipala](https://github.com/guozhigq/pilipala)
+[guozhigq/pilipala](https://github.com/guozhigq/pilipala)  
 [bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)
 
 ## 引用的开源许可证

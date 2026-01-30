@@ -1,4 +1,3 @@
-/// Represents a single subtitle entry with timing information
 class SubtitleItem {
   final double from;
   final double to;

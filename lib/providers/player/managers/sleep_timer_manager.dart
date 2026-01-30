@@ -34,7 +34,7 @@ class SleepTimerManager {
 
     _timer = Timer(duration, () {
       if (!_stopAfterCurrent) {
-        _audioPlayerService.stop();
+        _audioPlayerService.pause();
         cancel();
       }
     });
@@ -60,7 +60,7 @@ class SleepTimerManager {
     if (_stopAfterCurrent && isActive && _stopTime != null) {
       if (DateTime.now().isAfter(_stopTime!)) {
         cancel();
-        _audioPlayerService.stop();
+        _audioPlayerService.pause();
       }
     }
   }
