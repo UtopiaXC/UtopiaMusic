@@ -23,7 +23,7 @@
 
 ## 演示视频
 
-https://github.com/user-attachments/assets/c3ec56c8-a1ac-4c35-a854-1f594685f820
+https://github.com/user-attachments/assets/4072f9cf-8385-4e9c-9207-b85c161e91c9
 
 ## 开发初衷
 
