@@ -352,7 +352,10 @@ class _LibraryOrderDialog extends StatelessWidget {
                   builder: (context, libraryProvider, child) {
                     return Scrollbar(
                       controller: scrollController,
-                      thumbVisibility: true,
+                      thumbVisibility: false,
+                      interactive: true,
+                      thickness: 6,
+                      radius: const Radius.circular(3),
                       child: ReorderableListView.builder(
                         scrollController: scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -521,7 +524,10 @@ class _DiscoverOrderDialog extends StatelessWidget {
                   builder: (context, discoverProvider, child) {
                     return Scrollbar(
                       controller: scrollController,
-                      thumbVisibility: true,
+                      thumbVisibility: false,
+                      interactive: true,
+                      thickness: 6,
+                      radius: const Radius.circular(3),
                       child: ReorderableListView.builder(
                         scrollController: scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 8),

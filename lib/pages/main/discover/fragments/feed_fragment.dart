@@ -165,37 +165,44 @@ class _FeedFragmentState extends State<FeedFragment>
         return RefreshIndicator(
           key: widget.refreshIndicatorKey,
           onRefresh: _handleRefresh,
-          child: ListView.builder(
+          child: Scrollbar(
             controller: widget.scrollController,
-            itemCount: _songs.length + 1,
-            itemBuilder: (context, index) {
-              if (index == _songs.length) {
-                if (_hasMore) {
-                  if (!_isLoading) {
-                    Future.microtask(() => _loadData());
-                  }
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                } else {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Center(
-                      child: Text(
-                        S.of(context).common_at_bottom,
-                        style: const TextStyle(color: Colors.grey),
+            thumbVisibility: false,
+            interactive: true,
+            thickness: 6,
+            radius: const Radius.circular(3),
+            child: ListView.builder(
+              controller: widget.scrollController,
+              itemCount: _songs.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _songs.length) {
+                  if (_hasMore) {
+                    if (!_isLoading) {
+                      Future.microtask(() => _loadData());
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  } else {
+                    return Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Center(
+                        child: Text(
+                          S.of(context).common_at_bottom,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }
-              }
-              return SongListItem(
-                song: _songs[index],
-                contextList: _songs,
-                useCardStyle: true,
-              );
-            },
+                return SongListItem(
+                  song: _songs[index],
+                  contextList: _songs,
+                  useCardStyle: true,
+                );
+              },
+            ),
           ),
         );
       },

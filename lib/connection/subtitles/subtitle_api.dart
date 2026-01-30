@@ -301,7 +301,7 @@ class SubtitleApi {
               return SubtitleItem(
                 from: timestamp,
                 to: timestamp + 30.0,
-                content: "【AI 提纲】 $content",
+                content: "[AI] $content",
               );
             }).toList();
           }
@@ -310,11 +310,7 @@ class SubtitleApi {
           if (summary.isNotEmpty) {
             Log.d(_tag, "Using AI Summary as fallback.");
             return [
-              SubtitleItem(
-                from: 0.0,
-                to: 9999.0,
-                content: "【AI 视频摘要】\n$summary",
-              ),
+              SubtitleItem(from: 0.0, to: 9999.0, content: "[AI]\n$summary"),
             ];
           }
         } else {

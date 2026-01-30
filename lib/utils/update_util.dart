@@ -55,9 +55,9 @@ class UpdateUtil {
       Map<String, dynamic>? release;
 
       if (checkPreRelease) {
-        release = await githubApi.getLatestPreRelease();
+        release = await githubApi.getLatestPreRelease(context);
       } else {
-        release = await githubApi.getLatestRelease();
+        release = await githubApi.getLatestRelease(context);
       }
 
       if (isManualCheck && context.mounted) {

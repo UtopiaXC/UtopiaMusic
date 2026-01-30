@@ -104,16 +104,23 @@ class _RankFragmentState extends State<RankFragment>
     return RefreshIndicator(
       key: widget.refreshIndicatorKey,
       onRefresh: _handleRefresh,
-      child: ListView.builder(
+      child: Scrollbar(
         controller: widget.scrollController,
-        itemCount: _songs.length,
-        itemBuilder: (context, index) {
-          return SongListItem(
-            song: _songs[index],
-            contextList: _songs,
-            useCardStyle: true,
-          );
-        },
+        thumbVisibility: false,
+        interactive: true,
+        thickness: 6,
+        radius: const Radius.circular(3),
+        child: ListView.builder(
+          controller: widget.scrollController,
+          itemCount: _songs.length,
+          itemBuilder: (context, index) {
+            return SongListItem(
+              song: _songs[index],
+              contextList: _songs,
+              useCardStyle: true,
+            );
+          },
+        ),
       ),
     );
   }

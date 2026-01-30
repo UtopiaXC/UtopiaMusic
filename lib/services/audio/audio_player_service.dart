@@ -6,13 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/main.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
-import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/bili_audio_source.dart';
 import 'package:utopia_music/services/audio/ios_now_playing_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/utils/log.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 const String _tag = "AUDIO_PLAYER_SERVICE";
 
@@ -129,14 +129,12 @@ class AudioPlayerService {
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('资源无效'),
-              content: const Text(
-                '当前请求的资源由于网络、版权原因或充电视频等无法播放，已停止播放。\n\n此后是否自动跳过并清理无效资源？',
-              ),
+              title: Text(S.of(context).dialog_source_invalid),
+              content: Text(S.of(context).dialog_source_invalid_description),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('取消'),
+                  child: Text(S.of(context).common_cancel),
                 ),
                 TextButton(
                   onPressed: () async {
@@ -155,7 +153,7 @@ class AudioPlayerService {
                     }
                     Navigator.pop(ctx);
                   },
-                  child: const Text('确认'),
+                  child: Text(S.of(context).common_confirm),
                 ),
               ],
             ),
@@ -302,9 +300,9 @@ class AudioPlayerService {
         .toList();
 
     try {
-      final playlist = ConcatenatingAudioSource(children: sources);
-      await _player.setAudioSource(
-        playlist,
+      // final playlist = ConcatenatingAudioSource(children: sources);
+      await _player.setAudioSources(
+        sources,
         initialIndex: index,
         initialPosition: initialPosition,
       );
@@ -342,10 +340,6 @@ class AudioPlayerService {
   }
 
   Future<void> updateQueueKeepPlaying(List<Song> newQueue, int newIndex) async {
-    Log.d(
-      _tag,
-      "updateQueueKeepPlaying, newQueue: ${newQueue.length}, newIndex: $newIndex",
-    );
     if (newQueue.isEmpty) {
       _globalQueue = [];
       await stop();
@@ -360,10 +354,8 @@ class AudioPlayerService {
     }
 
     try {
-      final playlist = _player.audioSource as ConcatenatingAudioSource?;
-      final currentS = currentSong;
-
-      if (playlist == null || currentS == null) {
+      final currentSongSnapshot = currentSong;
+      if (currentSongSnapshot == null || _player.currentIndex == null) {
         await playWithQueue(
           newQueue,
           newIndex,
@@ -374,18 +366,14 @@ class AudioPlayerService {
       }
 
       final targetSong = newQueue[newIndex];
-      bool isSameSong = targetSong.bvid == currentS.bvid;
+      bool isSameSong = targetSong.bvid == currentSongSnapshot.bvid;
       if (isSameSong) {
-        if (targetSong.cid != 0 && currentS.cid != 0) {
-          isSameSong = targetSong.cid == currentS.cid;
+        if (targetSong.cid != 0 && currentSongSnapshot.cid != 0) {
+          isSameSong = targetSong.cid == currentSongSnapshot.cid;
         }
       }
 
       if (!isSameSong) {
-        Log.i(
-          _tag,
-          "Target song mismatch (Hot swap canceled). Playing new queue directly.",
-        );
         await playWithQueue(
           newQueue,
           newIndex,
@@ -395,41 +383,41 @@ class AudioPlayerService {
         return;
       }
 
-      final songsBefore = newQueue.sublist(0, newIndex);
-      final songsAfter = newQueue.sublist(newIndex + 1);
-
-      final sourcesBefore = songsBefore
-          .map((s) => _createAudioSource(s))
+      final sourcesPreceding = newQueue
+          .sublist(0, newIndex)
+          .map((song) => _createAudioSource(song))
           .toList();
-      final sourcesAfter = songsAfter
-          .map((s) => _createAudioSource(s))
+      final sourcesFollowing = newQueue
+          .sublist(newIndex + 1)
+          .map((song) => _createAudioSource(song))
           .toList();
 
-      final playerIndex = _player.currentIndex;
-      if (playerIndex == null) throw Exception("Player index is null");
+      final int currentPlayerIndex = _player.currentIndex!;
+      final int currentQueueLength = _player.audioSources.length;
 
-      if (playerIndex < playlist.length - 1) {
-        await playlist.removeRange(playerIndex + 1, playlist.length);
-      }
-      if (playerIndex > 0) {
-        await playlist.removeRange(0, playerIndex);
-      }
-
-      if (sourcesBefore.isNotEmpty) {
-        await playlist.insertAll(0, sourcesBefore);
+      if (currentPlayerIndex < currentQueueLength - 1) {
+        await _player.removeAudioSourceRange(
+          currentPlayerIndex + 1,
+          currentQueueLength,
+        );
       }
 
-      if (sourcesAfter.isNotEmpty) {
-        await playlist.addAll(sourcesAfter);
+      if (currentPlayerIndex > 0) {
+        await _player.removeAudioSourceRange(0, currentPlayerIndex);
+      }
+
+      if (sourcesFollowing.isNotEmpty) {
+        await _player.insertAudioSources(1, sourcesFollowing);
+      }
+
+      if (sourcesPreceding.isNotEmpty) {
+        await _player.insertAudioSources(0, sourcesPreceding);
       }
 
       _globalQueue = newQueue;
       _currentIndex = newIndex;
       _indexController.add(newIndex);
-
-      Log.i(_tag, "Hot swap playlist completed successfully.");
     } catch (e) {
-      Log.w(_tag, "Hot swap failed: $e, falling back to reload");
       await playWithQueue(
         newQueue,
         newIndex,

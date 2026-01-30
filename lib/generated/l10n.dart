@@ -1484,6 +1484,96 @@ class S {
     );
   }
 
+  /// `Cache cannot be less than 10MB`
+  String get pages_settings_tag_download_other_cache_cannot_less_than_10 {
+    return Intl.message(
+      'Cache cannot be less than 10MB',
+      name: 'pages_settings_tag_download_other_cache_cannot_less_than_10',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Clear Others Cache`
+  String get pages_settings_tag_download_other_cache_clean_dialog {
+    return Intl.message(
+      'Clear Others Cache',
+      name: 'pages_settings_tag_download_other_cache_clean_dialog',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `This will clean all image and database cache, confirm?`
+  String get pages_settings_tag_download_other_cache_clean_description_dialog {
+    return Intl.message(
+      'This will clean all image and database cache, confirm?',
+      name: 'pages_settings_tag_download_other_cache_clean_description_dialog',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Cleaned`
+  String get pages_settings_tag_download_other_cache_clean_cleaned {
+    return Intl.message(
+      'Cleaned',
+      name: 'pages_settings_tag_download_other_cache_clean_cleaned',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Set limitation for others cache`
+  String get pages_settings_tag_download_other_set_limitation_dialog_title {
+    return Intl.message(
+      'Set limitation for others cache',
+      name: 'pages_settings_tag_download_other_set_limitation_dialog_title',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Minimum`
+  String get pages_settings_tag_download_other_set_limitation_min {
+    return Intl.message(
+      'Minimum',
+      name: 'pages_settings_tag_download_other_set_limitation_min',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Others Cache`
+  String get pages_settings_tag_download_other_title {
+    return Intl.message(
+      'Others Cache',
+      name: 'pages_settings_tag_download_other_title',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Limitation of Others Cache`
+  String get pages_settings_tag_download_other_limitation_title {
+    return Intl.message(
+      'Limitation of Others Cache',
+      name: 'pages_settings_tag_download_other_limitation_title',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Images, Status And Database Cache`
+  String get pages_settings_tag_download_other_limitation_description {
+    return Intl.message(
+      'Images, Status And Database Cache',
+      name: 'pages_settings_tag_download_other_limitation_description',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Network`
   String get pages_settings_tag_network {
     return Intl.message(
@@ -3774,6 +3864,121 @@ class S {
     return Intl.message(
       'Network error or API restricted. Please retry.\nRankings have strict restrictions. Try logging in if not already.',
       name: 'pages_discover_error_rank_risk',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Cannot access github, please check your network.`
+  String get connection_error_update_no_github_connection {
+    return Intl.message(
+      'Cannot access github, please check your network.',
+      name: 'connection_error_update_no_github_connection',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No release`
+  String get connection_error_update_no_release {
+    return Intl.message(
+      'No release',
+      name: 'connection_error_update_no_release',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Login Status Failed`
+  String get connection_error_login_invalid {
+    return Intl.message(
+      'Login Status Failed',
+      name: 'connection_error_login_invalid',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Your login status may have expired or been restricted. We recommend logging in again.`
+  String get connection_error_login_invalid_description {
+    return Intl.message(
+      'Your login status may have expired or been restricted. We recommend logging in again.',
+      name: 'connection_error_login_invalid_description',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Error Code`
+  String get connection_error_code {
+    return Intl.message(
+      'Error Code',
+      name: 'connection_error_code',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Info`
+  String get connection_error_message {
+    return Intl.message(
+      'Info',
+      name: 'connection_error_message',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Detail`
+  String get connection_error_detail {
+    return Intl.message(
+      'Detail',
+      name: 'connection_error_detail',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Manual`
+  String get subtitle_type_manual {
+    return Intl.message(
+      'Manual',
+      name: 'subtitle_type_manual',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `AI`
+  String get subtitle_type_ai {
+    return Intl.message('AI', name: 'subtitle_type_ai', desc: '', args: []);
+  }
+
+  /// `AI Summary`
+  String get subtitle_type_ai_summary {
+    return Intl.message(
+      'AI Summary',
+      name: 'subtitle_type_ai_summary',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Source Invalid`
+  String get dialog_source_invalid {
+    return Intl.message(
+      'Source Invalid',
+      name: 'dialog_source_invalid',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The requested resource has stopped playing due to network issues, copyright problems, or the video being unplayable.\n\nAutomatically skip and clean up invalid resources thereafter?`
+  String get dialog_source_invalid_description {
+    return Intl.message(
+      'The requested resource has stopped playing due to network issues, copyright problems, or the video being unplayable.\n\nAutomatically skip and clean up invalid resources thereafter?',
+      name: 'dialog_source_invalid_description',
       desc: '',
       args: [],
     );

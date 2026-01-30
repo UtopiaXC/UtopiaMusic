@@ -120,6 +120,29 @@ class MessageLookup extends MessageLookupByLibrary {
     "common_unknown": MessageLookupByLibrary.simpleMessage("Unknown"),
     "common_unsubscribe": MessageLookupByLibrary.simpleMessage("Unfollow"),
     "common_uploaded": MessageLookupByLibrary.simpleMessage("Uploaded"),
+    "connection_error_code": MessageLookupByLibrary.simpleMessage("Error Code"),
+    "connection_error_detail": MessageLookupByLibrary.simpleMessage("Detail"),
+    "connection_error_login_invalid": MessageLookupByLibrary.simpleMessage(
+      "Login Status Failed",
+    ),
+    "connection_error_login_invalid_description":
+        MessageLookupByLibrary.simpleMessage(
+          "Your login status may have expired or been restricted. We recommend logging in again.",
+        ),
+    "connection_error_message": MessageLookupByLibrary.simpleMessage("Info"),
+    "connection_error_update_no_github_connection":
+        MessageLookupByLibrary.simpleMessage(
+          "Cannot access github, please check your network.",
+        ),
+    "connection_error_update_no_release": MessageLookupByLibrary.simpleMessage(
+      "No release",
+    ),
+    "dialog_source_invalid": MessageLookupByLibrary.simpleMessage(
+      "Source Invalid",
+    ),
+    "dialog_source_invalid_description": MessageLookupByLibrary.simpleMessage(
+      "The requested resource has stopped playing due to network issues, copyright problems, or the video being unplayable.\n\nAutomatically skip and clean up invalid resources thereafter?",
+    ),
     "item_options_add_to_play_list": MessageLookupByLibrary.simpleMessage(
       "Add to Playlist",
     ),
@@ -482,6 +505,28 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Are you sure to delete all downloaded songs? This cannot be undone.",
         ),
+    "pages_settings_tag_download_other_cache_cannot_less_than_10":
+        MessageLookupByLibrary.simpleMessage("Cache cannot be less than 10MB"),
+    "pages_settings_tag_download_other_cache_clean_cleaned":
+        MessageLookupByLibrary.simpleMessage("Cleaned"),
+    "pages_settings_tag_download_other_cache_clean_description_dialog":
+        MessageLookupByLibrary.simpleMessage(
+          "This will clean all image and database cache, confirm?",
+        ),
+    "pages_settings_tag_download_other_cache_clean_dialog":
+        MessageLookupByLibrary.simpleMessage("Clear Others Cache"),
+    "pages_settings_tag_download_other_limitation_description":
+        MessageLookupByLibrary.simpleMessage(
+          "Images, Status And Database Cache",
+        ),
+    "pages_settings_tag_download_other_limitation_title":
+        MessageLookupByLibrary.simpleMessage("Limitation of Others Cache"),
+    "pages_settings_tag_download_other_set_limitation_dialog_title":
+        MessageLookupByLibrary.simpleMessage("Set limitation for others cache"),
+    "pages_settings_tag_download_other_set_limitation_min":
+        MessageLookupByLibrary.simpleMessage("Minimum"),
+    "pages_settings_tag_download_other_title":
+        MessageLookupByLibrary.simpleMessage("Others Cache"),
     "pages_settings_tag_download_performance":
         MessageLookupByLibrary.simpleMessage("Performance & Download"),
     "pages_settings_tag_download_performance_cache":
@@ -702,6 +747,11 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Replace playlist with current list and play",
         ),
+    "subtitle_type_ai": MessageLookupByLibrary.simpleMessage("AI"),
+    "subtitle_type_ai_summary": MessageLookupByLibrary.simpleMessage(
+      "AI Summary",
+    ),
+    "subtitle_type_manual": MessageLookupByLibrary.simpleMessage("Manual"),
     "time_day": MessageLookupByLibrary.simpleMessage("day"),
     "time_hour": MessageLookupByLibrary.simpleMessage("hr"),
     "time_minute": MessageLookupByLibrary.simpleMessage("min"),
