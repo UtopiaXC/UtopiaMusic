@@ -37,6 +37,7 @@ class AudioPlayerService {
   int _currentIndex = 0;
   bool _autoSkipInvalid = true;
   bool _isHandlingError = false;
+  bool _isUpdatingQueue = false;
 
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
@@ -60,7 +61,7 @@ class AudioPlayerService {
     _init();
 
     _player.currentIndexStream.listen((index) {
-      if (!_isDesktop && index != null) {
+      if (!_isDesktop && index != null && !_isUpdatingQueue) {
         _currentIndex = index;
         _indexController.add(index);
       }
@@ -353,6 +354,26 @@ class AudioPlayerService {
       return;
     }
 
+    // For iOS, use playWithQueue directly to avoid index issues with just_audio_media_kit
+    // The in-place queue modification causes just_audio_media_kit to lose track of the correct index
+    if (_isIOS) {
+      Log.i(_tag, "updateQueueKeepPlaying (iOS): using playWithQueue to reload queue at index $newIndex");
+      await playWithQueue(
+        newQueue,
+        newIndex,
+        autoPlay: _player.playing,
+        initialPosition: _player.position,
+      );
+      return;
+    }
+
+    // For Android (non-iOS mobile), use in-place modification for seamless transition
+    // For iOS, set flag to ignore currentIndexStream changes during queue update
+    // This prevents just_audio_media_kit from incorrectly resetting index to 0
+    if (_isIOS) {
+      _isUpdatingQueue = true;
+    }
+
     try {
       final currentSongSnapshot = currentSong;
       if (currentSongSnapshot == null || _player.currentIndex == null) {
@@ -424,6 +445,12 @@ class AudioPlayerService {
         autoPlay: _player.playing,
         initialPosition: _player.position,
       );
+    } finally {
+      // Reset flag after a short delay to ignore any delayed stream events
+      if (_isIOS) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        _isUpdatingQueue = false;
+      }
     }
   }
 

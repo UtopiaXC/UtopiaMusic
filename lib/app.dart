@@ -50,19 +50,19 @@ class _UtopiaMusicAppState extends State<UtopiaMusicApp>
     } else if (state == AppLifecycleState.resumed) {
       securityProvider.setAppResumed();
       if (Platform.isIOS) {
-        // Try reload audio source if not playing on iOS
-        final audioService = AudioPlayerService();
-        final player = audioService.player;
-        final currentPos = player.position;
-        final duration = player.duration;
-
-        if (!player.playing &&
-            currentPos > Duration.zero &&
-            duration != null &&
-            duration > Duration.zero) {
-          Log.v(_tag, "iOS resume: reloading audio source at $currentPos");
-          audioService.reloadAudioSource();
-        }
+        // // Try reload audio source if not playing on iOS
+        // final audioService = AudioPlayerService();
+        // final player = audioService.player;
+        // final currentPos = player.position;
+        // final duration = player.duration;
+        //
+        // if (!player.playing &&
+        //     currentPos > Duration.zero &&
+        //     duration != null &&
+        //     duration > Duration.zero) {
+        //   Log.v(_tag, "iOS resume: reloading audio source at $currentPos");
+        //   audioService.reloadAudioSource();
+        // }
       }
     } else if (state == AppLifecycleState.detached) {}
   }
