@@ -33,6 +33,8 @@ class PlayerProvider extends ChangeNotifier {
   bool _saveProgress = true;
   bool _autoPlay = false;
   bool _autoSkipInvalid = true;
+  bool _isTogglingPlayMode = false;
+  int? _expectedIndexAfterToggle;
 
   Song? get currentSong => _currentSong;
 
@@ -152,7 +154,23 @@ class PlayerProvider extends ChangeNotifier {
       }
     });
     _audioPlayerService.currentIndexStream.listen((index) {
-      Log.d(_tag, "_bindPlayerEvents, index: $index");
+      Log.i(_tag, "_bindPlayerEvents, index: $index, isTogglingPlayMode: $_isTogglingPlayMode, expectedIndex: $_expectedIndexAfterToggle");
+      
+      // During play mode toggle, only accept the expected correct index
+      // This prevents iOS just_audio_media_kit from incorrectly changing to wrong songs
+      if (_isTogglingPlayMode) {
+        if (_expectedIndexAfterToggle != null && index == _expectedIndexAfterToggle) {
+          // Got the expected index, end protection
+          Log.i(_tag, "Received expected index $index, ending toggle protection");
+          _isTogglingPlayMode = false;
+          _expectedIndexAfterToggle = null;
+          // Process this correct index normally
+        } else {
+          Log.i(_tag, "Ignoring index change during play mode toggle (waiting for index $_expectedIndexAfterToggle)");
+          return;
+        }
+      }
+      
       if (index >= 0 && index < _playlist.length) {
         final newSong = _playlist[index];
         if (_currentSong?.bvid != newSong.bvid ||
@@ -476,26 +494,47 @@ class PlayerProvider extends ChangeNotifier {
     await prefs.setInt(_playModeKey, _playMode.index);
 
     if (isOrderChanged) {
-      await _reloadPlaylistFromDb();
-      if (_currentSong != null) {
-        int newIndex = _playlist.indexWhere(
-          (s) =>
-              s.bvid == _currentSong!.bvid &&
-              (s.cid == _currentSong!.cid ||
-                  s.cid == 0 ||
-                  _currentSong!.cid == 0),
-        );
+      // Set flag to ignore index changes during queue reordering
+      // This prevents iOS just_audio_media_kit from incorrectly triggering song changes
+      _isTogglingPlayMode = true;
+      Log.i(_tag, "togglePlayMode protection started");
+      try {
+        await _reloadPlaylistFromDb();
+        if (_currentSong != null) {
+          int newIndex = _playlist.indexWhere(
+            (s) =>
+                s.bvid == _currentSong!.bvid &&
+                (s.cid == _currentSong!.cid ||
+                    s.cid == 0 ||
+                    _currentSong!.cid == 0),
+          );
 
-        if (newIndex != -1) {
-          await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
-        } else if (_playlist.isNotEmpty) {
-          await _startPlay(0);
+          if (newIndex != -1) {
+            // Set the expected index so the stream listener knows which index to accept
+            _expectedIndexAfterToggle = newIndex;
+            Log.i(_tag, "togglePlayMode: expecting index $newIndex");
+            await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
+          } else if (_playlist.isNotEmpty) {
+            _expectedIndexAfterToggle = 0;
+            await _startPlay(0);
+          }
         }
+        await _setPlayerLoopMode();
+      } finally {
+        // Wait for the expected index event with a timeout
+        // If we don't receive the expected index within the timeout, force clear protection
+        await Future.delayed(const Duration(milliseconds: 1000));
+        if (_isTogglingPlayMode) {
+          Log.w(_tag, "togglePlayMode protection timeout, forcing clear");
+          _isTogglingPlayMode = false;
+          _expectedIndexAfterToggle = null;
+        }
+        Log.i(_tag, "togglePlayMode protection ended");
       }
     } else {
       notifyListeners();
+      await _setPlayerLoopMode();
     }
-    await _setPlayerLoopMode();
   }
 
   Future<void> _setPlayerLoopMode() async {
