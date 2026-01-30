@@ -48,7 +48,7 @@ void main() async {
   );
 
   await BackgroundPlaybackService().init();
-  // await AudioPlaybackOptimizer().init();
+  await AudioPlaybackOptimizer().init();
   await DownloadManager().init();
 
   runApp(

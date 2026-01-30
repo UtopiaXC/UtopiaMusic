@@ -106,6 +106,23 @@ class MessageLookup extends MessageLookupByLibrary {
     "common_unknown": MessageLookupByLibrary.simpleMessage("未知"),
     "common_unsubscribe": MessageLookupByLibrary.simpleMessage("取消关注"),
     "common_uploaded": MessageLookupByLibrary.simpleMessage("投稿"),
+    "connection_error_code": MessageLookupByLibrary.simpleMessage("错误码"),
+    "connection_error_detail": MessageLookupByLibrary.simpleMessage("详细"),
+    "connection_error_login_invalid": MessageLookupByLibrary.simpleMessage(
+      "登录失效或受限",
+    ),
+    "connection_error_login_invalid_description":
+        MessageLookupByLibrary.simpleMessage("您的登录状态可能已失效或受到限制。建议重新登录。"),
+    "connection_error_message": MessageLookupByLibrary.simpleMessage("信息"),
+    "connection_error_update_no_github_connection":
+        MessageLookupByLibrary.simpleMessage("当前设备无法连接到GitHub，请检查您的网络环境"),
+    "connection_error_update_no_release": MessageLookupByLibrary.simpleMessage(
+      "当前仓库没有发布版本",
+    ),
+    "dialog_source_invalid": MessageLookupByLibrary.simpleMessage("资源无效"),
+    "dialog_source_invalid_description": MessageLookupByLibrary.simpleMessage(
+      "当前请求的资源由于网络、版权原因或充电视频等无法播放，已停止播放。\n\n此后是否自动跳过并清理无效资源？",
+    ),
     "item_options_add_to_play_list": MessageLookupByLibrary.simpleMessage(
       "添加播放列表",
     ),
@@ -426,6 +443,22 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("下载已清空"),
     "pages_settings_tag_download_download_clear_downloaded_description":
         MessageLookupByLibrary.simpleMessage("确定要删除所有已下载的歌曲文件吗？此操作不可恢复。"),
+    "pages_settings_tag_download_other_cache_cannot_less_than_10":
+        MessageLookupByLibrary.simpleMessage("缓存大小不能小于 10 MB"),
+    "pages_settings_tag_download_other_cache_clean_description_dialog":
+        MessageLookupByLibrary.simpleMessage("这将清除图片缓存和页面状态缓存，确定要继续吗？"),
+    "pages_settings_tag_download_other_cache_clean_dialog":
+        MessageLookupByLibrary.simpleMessage("清空其他缓存"),
+    "pages_settings_tag_download_other_limitation_description":
+        MessageLookupByLibrary.simpleMessage("图片、页面状态等缓存"),
+    "pages_settings_tag_download_other_limitation_title":
+        MessageLookupByLibrary.simpleMessage("其他缓存上限"),
+    "pages_settings_tag_download_other_set_limitation_dialog_title":
+        MessageLookupByLibrary.simpleMessage("设置其他缓存上限"),
+    "pages_settings_tag_download_other_set_limitation_min":
+        MessageLookupByLibrary.simpleMessage("最小值"),
+    "pages_settings_tag_download_other_title":
+        MessageLookupByLibrary.simpleMessage("其他缓存"),
     "pages_settings_tag_download_performance":
         MessageLookupByLibrary.simpleMessage("性能与下载"),
     "pages_settings_tag_download_performance_cache":
@@ -616,6 +649,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "sheet_option_replace_play_list_by_song_list":
         MessageLookupByLibrary.simpleMessage("使用当前歌曲列表替换播放列表并播放"),
+    "subtitle_type_ai": MessageLookupByLibrary.simpleMessage("AI"),
+    "subtitle_type_ai_summary": MessageLookupByLibrary.simpleMessage("AI 总结"),
+    "subtitle_type_manual": MessageLookupByLibrary.simpleMessage("人工"),
     "time_day": MessageLookupByLibrary.simpleMessage("日"),
     "time_hour": MessageLookupByLibrary.simpleMessage("时"),
     "time_minute": MessageLookupByLibrary.simpleMessage("分"),

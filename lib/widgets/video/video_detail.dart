@@ -602,19 +602,26 @@ class _VideoDetailPageState extends State<VideoDetailPage>
               ? const Center(child: CircularProgressIndicator())
               : _relatedVideos.isEmpty
               ? Center(child: Text(S.of(context).common_none))
-              : ListView.builder(
-                  physics: _scrollPhysics,
+              : Scrollbar(
                   controller: widget.scrollController,
-                  itemCount: _relatedVideos.length,
-                  itemBuilder: (context, index) {
-                    return SongListItem(
-                      song: _relatedVideos[index],
-                      contextList: _relatedVideos,
-                      onPlayAction: () {
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
+                  thumbVisibility: false,
+                  interactive: true,
+                  thickness: 6,
+                  radius: const Radius.circular(3),
+                  child: ListView.builder(
+                    physics: _scrollPhysics,
+                    controller: widget.scrollController,
+                    itemCount: _relatedVideos.length,
+                    itemBuilder: (context, index) {
+                      return SongListItem(
+                        song: _relatedVideos[index],
+                        contextList: _relatedVideos,
+                        onPlayAction: () {
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
                 ),
         ),
       ],
@@ -640,42 +647,49 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            physics: _scrollPhysics,
+          child: Scrollbar(
             controller: widget.scrollController,
-            itemCount: _collectionVideos.length,
-            itemBuilder: (context, index) {
-              final song = _collectionVideos[index];
-              bool isCurrent = false;
-              if (_isParts) {
-                final playerProvider = Provider.of<PlayerProvider>(
-                  context,
-                  listen: false,
-                );
-                if (playerProvider.currentSong != null &&
-                    playerProvider.currentSong!.bvid == widget.bvid &&
-                    playerProvider.currentSong!.cid == song.cid) {
-                  isCurrent = true;
+            thumbVisibility: false,
+            interactive: true,
+            thickness: 6,
+            radius: const Radius.circular(3),
+            child: ListView.builder(
+              physics: _scrollPhysics,
+              controller: widget.scrollController,
+              itemCount: _collectionVideos.length,
+              itemBuilder: (context, index) {
+                final song = _collectionVideos[index];
+                bool isCurrent = false;
+                if (_isParts) {
+                  final playerProvider = Provider.of<PlayerProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (playerProvider.currentSong != null &&
+                      playerProvider.currentSong!.bvid == widget.bvid &&
+                      playerProvider.currentSong!.cid == song.cid) {
+                    isCurrent = true;
+                  }
+                } else {
+                  isCurrent = song.bvid == widget.bvid;
                 }
-              } else {
-                isCurrent = song.bvid == widget.bvid;
-              }
 
-              return Container(
-                color: isCurrent
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withOpacity(0.3)
-                    : null,
-                child: SongListItem(
-                  song: song,
-                  contextList: _collectionVideos,
-                  onPlayAction: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              );
-            },
+                return Container(
+                  color: isCurrent
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withOpacity(0.3)
+                      : null,
+                  child: SongListItem(
+                    song: song,
+                    contextList: _collectionVideos,
+                    onPlayAction: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -696,36 +710,43 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                     }
                     return false;
                   },
-                  child: ListView.separated(
-                    physics: _scrollPhysics,
+                  child: Scrollbar(
                     controller: widget.scrollController,
-                    itemCount: _comments.length + 1,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      if (index == _comments.length) {
-                        if (_isLoadingComments) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (!_hasMoreComments) {
-                          return Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(
-                              child: Text(
-                                S.of(context).common_at_bottom,
-                                style: TextStyle(color: Colors.grey),
+                    thumbVisibility: false,
+                    interactive: true,
+                    thickness: 6,
+                    radius: const Radius.circular(3),
+                    child: ListView.separated(
+                      physics: _scrollPhysics,
+                      controller: widget.scrollController,
+                      itemCount: _comments.length + 1,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        if (index == _comments.length) {
+                          if (_isLoadingComments) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          } else if (!_hasMoreComments) {
+                            return Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(
+                                child: Text(
+                                  S.of(context).common_at_bottom,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               ),
-                            ),
-                          );
-                        } else {
-                          return const SizedBox(height: 60);
+                            );
+                          } else {
+                            return const SizedBox(height: 60);
+                          }
                         }
-                      }
-                      final comment = _comments[index];
-                      return _buildCommentItem(comment, index);
-                    },
+                        final comment = _comments[index];
+                        return _buildCommentItem(comment, index);
+                      },
+                    ),
                   ),
                 ),
         ),

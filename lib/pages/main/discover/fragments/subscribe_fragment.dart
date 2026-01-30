@@ -122,7 +122,10 @@ class _SubscribeFragmentState extends State<SubscribeFragment>
             },
             child: Scrollbar(
               controller: widget.scrollController,
-              thumbVisibility: true,
+              thumbVisibility: false,
+              interactive: true,
+              thickness: 6,
+              radius: const Radius.circular(3),
               child: ListView.builder(
                 controller: widget.scrollController,
                 itemCount: _users.length + 1,

@@ -140,7 +140,7 @@ class NetworkSettingsPage extends StatelessWidget {
                         child: Text(
                           value == 0
                               ? S.of(context).common_disable
-                              : '$value ${S.of(context).time_minute}',
+                              : '$value ${S.of(context).time_second}',
                         ),
                       );
                     }).toList(),

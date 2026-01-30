@@ -641,48 +641,55 @@ class _SpaceSheetState extends State<SpaceSheet>
                     }
                     return false;
                   },
-                  child: ListView.separated(
+                  child: Scrollbar(
                     controller: scrollController,
-                    itemCount: _videos.length + 1,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1, indent: 72),
-                    itemBuilder: (context, index) {
-                      if (index == _videos.length) {
-                        if (_isLoadingVideos) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (!_hasMoreVideos) {
-                          return Container(
-                            height: 60,
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  S.of(context).common_at_bottom,
-                                  style: TextStyle(
-                                    color: Theme.of(context).disabledColor,
-                                    fontSize: 12,
+                    thumbVisibility: false,
+                    interactive: true,
+                    thickness: 6,
+                    radius: const Radius.circular(3),
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: _videos.length + 1,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1, indent: 72),
+                      itemBuilder: (context, index) {
+                        if (index == _videos.length) {
+                          if (_isLoadingVideos) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          } else if (!_hasMoreVideos) {
+                            return Container(
+                              height: 60,
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    S.of(context).common_at_bottom,
+                                    style: TextStyle(
+                                      color: Theme.of(context).disabledColor,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          return const SizedBox(height: 60);
+                                ],
+                              ),
+                            );
+                          } else {
+                            return const SizedBox(height: 60);
+                          }
                         }
-                      }
-                      final song = _videos[index];
-                      return SongListItem(
-                        song: song,
-                        contextList: _videos,
-                        onPlayAction: () {
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
+                        final song = _videos[index];
+                        return SongListItem(
+                          song: song,
+                          contextList: _videos,
+                          onPlayAction: () {
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
         ),
@@ -714,75 +721,82 @@ class _SpaceSheetState extends State<SpaceSheet>
                     }
                     return false;
                   },
-                  child: ListView.builder(
+                  child: Scrollbar(
                     controller: scrollController,
-                    itemCount: playlists.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == playlists.length) {
-                        if (isLoading) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (!hasMore) {
-                          return Container(
-                            height: 60,
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  S.of(context).common_at_bottom,
-                                  style: TextStyle(
-                                    color: Theme.of(context).disabledColor,
-                                    fontSize: 12,
+                    thumbVisibility: false,
+                    interactive: true,
+                    thickness: 6,
+                    radius: const Radius.circular(3),
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: playlists.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == playlists.length) {
+                          if (isLoading) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          } else if (!hasMore) {
+                            return Container(
+                              height: 60,
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    S.of(context).common_at_bottom,
+                                    style: TextStyle(
+                                      color: Theme.of(context).disabledColor,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          return const SizedBox(height: 60);
+                                ],
+                              ),
+                            );
+                          } else {
+                            return const SizedBox(height: 60);
+                          }
                         }
-                      }
-                      final playlist = playlists[index];
-                      return ListTile(
-                        leading: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            image: playlist.coverUrl.isNotEmpty
-                                ? DecorationImage(
-                                    image: NetworkImage(playlist.coverUrl),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                          ),
-                          child: playlist.coverUrl.isEmpty
-                              ? const Icon(Icons.music_note)
-                              : null,
-                        ),
-                        title: Text(playlist.title),
-                        subtitle: Text(
-                          '${playlist.count}${S.of(context).common_count_of_songs}',
-                        ),
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => OnlinePlaylistDetailSheet(
-                              playlistInfo: playlist,
-                              isCollection: isCollection,
+                        final playlist = playlists[index];
+                        return ListTile(
+                          leading: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              image: playlist.coverUrl.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(playlist.coverUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                             ),
-                          );
-                        },
-                      );
-                    },
+                            child: playlist.coverUrl.isEmpty
+                                ? const Icon(Icons.music_note)
+                                : null,
+                          ),
+                          title: Text(playlist.title),
+                          subtitle: Text(
+                            '${playlist.count}${S.of(context).common_count_of_songs}',
+                          ),
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => OnlinePlaylistDetailSheet(
+                                playlistInfo: playlist,
+                                isCollection: isCollection,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
         ),

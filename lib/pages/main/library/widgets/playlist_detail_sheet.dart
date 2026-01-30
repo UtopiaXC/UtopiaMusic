@@ -429,88 +429,97 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                           }
                           return false;
                         },
-                        child: ReorderableListView.builder(
-                          scrollController: scrollController,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          itemCount: _displaySongs.length,
-                          onReorder: _handleReorder,
-                          itemBuilder: (context, index) {
-                            final song = _displaySongs[index];
-                            return SongListItem(
-                              key: ValueKey('${song.bvid}_${song.cid}_$index'),
-                              song: song,
-                              contextList: _displaySongs,
-                              onPlayAction: () {
-                                Navigator.pop(context);
-                              },
-                              menuItems: [
-                                PopupMenuItem(
-                                  value: 'rename',
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.edit, size: 20),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        S
-                                            .of(context)
-                                            .pages_library_playlist_menu_rename,
-                                      ),
-                                    ],
-                                  ),
+                        child: Scrollbar(
+                          controller: scrollController,
+                          thumbVisibility: false,
+                          interactive: true,
+                          thickness: 6,
+                          radius: const Radius.circular(3),
+                          child: ReorderableListView.builder(
+                            scrollController: scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: _displaySongs.length,
+                            onReorder: _handleReorder,
+                            itemBuilder: (context, index) {
+                              final song = _displaySongs[index];
+                              return SongListItem(
+                                key: ValueKey(
+                                  '${song.bvid}_${song.cid}_$index',
                                 ),
-                                PopupMenuItem(
-                                  value: 'reset_title',
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.restore, size: 20),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        S
-                                            .of(context)
-                                            .pages_library_playlist_menu_reset_title,
-                                      ),
-                                    ],
+                                song: song,
+                                contextList: _displaySongs,
+                                onPlayAction: () {
+                                  Navigator.pop(context);
+                                },
+                                menuItems: [
+                                  PopupMenuItem(
+                                    value: 'rename',
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.edit, size: 20),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          S
+                                              .of(context)
+                                              .pages_library_playlist_menu_rename,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                PopupMenuItem(
-                                  value: 'remove_from_playlist',
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.delete, size: 20),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        S
-                                            .of(context)
-                                            .pages_library_playlist_menu_remove,
-                                      ),
-                                    ],
+                                  PopupMenuItem(
+                                    value: 'reset_title',
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.restore, size: 20),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          S
+                                              .of(context)
+                                              .pages_library_playlist_menu_reset_title,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
-                              onMenuSelected: (value) async {
-                                if (value == 'rename') {
-                                  _showRenameDialog(song);
-                                } else if (value == 'reset_title') {
-                                  await DatabaseService()
-                                      .resetLocalPlaylistSongTitle(
-                                        _playlist.id,
-                                        song.bvid,
-                                        song.cid,
-                                      );
-                                  _loadSongs();
-                                } else if (value == 'remove_from_playlist') {
-                                  await DatabaseService()
-                                      .removeSongFromLocalPlaylist(
-                                        _playlist.id,
-                                        song.bvid,
-                                        song.cid,
-                                      );
-                                  _loadSongs();
-                                  widget.onUpdate();
-                                }
-                              },
-                            );
-                          },
+                                  PopupMenuItem(
+                                    value: 'remove_from_playlist',
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.delete, size: 20),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          S
+                                              .of(context)
+                                              .pages_library_playlist_menu_remove,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                onMenuSelected: (value) async {
+                                  if (value == 'rename') {
+                                    _showRenameDialog(song);
+                                  } else if (value == 'reset_title') {
+                                    await DatabaseService()
+                                        .resetLocalPlaylistSongTitle(
+                                          _playlist.id,
+                                          song.bvid,
+                                          song.cid,
+                                        );
+                                    _loadSongs();
+                                  } else if (value == 'remove_from_playlist') {
+                                    await DatabaseService()
+                                        .removeSongFromLocalPlaylist(
+                                          _playlist.id,
+                                          song.bvid,
+                                          song.cid,
+                                        );
+                                    _loadSongs();
+                                    widget.onUpdate();
+                                  }
+                                },
+                              );
+                            },
+                          ),
                         ),
                       ),
               ),

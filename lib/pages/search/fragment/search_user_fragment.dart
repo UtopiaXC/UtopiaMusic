@@ -86,51 +86,57 @@ class _SearchUserFragmentState extends State<SearchUserFragment>
         }
         return false;
       },
-      child: ListView.builder(
-        itemCount: _users.length + 1,
-        itemBuilder: (context, index) {
-          if (index == _users.length) {
-            if (_isLoading) {
-              return const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            } else if (!_hasMore) {
-              return Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(
-                  child: Text(
-                    S.of(context).common_at_bottom,
-                    style: TextStyle(color: Colors.grey),
+      child: Scrollbar(
+        thumbVisibility: false,
+        interactive: true,
+        thickness: 6,
+        radius: const Radius.circular(3),
+        child: ListView.builder(
+          itemCount: _users.length + 1,
+          itemBuilder: (context, index) {
+            if (index == _users.length) {
+              if (_isLoading) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              } else if (!_hasMore) {
+                return Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(
+                    child: Text(
+                      S.of(context).common_at_bottom,
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
-                ),
-              );
-            } else {
-              return const SizedBox(height: 60);
+                );
+              } else {
+                return const SizedBox(height: 60);
+              }
             }
-          }
 
-          final user = _users[index];
-          String cover = user['upic'] ?? '';
-          if (cover.startsWith('//')) {
-            cover = 'https:$cover';
-          }
+            final user = _users[index];
+            String cover = user['upic'] ?? '';
+            if (cover.startsWith('//')) {
+              cover = 'https:$cover';
+            }
 
-          return UserListItem(
-            avatarUrl: cover,
-            name: user['uname'] ?? '',
-            subtitle: user['usign'] ?? '',
-            useCardStyle: true,
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => SpaceSheet(mid: user['mid']),
-              );
-            },
-          );
-        },
+            return UserListItem(
+              avatarUrl: cover,
+              name: user['uname'] ?? '',
+              subtitle: user['usign'] ?? '',
+              useCardStyle: true,
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => SpaceSheet(mid: user['mid']),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

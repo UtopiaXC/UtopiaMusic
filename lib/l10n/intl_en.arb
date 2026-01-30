@@ -165,6 +165,17 @@
   "pages_settings_tag_download_cache_used": "Used",
   "pages_settings_tag_download_default_quality": "Default Download Quality",
   "pages_settings_tag_download_clear": "Clear All Downloads",
+  "pages_settings_tag_download_other_cache_cannot_less_than_10": "Cache cannot be less than 10MB",
+  "pages_settings_tag_download_other_cache_clean_dialog": "Clear Others Cache",
+  "pages_settings_tag_download_other_cache_clean_description_dialog": "This will clean all image and database cache, confirm?",
+  "pages_settings_tag_download_other_cache_clean_cleaned": "Cleaned",
+  "pages_settings_tag_download_other_set_limitation_dialog_title": "Set limitation for others cache",
+  "pages_settings_tag_download_other_set_limitation_min": "Minimum",
+  "pages_settings_tag_download_other_title": "Others Cache",
+  "pages_settings_tag_download_other_limitation_title": "Limitation of Others Cache",
+  "pages_settings_tag_download_other_limitation_description": "Images, Status And Database Cache",
+
+
   "pages_settings_tag_network": "Network",
   "pages_settings_tag_network_interface_request": "API Request",
   "pages_settings_tag_network_interface_request_retry": "Retry Count",
@@ -395,5 +406,18 @@
   "pages_discover_subscribe_not_logged_in": "Not logged in. Cannot view following list.",
   "pages_discover_live_developing": "Live feature under development",
   "pages_discover_error_network": "Network error or API restricted. Please retry.",
-  "pages_discover_error_rank_risk": "Network error or API restricted. Please retry.\nRankings have strict restrictions. Try logging in if not already."
+  "pages_discover_error_rank_risk": "Network error or API restricted. Please retry.\nRankings have strict restrictions. Try logging in if not already.",
+  "connection_error_update_no_github_connection": "Cannot access github, please check your network.",
+  "connection_error_update_no_release": "No release",
+  "connection_error_login_invalid": "Login Status Failed",
+  "connection_error_login_invalid_description": "Your login status may have expired or been restricted. We recommend logging in again.",
+  "connection_error_code": "Error Code",
+  "connection_error_message": "Info",
+  "connection_error_detail": "Detail",
+  "subtitle_type_manual": "Manual",
+  "subtitle_type_ai": "AI",
+  "subtitle_type_ai_summary": "AI Summary",
+  "dialog_source_invalid": "Source Invalid",
+  "dialog_source_invalid_description": "The requested resource has stopped playing due to network issues, copyright problems, or the video being unplayable.\n\nAutomatically skip and clean up invalid resources thereafter?"
+
 }

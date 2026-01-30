@@ -174,38 +174,45 @@ class _HistoryFragmentState extends State<HistoryFragment>
         return RefreshIndicator(
           key: widget.refreshIndicatorKey,
           onRefresh: () => _loadData(refresh: true),
-          child: ListView.builder(
+          child: Scrollbar(
             controller: widget.scrollController,
-            itemCount: _songs.length + 1,
-            itemBuilder: (context, index) {
-              if (index == _songs.length) {
-                if (_isLoading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                } else if (!_hasMore) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Center(
-                      child: Text(
-                        S.of(context).common_at_bottom,
-                        style: const TextStyle(color: Colors.grey),
+            thumbVisibility: false,
+            interactive: true,
+            thickness: 6,
+            radius: const Radius.circular(3),
+            child: ListView.builder(
+              controller: widget.scrollController,
+              itemCount: _songs.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _songs.length) {
+                  if (_isLoading) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  } else if (!_hasMore) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Center(
+                        child: Text(
+                          S.of(context).common_at_bottom,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ),
-                    ),
-                  );
-                } else {
-                  return const SizedBox(height: 60);
+                    );
+                  } else {
+                    return const SizedBox(height: 60);
+                  }
                 }
-              }
 
-              final song = _songs[index];
-              return SongListItem(
-                song: song,
-                contextList: _songs,
-                useCardStyle: true,
-              );
-            },
+                final song = _songs[index];
+                return SongListItem(
+                  song: song,
+                  contextList: _songs,
+                  useCardStyle: true,
+                );
+              },
+            ),
           ),
         );
       },

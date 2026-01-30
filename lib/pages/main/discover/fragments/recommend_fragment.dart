@@ -218,19 +218,26 @@ class _RecommendFragmentState extends State<RecommendFragment>
     return RefreshIndicator(
       key: widget.refreshIndicatorKey,
       onRefresh: _onRefresh,
-      child: SongList(
-        songs: _songs,
-        scrollController: widget.scrollController,
-        isLoading: _isLoading,
-        isLoadingMore: _isLoadingMore,
-        useCardStyle: true,
-        emptyWidget: ListView(
-          controller: widget.scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 200),
-            Center(child: Text(S.of(context).common_no_data)),
-          ],
+      child: Scrollbar(
+        controller: widget.scrollController,
+        thumbVisibility: false,
+        interactive: true,
+        thickness: 6,
+        radius: const Radius.circular(3),
+        child: SongList(
+          songs: _songs,
+          scrollController: widget.scrollController,
+          isLoading: _isLoading,
+          isLoadingMore: _isLoadingMore,
+          useCardStyle: true,
+          emptyWidget: ListView(
+            controller: widget.scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 200),
+              Center(child: Text(S.of(context).common_no_data)),
+            ],
+          ),
         ),
       ),
     );

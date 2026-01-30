@@ -535,44 +535,51 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                           ),
                         ),
                       )
-                    : ListView.builder(
+                    : Scrollbar(
                         controller: scrollController,
-                        itemCount: _displaySongs.length,
-                        itemBuilder: (context, index) {
-                          final song = _displaySongs[index];
-                          return SongListItem(
-                            song: song,
-                            contextList: _displaySongs,
-                            onPlayAction: () {
-                              Navigator.pop(context);
-                            },
-                            menuItems: [
-                              if (!_isActuallyCollection)
-                                PopupMenuItem(
-                                  value: 'remove',
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.delete_outline,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        S
-                                            .of(context)
-                                            .pages_library_online_remove_video,
-                                      ),
-                                    ],
+                        thumbVisibility: false,
+                        interactive: true,
+                        thickness: 6,
+                        radius: const Radius.circular(3),
+                        child: ListView.builder(
+                          controller: scrollController,
+                          itemCount: _displaySongs.length,
+                          itemBuilder: (context, index) {
+                            final song = _displaySongs[index];
+                            return SongListItem(
+                              song: song,
+                              contextList: _displaySongs,
+                              onPlayAction: () {
+                                Navigator.pop(context);
+                              },
+                              menuItems: [
+                                if (!_isActuallyCollection)
+                                  PopupMenuItem(
+                                    value: 'remove',
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.delete_outline,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          S
+                                              .of(context)
+                                              .pages_library_online_remove_video,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                            ],
-                            onMenuSelected: (value) {
-                              if (value == 'remove') {
-                                _handleRemoveSong(song);
-                              }
-                            },
-                          );
-                        },
+                              ],
+                              onMenuSelected: (value) {
+                                if (value == 'remove') {
+                                  _handleRemoveSong(song);
+                                }
+                              },
+                            );
+                          },
+                        ),
                       ),
               ),
             ],

@@ -569,6 +569,19 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> setRecommendationAutoPlay(bool value) async {
     Log.v(_tag, "setRecommendationAutoPlay, value: $value");
+
+    if (value && _playMode == PlayMode.shuffle) {
+      Log.i(
+        _tag,
+        "Recommendation mode enabled, switching from Shuffle to Sequence",
+      );
+      _playMode = PlayMode.sequence;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_playModeKey, _playMode.index);
+      notifyListeners();
+      await _setPlayerLoopMode();
+    }
+
     await _recommendationManager.setEnabled(value);
     notifyListeners();
     if (value && _currentSong != null) {

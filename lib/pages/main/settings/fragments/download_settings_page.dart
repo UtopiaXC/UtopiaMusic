@@ -95,9 +95,15 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
   Future<void> _updateOtherCacheSize(int size) async {
     final success = await _cacheManagerService.setMaxCacheSize(size);
     if (!success && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('缓存大小不能小于 10 MB')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            S
+                .of(context)
+                .pages_settings_tag_download_other_cache_cannot_less_than_10,
+          ),
+        ),
+      );
       return;
     }
     if (mounted) {
@@ -111,8 +117,14 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空其他缓存'),
-        content: const Text('这将清除图片缓存和页面状态缓存，确定要继续吗？'),
+        title: Text(
+          S.of(context).pages_settings_tag_download_other_cache_clean_dialog,
+        ),
+        content: Text(
+          S
+              .of(context)
+              .pages_settings_tag_download_other_cache_clean_description_dialog,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -129,9 +141,15 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     if (confirmed == true && mounted) {
       await _cacheManagerService.clearAllCache();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('其他缓存已清除')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              S
+                  .of(context)
+                  .pages_settings_tag_download_other_cache_clean_cleaned,
+            ),
+          ),
+        );
         await _loadSettings();
       }
     }
@@ -142,7 +160,11 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('设置其他缓存上限'),
+        title: Text(
+          S
+              .of(context)
+              .pages_settings_tag_download_other_set_limitation_dialog_title,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,7 +178,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '最小值: 10 MB',
+              '${S.of(context).pages_settings_tag_download_other_set_limitation_min}: 10 MB',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 12,
@@ -356,7 +378,10 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                     DropdownMenuItem(value: 500, child: Text('500 MB')),
                     DropdownMenuItem(value: 1000, child: Text('1 GB')),
                     DropdownMenuItem(value: 4096, child: Text('4 GB')),
-                    DropdownMenuItem(value: -1, child: Text('自定义')),
+                    DropdownMenuItem(
+                      value: -1,
+                      child: Text(S.of(context).common_custom),
+                    ),
                   ],
                   onChanged: (value) {
                     if (value == -1) {
@@ -380,11 +405,19 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
             ],
           ),
           _SettingsGroup(
-            title: '其他缓存',
+            title: S.of(context).pages_settings_tag_download_other_title,
             children: [
               ListTile(
-                title: const Text('其他缓存上限'),
-                subtitle: const Text('图片、页面状态等缓存'),
+                title: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_download_other_limitation_title,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_download_other_limitation_description,
+                ),
                 trailing: DropdownButton<int>(
                   value:
                       [
@@ -400,7 +433,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                       : -1,
                   underline: const SizedBox(),
                   alignment: Alignment.centerRight,
-                  items: const [
+                  items: [
                     DropdownMenuItem(value: 10, child: Text('10 MB')),
                     DropdownMenuItem(value: 50, child: Text('50 MB')),
                     DropdownMenuItem(value: 100, child: Text('100 MB')),
@@ -408,7 +441,10 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                     DropdownMenuItem(value: 500, child: Text('500 MB')),
                     DropdownMenuItem(value: 1000, child: Text('1 GB')),
                     DropdownMenuItem(value: 4096, child: Text('4 GB')),
-                    DropdownMenuItem(value: -1, child: Text('自定义')),
+                    DropdownMenuItem(
+                      value: -1,
+                      child: Text(S.of(context).common_custom),
+                    ),
                   ],
                   onChanged: (value) {
                     if (value == -1) {
@@ -420,7 +456,11 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                 ),
               ),
               ListTile(
-                title: const Text('清空其他缓存'),
+                title: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_download_other_cache_clean_dialog,
+                ),
                 subtitle: Text(
                   '${S.of(context).pages_settings_tag_download_cache_used}: $_otherCacheSizeStr',
                 ),
@@ -430,7 +470,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
             ],
           ),
           _SettingsGroup(
-            title: '下载',
+            title: S.of(context).common_download,
             children: [
               ListTile(
                 title: Text(S.of(context).pages_settings_tag_download),

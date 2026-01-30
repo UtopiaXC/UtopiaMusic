@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/utils/log.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 const String _tag = "REQUEST";
 
@@ -373,7 +374,13 @@ class Request {
       }
       if (retryCount >= _maxRetries) {
         if (!suppressErrorDialog) {
-          _showErrorDialog(ErrorCode.serverError, "网络错误: ${e.message}");
+          final context = navigatorKey.currentContext;
+          if (context != null) {
+            _showErrorDialog(
+              ErrorCode.serverError,
+              "${S.of(context).common_network_error}: ${e.message}",
+            );
+          }
         }
       }
       throw _handleError(e);
@@ -409,9 +416,9 @@ class Request {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: const Text('登录失效或受限'),
+          title: Text(S.of(context).connection_error_login_invalid),
           content: Text(
-            '错误码: $code\n信息: ${ErrorCode.getMessage(code)}\n\n您的登录状态可能已失效或受到限制。建议重新登录。',
+            '${S.of(context).connection_error_code}: $code\n${S.of(context).connection_error_message}: ${ErrorCode.getMessage(code)}\n\n${S.of(context).connection_error_login_invalid_description}',
           ),
           actions: [
             TextButton(
@@ -426,11 +433,11 @@ class Request {
                   await fetchGuestCookies();
                 }
               },
-              child: const Text('退出登录'),
+              child: Text(S.of(context).weight_login_logout),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: Text(S.of(context).common_cancel),
             ),
           ],
         ),
@@ -450,9 +457,9 @@ class Request {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('请求错误'),
+            title: Text(S.of(context).common_network_error),
             content: Text(
-              '错误码: $code\n信息: ${ErrorCode.getMessage(code)}\n详细: $message',
+              '${S.of(context).connection_error_code}: $code\n${S.of(context).connection_error_message}: ${ErrorCode.getMessage(code)}\n${S.of(context).connection_error_detail}: $message',
             ),
             actions: [
               TextButton(

@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:utopia_music/generated/l10n.dart';
 
 class GithubApi {
   static const String _baseUrl =
       'https://api.github.com/repos/UtopiaXC/UtopiaMusic/releases';
   final Dio _dio = Dio();
 
-  Future<Map<String, dynamic>?> getLatestRelease() async {
+  Future<Map<String, dynamic>?> getLatestRelease(BuildContext context) async {
     try {
       final response = await _dio.get('$_baseUrl/latest');
       if (response.statusCode == 200) {
@@ -16,9 +18,11 @@ class GithubApi {
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.connectionError) {
-        throw Exception('当前设备无法连接到GitHub，请检查您的网络环境');
+        throw Exception(
+          S.of(context).connection_error_update_no_github_connection,
+        );
       } else if (e.response?.statusCode == 404) {
-        throw Exception('当前仓库没有发布版本');
+        throw Exception(S.of(context).connection_error_update_no_release);
       }
       rethrow;
     } catch (e) {
@@ -27,7 +31,9 @@ class GithubApi {
     return null;
   }
 
-  Future<Map<String, dynamic>?> getLatestPreRelease() async {
+  Future<Map<String, dynamic>?> getLatestPreRelease(
+    BuildContext context,
+  ) async {
     try {
       final response = await _dio.get(_baseUrl);
       if (response.statusCode == 200) {
@@ -36,7 +42,7 @@ class GithubApi {
           return releases.first as Map<String, dynamic>;
         } else {
           // Empty list means no releases found
-          throw Exception('当前仓库没有发布版本');
+          throw Exception(S.of(context).connection_error_update_no_release);
         }
       }
     } on DioException catch (e) {
@@ -44,9 +50,11 @@ class GithubApi {
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.connectionError) {
-        throw Exception('当前设备无法连接到GitHub，请检查您的网络环境');
+        throw Exception(
+          S.of(context).connection_error_update_no_github_connection,
+        );
       } else if (e.response?.statusCode == 404) {
-        throw Exception('当前仓库没有发布版本');
+        throw Exception(S.of(context).connection_error_update_no_release);
       }
       rethrow;
     } catch (e) {

@@ -1,3 +1,7 @@
+import 'package:flutter/cupertino.dart';
+import 'package:utopia_music/main.dart';
+import 'package:utopia_music/generated/l10n.dart';
+
 class SubtitleItem {
   final double from;
   final double to;
@@ -33,13 +37,25 @@ class SubtitleTrack {
   }
 
   String get typeLabel {
-    switch (type) {
-      case SubtitleType.manual:
-        return '人工';
-      case SubtitleType.ai:
-        return 'AI';
-      case SubtitleType.aiConclusion:
-        return 'AI总结';
+    final context = navigatorKey.currentContext;
+    if (context == null) {
+      switch (type) {
+        case SubtitleType.manual:
+          return '人工';
+        case SubtitleType.ai:
+          return 'AI';
+        case SubtitleType.aiConclusion:
+          return 'AI总结';
+      }
+    } else {
+      switch (type) {
+        case SubtitleType.manual:
+          return S.of(context).subtitle_type_manual;
+        case SubtitleType.ai:
+          return S.of(context).subtitle_type_ai;
+        case SubtitleType.aiConclusion:
+          return S.of(context).subtitle_type_ai_summary;
+      }
     }
   }
 }

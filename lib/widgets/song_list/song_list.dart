@@ -39,7 +39,10 @@ class SongList extends StatelessWidget {
 
     return Scrollbar(
       controller: scrollController,
-      thumbVisibility: true,
+      thumbVisibility: false,
+      interactive: true,
+      thickness: 6,
+      radius: const Radius.circular(3),
       child: ListView.separated(
         controller: scrollController,
         itemCount: songs.length + 1,
