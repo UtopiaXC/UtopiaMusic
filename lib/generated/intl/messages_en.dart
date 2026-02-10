@@ -797,6 +797,9 @@ class MessageLookup extends MessageLookupByLibrary {
       "Manual Cookie",
     ),
     "weight_login_logout": MessageLookupByLibrary.simpleMessage("Logout"),
+    "weight_login_manual_confirm": MessageLookupByLibrary.simpleMessage(
+      "Confirm Login",
+    ),
     "weight_login_over": MessageLookupByLibrary.simpleMessage(
       "Logged in, enjoy!",
     ),
@@ -812,6 +815,25 @@ class MessageLookup extends MessageLookupByLibrary {
     "weight_login_scan_qr": MessageLookupByLibrary.simpleMessage("Scan QR"),
     "weight_login_screenshoot_to_qr_hint": MessageLookupByLibrary.simpleMessage(
       "Screenshot and scan with Bilibili App",
+    ),
+    "weight_login_web_httponly_warning": MessageLookupByLibrary.simpleMessage(
+      "Login verified, but cannot get full cookies. Please use Cookie Login or QR Login.",
+    ),
+    "weight_login_web_login": MessageLookupByLibrary.simpleMessage("Web Login"),
+    "weight_login_web_login_button": MessageLookupByLibrary.simpleMessage(
+      "Click to Login",
+    ),
+    "weight_login_web_login_hint": MessageLookupByLibrary.simpleMessage(
+      "Click the button to open web page for login",
+    ),
+    "weight_login_web_no_cookie": MessageLookupByLibrary.simpleMessage(
+      "No cookies found, please ensure you have logged in",
+    ),
+    "weight_login_web_no_login_info": MessageLookupByLibrary.simpleMessage(
+      "No login info found, please ensure you have logged in",
+    ),
+    "weight_login_web_not_supported": MessageLookupByLibrary.simpleMessage(
+      "Web login is not supported on this platform",
     ),
     "weight_login_welcome_back": MessageLookupByLibrary.simpleMessage(
       "Welcome Back",

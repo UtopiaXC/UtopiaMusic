@@ -465,6 +465,32 @@ class DatabaseService {
     final db = await database;
     await db.delete('playlist');
   }
+  Future<void> reshufflePlaylist() async {
+    Log.v(_tag, "reshufflePlaylist");
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlist',
+      columns: ['id'],
+    );
+
+    if (maps.isEmpty) return;
+    List<int> shuffleIndices = List.generate(maps.length, (index) => index);
+    shuffleIndices.shuffle(Random());
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (int i = 0; i < maps.length; i++) {
+        batch.update(
+          'playlist',
+          {'shuffle_order': shuffleIndices[i]},
+          where: 'id = ?',
+          whereArgs: [maps[i]['id']],
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+
+    Log.i(_tag, "reshufflePlaylist: shuffled ${maps.length} songs");
+  }
 
   Future<void> recordCacheAccess(
     String bvid,

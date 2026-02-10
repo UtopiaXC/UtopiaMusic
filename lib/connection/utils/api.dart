@@ -6,6 +6,14 @@ class Api {
   static const String urlSearchBase = 'https://s.search.bilibili.com';
   static const String urlCommentBase = 'https://comment.bilibili.com';
 
+  // Web login URL
+  static const String urlWebLogin = 'https://passport.bilibili.com/login';
+  static const List<String> webLoginSuccessUrls = [
+    'https://www.bilibili.com',
+    'https://m.bilibili.com',
+    'https://passport.bilibili.com/ajax/miniLogin/redirect',
+  ];
+
   static const String urlRecommentList =
       '/x/web-interface/wbi/index/top/feed/rcmd';
   static const String urlPopularList = '/x/web-interface/popular';
