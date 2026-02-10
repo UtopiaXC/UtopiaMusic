@@ -75,22 +75,20 @@ class _WebLoginPageState extends State<WebLoginPage> {
 
       // Merge cookies, preferring passport cookies
       final Map<String, io.Cookie> cookieMap = {};
-      for (var cookie in siteCookies) {
-        cookieMap[cookie.name] = io.Cookie(cookie.name, cookie.value);
-      }
-      for (var cookie in passportCookies) {
-        cookieMap[cookie.name] = io.Cookie(cookie.name, cookie.value);
+      for (final c in [...siteCookies, ...passportCookies]) {
+        cookieMap[c.name] = io.Cookie(c.name, c.value)
+          ..domain = c.domain
+          ..path = c.path
+          ..expires = c.expiresDate != null
+              ? DateTime.fromMillisecondsSinceEpoch(c.expiresDate!)
+              : null
+          ..httpOnly = c.isHttpOnly ?? false
+          ..secure = c.isSecure ?? false;
       }
 
       final allCookies = cookieMap.values.toList();
 
       Log.d(_tag, 'Found ${allCookies.length} cookies');
-      for (var cookie in allCookies) {
-        final displayValue = cookie.value.length > 10
-            ? '${cookie.value.substring(0, 10)}...'
-            : cookie.value;
-        Log.d(_tag, 'Cookie: ${cookie.name}=$displayValue');
-      }
 
       if (allCookies.isEmpty) {
         Log.w(_tag, 'No cookies found');
@@ -200,11 +198,3 @@ class _WebLoginPageState extends State<WebLoginPage> {
     );
   }
 }
-
-
-
-
-
-
-
-

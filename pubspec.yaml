@@ -133,12 +133,6 @@ flutter:
 flutter_intl:
   enabled: true
 
-flutter_inappwebview:
-  windows:
-    enabled: false
-  macos:
-    enabled: false
-
 flutter_launcher_icons:
   android:
     generate: false
