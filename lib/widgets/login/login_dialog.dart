@@ -171,13 +171,43 @@ class _LoginDialogState extends State<LoginDialog>
             Column(
               children: [
                 const SizedBox(height: 48),
-                TabBar(
-                  controller: _tabController,
-                  tabs: [
-                    if (_isMobile) Tab(text: S.of(context).weight_login_web_login),
-                    Tab(text: S.of(context).weight_login_scan_qr),
-                    Tab(text: S.of(context).weight_login_cookie),
-                  ],
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    dividerColor: Colors.transparent,
+                    indicator: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    labelColor: Theme.of(context).colorScheme.onPrimary,
+                    unselectedLabelColor:
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                    splashFactory: NoSplash.splashFactory,
+                    overlayColor: WidgetStateProperty.all(Colors.transparent),
+                    tabs: [
+                      if (_isMobile)
+                        Tab(text: S.of(context).weight_login_web_login),
+                      Tab(text: S.of(context).weight_login_scan_qr),
+                      Tab(text: S.of(context).weight_login_cookie),
+                    ],
+                  ),
                 ),
                 Expanded(
                   child: TabBarView(
