@@ -38,6 +38,7 @@ class AudioPlayerService {
   bool _autoSkipInvalid = true;
   bool _isHandlingError = false;
   bool _isUpdatingQueue = false;
+  bool _shouldLoopQueue = false;
 
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
@@ -64,6 +65,11 @@ class AudioPlayerService {
       if (!_isDesktop && index != null && !_isUpdatingQueue) {
         _currentIndex = index;
         _indexController.add(index);
+
+        // Update iOS Now Playing info when auto-advancing to next song
+        if (_isIOS && index >= 0 && index < _globalQueue.length) {
+          _updateIosNowPlaying(_globalQueue[index], currentIndex: index);
+        }
       }
     });
 
@@ -99,7 +105,7 @@ class AudioPlayerService {
     } else {
       if (_currentIndex < _globalQueue.length - 1) {
         playNext();
-      } else if (_player.loopMode == LoopMode.all) {
+      } else if (_shouldLoopQueue) {
         playWithQueue(_globalQueue, 0);
       }
     }
@@ -107,6 +113,10 @@ class AudioPlayerService {
 
   void setAutoSkipInvalid(bool enable) {
     _autoSkipInvalid = enable;
+  }
+
+  void setShouldLoopQueue(bool shouldLoop) {
+    _shouldLoopQueue = shouldLoop;
   }
 
   void notifyPlaybackError(String bvid, int cid) {

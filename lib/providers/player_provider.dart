@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -494,11 +496,14 @@ class PlayerProvider extends ChangeNotifier {
     await prefs.setInt(_playModeKey, _playMode.index);
 
     if (isOrderChanged) {
-      // Set flag to ignore index changes during queue reordering
-      // This prevents iOS just_audio_media_kit from incorrectly triggering song changes
       _isTogglingPlayMode = true;
       Log.i(_tag, "togglePlayMode protection started");
       try {
+        if (newMode == PlayMode.shuffle) {
+          await _databaseService.reshufflePlaylist();
+          Log.i(_tag, "togglePlayMode: reshuffled playlist for new shuffle order");
+        }
+
         await _reloadPlaylistFromDb();
         if (_currentSong != null) {
           int newIndex = _playlist.indexWhere(
@@ -510,7 +515,6 @@ class PlayerProvider extends ChangeNotifier {
           );
 
           if (newIndex != -1) {
-            // Set the expected index so the stream listener knows which index to accept
             _expectedIndexAfterToggle = newIndex;
             Log.i(_tag, "togglePlayMode: expecting index $newIndex");
             await _audioPlayerService.updateQueueKeepPlaying(_playlist, newIndex);
@@ -521,8 +525,6 @@ class PlayerProvider extends ChangeNotifier {
         }
         await _setPlayerLoopMode();
       } finally {
-        // Wait for the expected index event with a timeout
-        // If we don't receive the expected index within the timeout, force clear protection
         await Future.delayed(const Duration(milliseconds: 1000));
         if (_isTogglingPlayMode) {
           Log.w(_tag, "togglePlayMode protection timeout, forcing clear");
@@ -540,16 +542,26 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> _setPlayerLoopMode() async {
     Log.v(_tag, "_setPlayerLoopMode");
     await player.setShuffleModeEnabled(false);
+
+    final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+
     switch (_playMode) {
       case PlayMode.single:
         await player.setLoopMode(LoopMode.one);
+        _audioPlayerService.setShouldLoopQueue(false);
         break;
       case PlayMode.sequence:
         await player.setLoopMode(LoopMode.off);
+        _audioPlayerService.setShouldLoopQueue(false);
         break;
       case PlayMode.loop:
       case PlayMode.shuffle:
-        await player.setLoopMode(LoopMode.all);
+        if (isDesktop) {
+          await player.setLoopMode(LoopMode.off);
+        } else {
+          await player.setLoopMode(LoopMode.all);
+        }
+        _audioPlayerService.setShouldLoopQueue(true);
         break;
     }
   }

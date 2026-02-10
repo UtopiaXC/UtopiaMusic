@@ -691,6 +691,9 @@ class MessageLookup extends MessageLookupByLibrary {
       "手动输入 Cookie",
     ),
     "weight_login_logout": MessageLookupByLibrary.simpleMessage("退出登录"),
+    "weight_login_manual_confirm": MessageLookupByLibrary.simpleMessage(
+      "手动确认登录",
+    ),
     "weight_login_over": MessageLookupByLibrary.simpleMessage("当前已登录，请尽情使用"),
     "weight_login_qr_expired": MessageLookupByLibrary.simpleMessage("二维码已失效"),
     "weight_login_refresh_qr": MessageLookupByLibrary.simpleMessage("刷新二维码"),
@@ -700,6 +703,25 @@ class MessageLookup extends MessageLookupByLibrary {
     "weight_login_scan_qr": MessageLookupByLibrary.simpleMessage("扫码登录"),
     "weight_login_screenshoot_to_qr_hint": MessageLookupByLibrary.simpleMessage(
       "请截图并使用 哔哩哔哩客户端 扫码登录",
+    ),
+    "weight_login_web_httponly_warning": MessageLookupByLibrary.simpleMessage(
+      "登录已验证，但无法获取完整的 Cookie。请使用 Cookie 登录方式或扫码登录。",
+    ),
+    "weight_login_web_login": MessageLookupByLibrary.simpleMessage("网页登录"),
+    "weight_login_web_login_button": MessageLookupByLibrary.simpleMessage(
+      "点击登录",
+    ),
+    "weight_login_web_login_hint": MessageLookupByLibrary.simpleMessage(
+      "点击按钮将打开网页进行登录",
+    ),
+    "weight_login_web_no_cookie": MessageLookupByLibrary.simpleMessage(
+      "未找到 Cookie，请确保已登录成功",
+    ),
+    "weight_login_web_no_login_info": MessageLookupByLibrary.simpleMessage(
+      "未找到登录信息，请确保已登录成功",
+    ),
+    "weight_login_web_not_supported": MessageLookupByLibrary.simpleMessage(
+      "当前平台不支持网页登录",
     ),
     "weight_login_welcome_back": MessageLookupByLibrary.simpleMessage("欢迎回来"),
     "weight_play_control_label_switch_paly_mode":

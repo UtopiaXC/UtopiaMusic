@@ -2899,6 +2899,86 @@ class S {
     );
   }
 
+  /// `Web Login`
+  String get weight_login_web_login {
+    return Intl.message(
+      'Web Login',
+      name: 'weight_login_web_login',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Click to Login`
+  String get weight_login_web_login_button {
+    return Intl.message(
+      'Click to Login',
+      name: 'weight_login_web_login_button',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Click the button to open web page for login`
+  String get weight_login_web_login_hint {
+    return Intl.message(
+      'Click the button to open web page for login',
+      name: 'weight_login_web_login_hint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Confirm Login`
+  String get weight_login_manual_confirm {
+    return Intl.message(
+      'Confirm Login',
+      name: 'weight_login_manual_confirm',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No cookies found, please ensure you have logged in`
+  String get weight_login_web_no_cookie {
+    return Intl.message(
+      'No cookies found, please ensure you have logged in',
+      name: 'weight_login_web_no_cookie',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No login info found, please ensure you have logged in`
+  String get weight_login_web_no_login_info {
+    return Intl.message(
+      'No login info found, please ensure you have logged in',
+      name: 'weight_login_web_no_login_info',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Login verified, but cannot get full cookies. Please use Cookie Login or QR Login.`
+  String get weight_login_web_httponly_warning {
+    return Intl.message(
+      'Login verified, but cannot get full cookies. Please use Cookie Login or QR Login.',
+      name: 'weight_login_web_httponly_warning',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Web login is not supported on this platform`
+  String get weight_login_web_not_supported {
+    return Intl.message(
+      'Web login is not supported on this platform',
+      name: 'weight_login_web_not_supported',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Screenshot and scan with Bilibili App`
   String get weight_login_screenshoot_to_qr_hint {
     return Intl.message(

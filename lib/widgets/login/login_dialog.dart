@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:utopia_music/connection/user/login.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/widgets/login/web_login_page.dart';
 
 class LoginDialog extends StatefulWidget {
   const LoginDialog({super.key});
@@ -26,11 +29,12 @@ class _LoginDialogState extends State<LoginDialog>
   bool _isSuccess = false;
   Timer? _pollTimer;
   final LoginApi _loginApi = LoginApi();
+  bool get _isMobile => !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: _isMobile ? 3 : 2, vsync: this);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isLoggedIn) {
       _loadQrCode();
@@ -170,6 +174,7 @@ class _LoginDialogState extends State<LoginDialog>
                 TabBar(
                   controller: _tabController,
                   tabs: [
+                    if (_isMobile) Tab(text: S.of(context).weight_login_web_login),
                     Tab(text: S.of(context).weight_login_scan_qr),
                     Tab(text: S.of(context).weight_login_cookie),
                   ],
@@ -177,7 +182,11 @@ class _LoginDialogState extends State<LoginDialog>
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
-                    children: [_buildQrLoginView(), _buildCookieLoginView()],
+                    children: [
+                      if (_isMobile) _buildWebLoginView(),
+                      _buildQrLoginView(),
+                      _buildCookieLoginView(),
+                    ],
                   ),
                 ),
               ],
@@ -252,6 +261,42 @@ class _LoginDialogState extends State<LoginDialog>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildWebLoginView() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.language, size: 64, color: Colors.blue),
+          const SizedBox(height: 24),
+          Text(
+            S.of(context).weight_login_web_login_hint,
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final result = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (context) => const WebLoginPage(),
+                ),
+              );
+              if (result == true && mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            icon: const Icon(Icons.login),
+            label: Text(S.of(context).weight_login_web_login_button),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+          ),
+        ],
       ),
     );
   }

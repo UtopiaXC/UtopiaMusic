@@ -53,6 +53,8 @@ dependencies:
   sqflite_common_ffi: ^2.3.2
   path: ^1.9.1
   flutter_launcher_icons: ^0.14.4
+  webview_flutter: ^4.13.1
+  flutter_inappwebview: ^6.1.5
   marquee: ^2.3.0
   html_unescape: ^2.0.0
   package_info_plus: ^9.0.0
@@ -77,8 +79,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
