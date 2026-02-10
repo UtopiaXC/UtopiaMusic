@@ -63,11 +63,11 @@ class AudioPlayerService {
 
     _player.currentIndexStream.listen((index) {
       if (!_isDesktop && index != null && !_isUpdatingQueue) {
+        final bool indexChanged = _currentIndex != index;
         _currentIndex = index;
         _indexController.add(index);
 
-        // Update iOS Now Playing info when auto-advancing to next song
-        if (_isIOS && index >= 0 && index < _globalQueue.length) {
+        if (_isIOS && indexChanged && index >= 0 && index < _globalQueue.length) {
           _updateIosNowPlaying(_globalQueue[index], currentIndex: index);
         }
       }
