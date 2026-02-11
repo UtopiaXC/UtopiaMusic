@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/user/user.dart';
@@ -26,6 +27,26 @@ class UserInfo {
     required this.mid,
     required this.level,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'avatarUrl': avatarUrl,
+      'vipType': vipType.index,
+      'mid': mid,
+      'level': level,
+    };
+  }
+
+  factory UserInfo.fromJson(Map<String, dynamic> json) {
+    return UserInfo(
+      name: json['name'],
+      avatarUrl: json['avatarUrl'],
+      vipType: UserVipType.values[json['vipType'] ?? 0],
+      mid: json['mid'],
+      level: json['level'],
+    );
+  }
 }
 
 class AuthProvider extends ChangeNotifier {
@@ -33,8 +54,9 @@ class AuthProvider extends ChangeNotifier {
   LoginStatus _loginStatus = LoginStatus.notLoggedIn;
   final UserApi _userApi = UserApi();
   static const String _loginTypeKey = 'auth_login_type';
+  static const String _userInfoKey = 'auth_user_info';
 
-  bool get isLoggedIn => _loginStatus == LoginStatus.loggedIn;
+  bool get isLoggedIn => _loginStatus == LoginStatus.loggedIn || _loginStatus == LoginStatus.expired;
 
   UserInfo? get userInfo => _userInfo;
 
@@ -46,6 +68,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _checkLoginStatus() async {
     try {
+      await _loadUserInfo();
+
       final jar = await Request().cookieJar;
       final cookies = await jar.loadForRequest(Uri.parse(Api.urlBase));
 
@@ -54,14 +78,24 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (hasLoginCookie) {
+        if (_userInfo != null) {
+          _loginStatus = LoginStatus.expired;
+          notifyListeners();
+        }
         await _fetchUserInfo();
       } else {
         _loginStatus = LoginStatus.notLoggedIn;
+        _userInfo = null;
+        await _clearUserInfo();
         notifyListeners();
       }
     } catch (e) {
       Log.w(_tag, 'Error checking login status: $e');
-      _loginStatus = LoginStatus.notLoggedIn;
+      if (_userInfo != null) {
+        _loginStatus = LoginStatus.expired;
+      } else {
+        _loginStatus = LoginStatus.notLoggedIn;
+      }
       notifyListeners();
     }
   }
@@ -93,17 +127,46 @@ class AuthProvider extends ChangeNotifier {
           mid: mid,
           level: level,
         );
+        await _saveUserInfo(_userInfo!);
         _loginStatus = LoginStatus.loggedIn;
       } else {
         _loginStatus = LoginStatus.expired;
-        _userInfo = null;
       }
     } catch (e) {
       Log.w(_tag, 'Error fetching user info: $e');
       _loginStatus = LoginStatus.expired;
-      _userInfo = null;
     }
     notifyListeners();
+  }
+
+  Future<void> _saveUserInfo(UserInfo info) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userInfoKey, jsonEncode(info.toJson()));
+    } catch (e) {
+      Log.w(_tag, 'Error saving user info: $e');
+    }
+  }
+
+  Future<void> _loadUserInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_userInfoKey);
+      if (jsonStr != null) {
+        _userInfo = UserInfo.fromJson(jsonDecode(jsonStr));
+      }
+    } catch (e) {
+      Log.w(_tag, 'Error loading user info: $e');
+    }
+  }
+
+  Future<void> _clearUserInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userInfoKey);
+    } catch (e) {
+      Log.w(_tag, 'Error clearing user info: $e');
+    }
   }
 
   Future<void> _setLoginType(String type) async {
@@ -160,6 +223,7 @@ class AuthProvider extends ChangeNotifier {
       await jar.deleteAll();
       _userInfo = null;
       _loginStatus = LoginStatus.notLoggedIn;
+      await _clearUserInfo();
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_loginTypeKey);
 
