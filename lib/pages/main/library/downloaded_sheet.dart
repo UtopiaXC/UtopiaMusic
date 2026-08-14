@@ -92,16 +92,17 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
     });
   }
 
+  //TODO: Don't refresh the list after manually retry download
   int _getStatusPriority(int status) {
     switch (status) {
       case 1: // Downloading
         return 0;
       case 0: // Queued
-        return 1;
-      case 3: // Completed
         return 2;
-      case 4: // Failed
+      case 3: // Completed
         return 3;
+      case 4: // Failed
+        return 1;
       default:
         return 4;
     }
