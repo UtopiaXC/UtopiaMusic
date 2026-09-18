@@ -79,4 +79,7 @@ jobs:
         run: flutter analyze
 
       - name: Verify Build
+        env:
+          CL: "/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS"
+          _CL_: "/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS"
         run: ${{ matrix.cmd }}

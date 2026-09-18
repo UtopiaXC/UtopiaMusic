@@ -229,6 +229,8 @@ jobs:
     env:
       VERSION_NAME: ${{ needs.version.outputs.VERSION_NAME }}
       BUILD_NUMBER: ${{ needs.version.outputs.BUILD_NUMBER }}
+      CL: "/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS"
+      _CL_: "/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS"
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -241,6 +243,9 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
       - name: Build Windows
+        env:
+          CL: "/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS"
+          _CL_: "/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS"
         run: flutter build windows --release --build-name $env:VERSION_NAME --build-number $env:BUILD_NUMBER
       - name: Sign Main Executable
         run: |
