@@ -5,9 +5,6 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/components/swipeable_player_card.dart';
 import 'package:utopia_music/generated/l10n.dart';
-import 'package:utopia_music/utils/log.dart';
-
-const String _tag = "MINI_PLAYER_CARD";
 
 class MiniPlayer extends StatelessWidget {
   final Song song;
@@ -81,90 +78,100 @@ class MiniPlayer extends StatelessWidget {
               icon: const Icon(Icons.close, size: 20),
               tooltip: S.of(context).common_close,
             ),
-            Container(
-              width: 48,
-              height: 48,
-              margin: const EdgeInsets.only(left: 0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-                image: displaySong.coverUrl.isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage(optimizedCover),
-                        fit: BoxFit.cover,
-                        onError: (exception, stackTrace) {},
-                      )
-                    : null,
-              ),
-              child: displaySong.coverUrl.isEmpty
-                  ? Center(
-                      child: Icon(
-                        Icons.music_note,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: 24,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 24,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final textStyle = Theme.of(
-                          context,
-                        ).textTheme.titleMedium;
-                        final textSpan = TextSpan(
-                          text: displaySong.title,
-                          style: textStyle,
-                        );
-                        final textPainter = TextPainter(
-                          text: textSpan,
-                          textDirection: TextDirection.ltr,
-                          maxLines: 1,
-                        );
-                        textPainter.layout();
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      margin: const EdgeInsets.only(left: 0),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        image: displaySong.coverUrl.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(optimizedCover),
+                                fit: BoxFit.cover,
+                                onError: (exception, stackTrace) {},
+                              )
+                            : null,
+                      ),
+                      child: displaySong.coverUrl.isEmpty
+                          ? Center(
+                              child: Icon(
+                                Icons.music_note,
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                size: 24,
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final textStyle = Theme.of(
+                                  context,
+                                ).textTheme.titleMedium;
+                                final textSpan = TextSpan(
+                                  text: displaySong.title,
+                                  style: textStyle,
+                                );
+                                final textPainter = TextPainter(
+                                  text: textSpan,
+                                  textDirection: TextDirection.ltr,
+                                  maxLines: 1,
+                                );
+                                textPainter.layout();
 
-                        if (textPainter.width > constraints.maxWidth) {
-                          return Marquee(
-                            text: displaySong.title,
-                            style: textStyle,
-                            scrollAxis: Axis.horizontal,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            blankSpace: 20.0,
-                            velocity: 30.0,
-                            pauseAfterRound: const Duration(seconds: 1),
-                            startPadding: 0.0,
-                            accelerationDuration: const Duration(seconds: 1),
-                            accelerationCurve: Curves.linear,
-                            decelerationDuration: const Duration(
-                              milliseconds: 500,
+                                if (textPainter.width > constraints.maxWidth) {
+                                  return Marquee(
+                                    text: displaySong.title,
+                                    style: textStyle,
+                                    scrollAxis: Axis.horizontal,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    blankSpace: 20.0,
+                                    velocity: 30.0,
+                                    pauseAfterRound: const Duration(seconds: 1),
+                                    startPadding: 0.0,
+                                    accelerationDuration: const Duration(seconds: 1),
+                                    accelerationCurve: Curves.linear,
+                                    decelerationDuration: const Duration(
+                                      milliseconds: 500,
+                                    ),
+                                    decelerationCurve: Curves.easeOut,
+                                  );
+                                } else {
+                                  return Text(
+                                    displaySong.title,
+                                    style: textStyle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                }
+                              },
                             ),
-                            decelerationCurve: Curves.easeOut,
-                          );
-                        } else {
-                          return Text(
-                            displaySong.title,
-                            style: textStyle,
+                          ),
+                          Text(
+                            displaySong.artist,
+                            style: Theme.of(context).textTheme.bodySmall,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          );
-                        }
-                      },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Text(
-                    displaySong.artist,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -195,7 +202,6 @@ class MiniPlayer extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: onTap,
       onVerticalDragUpdate: (details) {
         if (details.primaryDelta! < -10) {
           onTap();

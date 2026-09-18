@@ -31,11 +31,12 @@ music，但是没有找到符合我使用习惯的，于是自己开发一个。
 
 ## 参考与感谢
 
-[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)  
-[wood3n/biu](https://github.com/wood3n/biu)  
-[bbplayer-app/BBPlayer](https://github.com/bbplayer-app/BBPlayer)  
-[guozhigq/pilipala](https://github.com/guozhigq/pilipala)  
-[bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)
+API参考（已被DMCA）：[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)  
+理念参考：[wood3n/biu](https://github.com/wood3n/biu)  
+理念参考：[bbplayer-app/BBPlayer](https://github.com/bbplayer-app/BBPlayer)  
+功能实现参考：[guozhigq/pilipala](https://github.com/guozhigq/pilipala)  
+功能实现参考：[bggRGjQaUbCoE/PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)  
+视频内广告跳过功能提供：[hanydd/BilibiliSponsorBlock](https://github.com/hanydd/BilibiliSponsorBlock)
 
 ## 引用的开源许可证
 

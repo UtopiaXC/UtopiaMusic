@@ -41,6 +41,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _debugModeKey = 'debug_mode';
   static const String _logLevelKey = 'log_level';
   static const String _lyricsAlwaysOnKey = 'lyrics_always_on';
+  static const String _quickPlayKey = 'quick_play';
+  static const String _quickPlaylistReplaceKey = 'quick_playlist_replace';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -67,6 +69,8 @@ class SettingsProvider extends ChangeNotifier {
   bool _debugMode = false;
   LogLevel _logLevel = LogLevel.warning;
   bool _lyricsAlwaysOn = true;
+  bool _quickPlay = true;
+  int _quickPlaylistReplace = 0;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -117,6 +121,10 @@ class SettingsProvider extends ChangeNotifier {
   LogLevel get logLevel => _logLevel;
 
   bool get lyricsAlwaysOn => _lyricsAlwaysOn;
+
+  bool get quickPlay => _quickPlay;
+
+  int get quickPlaylistReplace => _quickPlaylistReplace;
 
   SettingsProvider() {
     _loadSettings();
@@ -172,6 +180,8 @@ class SettingsProvider extends ChangeNotifier {
       _logLevel = LogLevel.warning;
     }
     _lyricsAlwaysOn = prefs.getBool(_lyricsAlwaysOnKey) ?? true;
+    _quickPlay = prefs.getBool(_quickPlayKey) ?? true;
+    _quickPlaylistReplace = prefs.getInt(_quickPlaylistReplaceKey) ?? 0;
     Log.setLevel(_logLevel);
 
     notifyListeners();
@@ -502,5 +512,19 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_logLevelKey, _logLevel.index);
     await prefs.setBool(_debugModeKey, false);
+  }
+
+  Future<void> setQuickPlay(bool value) async {
+    _quickPlay = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_quickPlayKey, value);
+  }
+
+  Future<void> setQuickPlaylistReplace(int value) async {
+    _quickPlaylistReplace = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_quickPlaylistReplaceKey, value);
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/common/cached_cover_image.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
@@ -25,13 +28,11 @@ class SongListItem extends StatelessWidget {
   });
 
   void _showPlayOptionsDialog(BuildContext context) {
-    showModalBottomSheet(
+    PlayOptionsSheet.executeOrShow(
       context: context,
-      builder: (context) => PlayOptionsSheet(
-        song: song,
-        contextList: contextList,
-        onPlayAction: onPlayAction,
-      ),
+      song: song,
+      contextList: contextList,
+      onPlayAction: onPlayAction,
     );
   }
 
@@ -45,25 +46,56 @@ class SongListItem extends StatelessWidget {
 
   void _handleTap(BuildContext context) {
     FocusScope.of(context).unfocus();
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+
+    if (settingsProvider.quickPlay) {
+      if (playerProvider.playlist.isEmpty || playerProvider.currentSong == null) {
+        playerProvider.setPlaylistAndPlay(contextList, song);
+        onPlayAction?.call();
+      } else {
+        PlayOptionsSheet.executeOrShow(
+          context: context,
+          song: song,
+          contextList: contextList,
+          onPlayAction: onPlayAction,
+        );
+      }
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) {
-          return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: VideoDetailPage(
-              bvid: song.bvid,
-              simplified: true,
-              contextList: contextList,
-              scrollController: scrollController,
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.pop(context),
             ),
-          );
-        },
+          ),
+          DraggableScrollableSheet(
+            initialChildSize: 0.5,
+            minChildSize: 0.3,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: VideoDetailPage(
+                  bvid: song.bvid,
+                  simplified: true,
+                  contextList: contextList,
+                  scrollController: scrollController,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

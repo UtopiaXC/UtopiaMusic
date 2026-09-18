@@ -221,13 +221,11 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
       playerProvider.setPlaylistAndPlay(songs, song);
     } else {
       final song = songs[initialIndex];
-      showModalBottomSheet(
+      PlayOptionsSheet.executeOrShow(
         context: context,
-        builder: (context) => PlayOptionsSheet(
-          song: song,
-          contextList: songs,
-          onPlayAction: () {},
-        ),
+        song: song,
+        contextList: songs,
+        onPlayAction: () {},
       );
     }
   }
@@ -245,20 +243,30 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) {
-          return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: VideoDetailPage(
-              bvid: bvid,
-              simplified: false,
-              scrollController: scrollController,
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.pop(context),
             ),
-          );
-        },
+          ),
+          DraggableScrollableSheet(
+            initialChildSize: 0.9,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: VideoDetailPage(
+                  bvid: bvid,
+                  simplified: false,
+                  scrollController: scrollController,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

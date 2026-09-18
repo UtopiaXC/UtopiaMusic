@@ -101,6 +101,60 @@ class PlaySettingsPage extends StatelessWidget {
                   playerProvider.setAutoPlay(value);
                 },
               ),
+              SwitchListTile(
+                title: Text(
+                  S.of(context).pages_settings_tag_player_control_quick_play,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_player_control_quick_play_description,
+                ),
+                value: settingsProvider.quickPlay,
+                onChanged: (bool value) {
+                  settingsProvider.setQuickPlay(value);
+                },
+              ),
+              ListTile(
+                title: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_player_control_quick_playlist_replace,
+                ),
+                subtitle: Text(
+                  S
+                      .of(context)
+                      .pages_settings_tag_player_control_quick_playlist_replace_description,
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.35,
+                      ),
+                      child: Text(
+                        _getQuickPlaylistReplaceLabel(
+                          context,
+                          settingsProvider.quickPlaylistReplace,
+                        ),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 20),
+                  ],
+                ),
+                onTap: () => _showQuickPlaylistReplaceDialog(
+                  context,
+                  settingsProvider,
+                ),
+              ),
             ],
           ),
           _SettingsGroup(
@@ -207,6 +261,82 @@ class PlaySettingsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  String _getQuickPlaylistReplaceLabel(BuildContext context, int option) {
+    switch (option) {
+      case 1:
+        return S.of(context).sheet_option_replace_play_list_by_song_list;
+      case 2:
+        return S.of(context).sheet_option_insert_after;
+      case 3:
+        return S.of(context).sheet_option_insert_after_and_play;
+      case 4:
+        return S.of(context).sheet_option_append_to_end;
+      case 5:
+        return S.of(context).sheet_option_replace_by_single_song;
+      case 0:
+      default:
+        return S.of(context).common_close;
+    }
+  }
+
+  void _showQuickPlaylistReplaceDialog(
+    BuildContext context,
+    SettingsProvider settingsProvider,
+  ) {
+    final options = [
+      (0, S.of(context).common_close),
+      (1, S.of(context).sheet_option_replace_play_list_by_song_list),
+      (2, S.of(context).sheet_option_insert_after),
+      (3, S.of(context).sheet_option_insert_after_and_play),
+      (4, S.of(context).sheet_option_append_to_end),
+      (5, S.of(context).sheet_option_replace_by_single_song),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        int selected = settingsProvider.quickPlaylistReplace;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                S
+                    .of(context)
+                    .pages_settings_tag_player_control_quick_playlist_replace,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: options.map((opt) {
+                    return RadioListTile<int>(
+                      value: opt.$1,
+                      groupValue: selected,
+                      title: Text(opt.$2),
+                      onChanged: (int? val) {
+                        if (val != null) {
+                          setDialogState(() => selected = val);
+                          settingsProvider.setQuickPlaylistReplace(val);
+                          Navigator.pop(context);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(S.of(context).common_cancel),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

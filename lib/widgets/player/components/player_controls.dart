@@ -215,6 +215,7 @@ class PlayerControls extends StatelessWidget {
 
             if (sbProvider.enableSponsorBlock &&
                 sbProvider.currentSegments.isNotEmpty &&
+                sbProvider.currentSongBvid == playerProvider.currentSong?.bvid &&
                 duration > Duration.zero) {
               return SliderTheme(
                 data: SliderTheme.of(context).copyWith(

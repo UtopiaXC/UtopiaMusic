@@ -326,7 +326,6 @@ class PlayerProvider extends ChangeNotifier {
 
       // Start playback immediately
       await _startPlay(index);
-      expandPlayer();
 
       // Trigger recommendation load immediately (non-blocking)
       // Use the saved state to ensure consistency

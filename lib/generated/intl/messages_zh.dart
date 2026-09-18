@@ -583,6 +583,14 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("自动播放"),
     "pages_settings_tag_player_control_auto_play_description":
         MessageLookupByLibrary.simpleMessage("退出软件时如果正在播放则打开软件时自动播放"),
+    "pages_settings_tag_player_control_quick_play":
+        MessageLookupByLibrary.simpleMessage("快速播放列表"),
+    "pages_settings_tag_player_control_quick_play_description":
+        MessageLookupByLibrary.simpleMessage("点击列表曲目时跳过视频详情，直接播放或选择加入播放列表"),
+    "pages_settings_tag_player_control_quick_playlist_replace":
+        MessageLookupByLibrary.simpleMessage("快速列表替换"),
+    "pages_settings_tag_player_control_quick_playlist_replace_description":
+        MessageLookupByLibrary.simpleMessage("替换播放列表时不弹出方式选择弹窗，直接以选定方式执行"),
     "pages_settings_tag_player_control_save_progress":
         MessageLookupByLibrary.simpleMessage("保存播放进度"),
     "pages_settings_tag_player_control_save_progress_description":

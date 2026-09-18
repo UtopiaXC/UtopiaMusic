@@ -466,15 +466,13 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       playerProvider.setPlaylistAndPlay(contextList, song);
       Navigator.pop(context);
     } else if (widget.simplified && widget.contextList != null) {
-      showModalBottomSheet(
+      PlayOptionsSheet.executeOrShow(
         context: context,
-        builder: (context) => PlayOptionsSheet(
-          song: song,
-          contextList: widget.contextList!,
-          onPlayAction: () {
-            Navigator.pop(context);
-          },
-        ),
+        song: song,
+        contextList: widget.contextList!,
+        onPlayAction: () {
+          Navigator.pop(context);
+        },
       );
     } else {
       List<Song> contextList = [song];

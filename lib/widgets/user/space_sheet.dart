@@ -343,15 +343,13 @@ class _SpaceSheetState extends State<SpaceSheet>
       playerProvider.setPlaylistAndPlay(_videos, song);
       Navigator.pop(context);
     } else {
-      showModalBottomSheet(
+      PlayOptionsSheet.executeOrShow(
         context: context,
-        builder: (context) => PlayOptionsSheet(
-          song: song,
-          contextList: _videos,
-          onPlayAction: () {
-            Navigator.pop(context);
-          },
-        ),
+        song: song,
+        contextList: _videos,
+        onPlayAction: () {
+          Navigator.pop(context);
+        },
       );
     }
   }

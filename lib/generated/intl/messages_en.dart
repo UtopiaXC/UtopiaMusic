@@ -669,6 +669,18 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Auto play on startup if playing when exited",
         ),
+    "pages_settings_tag_player_control_quick_play":
+        MessageLookupByLibrary.simpleMessage("Quick Play"),
+    "pages_settings_tag_player_control_quick_play_description":
+        MessageLookupByLibrary.simpleMessage(
+          "Skip video details when tapping a list song and enter playback logic directly",
+        ),
+    "pages_settings_tag_player_control_quick_playlist_replace":
+        MessageLookupByLibrary.simpleMessage("Quick Playlist Replace"),
+    "pages_settings_tag_player_control_quick_playlist_replace_description":
+        MessageLookupByLibrary.simpleMessage(
+          "Execute preset replacement action directly without showing the options dialog",
+        ),
     "pages_settings_tag_player_control_save_progress":
         MessageLookupByLibrary.simpleMessage("Save Progress"),
     "pages_settings_tag_player_control_save_progress_description":

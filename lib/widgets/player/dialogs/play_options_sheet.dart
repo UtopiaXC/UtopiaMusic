@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/settings_provider.dart';
 
 class PlayOptionsSheet extends StatelessWidget {
   final Song song;
@@ -15,6 +16,85 @@ class PlayOptionsSheet extends StatelessWidget {
     required this.contextList,
     this.onPlayAction,
   });
+
+  /// Executes the preset replacement option if configured (> 0),
+  /// otherwise displays the [PlayOptionsSheet] modal bottom sheet.
+  static void executeOrShow({
+    required BuildContext context,
+    required Song song,
+    required List<Song> contextList,
+    VoidCallback? onPlayAction,
+  }) {
+    final settingsProvider = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    );
+    final int option = settingsProvider.quickPlaylistReplace;
+
+    if (option > 0) {
+      executeOption(
+        context: context,
+        option: option,
+        song: song,
+        contextList: contextList,
+        onPlayAction: onPlayAction,
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => PlayOptionsSheet(
+          song: song,
+          contextList: contextList,
+          onPlayAction: onPlayAction,
+        ),
+      );
+    }
+  }
+
+  /// Directly executes one of the 5 replacement options without showing a modal sheet.
+  static void executeOption({
+    required BuildContext context,
+    required int option,
+    required Song song,
+    required List<Song> contextList,
+    VoidCallback? onPlayAction,
+  }) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    switch (option) {
+      case 1:
+        playerProvider.setPlaylistAndPlay(contextList, song);
+        onPlayAction?.call();
+        break;
+      case 2:
+        playerProvider.insertNext(song);
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(S.of(context).sheet_option_insert_after),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+        break;
+      case 3:
+        playerProvider.insertNextAndPlay(song);
+        onPlayAction?.call();
+        break;
+      case 4:
+        playerProvider.addToEnd(song);
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(S.of(context).sheet_option_append_to_end),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+        break;
+      case 5:
+        playerProvider.replacePlaylistWithSong(song);
+        onPlayAction?.call();
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -184,7 +184,7 @@ class LogService {
   LogService._();
 
   static final LogService instance = LogService._();
-  late Talker _talker;
+  Talker _talker = Talker();
 
   Talker get talker => _talker;
   IOSink? _logSink;

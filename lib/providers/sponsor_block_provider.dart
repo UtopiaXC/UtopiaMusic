@@ -33,7 +33,7 @@ class SponsorBlockProvider extends ChangeNotifier {
   final SponsorBlockService _service = SponsorBlockService();
   final DatabaseService _dbService = DatabaseService();
 
-  bool _enableSponsorBlock = false;
+  bool _enableSponsorBlock = true;
   String _blockServer = SponsorBlockService.defaultServer;
   double _blockLimit = 0.0;
   bool _blockToast = true;
@@ -49,6 +49,9 @@ class SponsorBlockProvider extends ChangeNotifier {
   UserInfo? _userInfo;
   bool _isLoadingUserInfo = false;
   int _lastCheckedMs = 0;
+  String _currentSongBvid = '';
+  int _currentSongCid = 0;
+  int _loadRequestId = 0;
   StreamSubscription? _indexSub;
   StreamSubscription? _positionSub;
 
@@ -66,6 +69,8 @@ class SponsorBlockProvider extends ChangeNotifier {
   bool? get serverStatus => _serverStatus;
   UserInfo? get userInfo => _userInfo;
   bool get isLoadingUserInfo => _isLoadingUserInfo;
+  String get currentSongBvid => _currentSongBvid;
+  int get currentSongCid => _currentSongCid;
 
   SponsorBlockProvider() {
     _init();
@@ -74,7 +79,7 @@ class SponsorBlockProvider extends ChangeNotifier {
   Future<void> _init() async {
     Log.v(_tag, "Initializing SponsorBlockProvider");
     final prefs = await SharedPreferences.getInstance();
-    _enableSponsorBlock = prefs.getBool(_enableKey) ?? false;
+    _enableSponsorBlock = prefs.getBool(_enableKey) ?? true;
     _blockServer = prefs.getString(_serverKey) ?? SponsorBlockService.defaultServer;
     _blockLimit = prefs.getDouble(_limitKey) ?? 0.0;
     _blockToast = prefs.getBool(_toastKey) ?? true;
@@ -224,6 +229,9 @@ class SponsorBlockProvider extends ChangeNotifier {
     } else {
       _currentSegments = [];
       _manualPromptSegment = null;
+      _manualPromptTimer?.cancel();
+      _currentSongBvid = '';
+      _currentSongCid = 0;
     }
     notifyListeners();
   }
@@ -317,11 +325,20 @@ class SponsorBlockProvider extends ChangeNotifier {
   }
 
   Future<void> loadSegmentsForSong(Song? song, {Duration? currentPosition}) async {
+    final nextBvid = song?.bvid ?? '';
+    final nextCid = song?.cid ?? 0;
+    final int requestId = ++_loadRequestId;
+
+    // Immediately clear current segments on song change to avoid flashing old segments
+    _currentSegments = [];
+    _manualPromptSegment = null;
+    _manualPromptTimer?.cancel();
+    _lastCheckedMs = 0;
+    _currentSongBvid = nextBvid;
+    _currentSongCid = nextCid;
+    notifyListeners();
+
     if (!_enableSponsorBlock || song == null || song.bvid.isEmpty) {
-      _currentSegments = [];
-      _manualPromptSegment = null;
-      _lastCheckedMs = 0;
-      notifyListeners();
       return;
     }
 
@@ -332,43 +349,62 @@ class SponsorBlockProvider extends ChangeNotifier {
     if (cid <= 0) {
       try {
         final fetchedCid = await SearchApi().fetchCid(bvid);
+        if (requestId != _loadRequestId) return;
         if (fetchedCid > 0) {
           cid = fetchedCid;
+          _currentSongCid = cid;
         }
       } catch (e) {
         Log.w(_tag, 'Failed to resolve CID for $bvid: $e');
       }
     }
 
+    if (requestId != _loadRequestId) return;
+
     // 2. Check local database cache first (supports offline & downloaded tracks)
     final localData = await _dbService.getSponsorBlockSegments(bvid, cid);
+    if (requestId != _loadRequestId) return;
+
     if (localData != null && localData.isNotEmpty) {
       try {
         final decoded = jsonDecode(localData);
         if (decoded is List) {
-          final items = decoded.map((i) => SegmentItemModel.fromJson(i as Map<String, dynamic>)).toList();
-          _applySegmentItems(items);
-          Log.i(_tag, 'Loaded ${_currentSegments.length} segments from local DB for ${bvid}_$cid');
+          final items = decoded
+              .map((i) => SegmentItemModel.fromJson(i as Map<String, dynamic>))
+              .toList();
+          if (requestId == _loadRequestId) {
+            _applySegmentItems(items);
+            Log.i(
+              _tag,
+              'Loaded ${_currentSegments.length} segments from local DB for ${bvid}_$cid',
+            );
+          }
         }
       } catch (e) {
         Log.w(_tag, 'Error decoding local cached segments: $e');
       }
     }
 
-    // 2. Fetch fresh segments from remote network API
+    if (requestId != _loadRequestId) return;
+
+    // 3. Fetch fresh segments from remote network API
     try {
       final remoteItems = await _service.getSkipSegments(
         server: _blockServer,
         bvid: bvid,
         cid: cid,
       );
+      if (requestId != _loadRequestId) return;
 
       if (remoteItems != null) {
         _applySegmentItems(remoteItems);
         // Update local database cache
         final jsonStr = jsonEncode(remoteItems.map((s) => s.toJson()).toList());
         await _dbService.saveSponsorBlockSegments(bvid, cid, jsonStr);
-        Log.i(_tag, 'Fetched and cached ${remoteItems.length} segments for ${bvid}_$cid');
+        Log.i(
+          _tag,
+          'Fetched and cached ${remoteItems.length} segments for ${bvid}_$cid',
+        );
       }
     } catch (e) {
       Log.w(_tag, 'Failed to fetch remote segments: $e');

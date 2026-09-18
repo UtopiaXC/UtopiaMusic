@@ -1,6 +1,7 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import 'intl/messages_all.dart';
 
 // **************************************************************************
@@ -1249,6 +1250,47 @@ class S {
     return Intl.message(
       'Auto play on startup if playing when exited',
       name: 'pages_settings_tag_player_control_auto_play_description',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Quick Play`
+  String get pages_settings_tag_player_control_quick_play {
+    return Intl.message(
+      'Quick Play',
+      name: 'pages_settings_tag_player_control_quick_play',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Skip video details when tapping a list song and enter playback logic directly`
+  String get pages_settings_tag_player_control_quick_play_description {
+    return Intl.message(
+      'Skip video details when tapping a list song and enter playback logic directly',
+      name: 'pages_settings_tag_player_control_quick_play_description',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Quick Playlist Replace`
+  String get pages_settings_tag_player_control_quick_playlist_replace {
+    return Intl.message(
+      'Quick Playlist Replace',
+      name: 'pages_settings_tag_player_control_quick_playlist_replace',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Execute preset replacement action directly without showing the options dialog`
+  String
+  get pages_settings_tag_player_control_quick_playlist_replace_description {
+    return Intl.message(
+      'Execute preset replacement action directly without showing the options dialog',
+      name: 'pages_settings_tag_player_control_quick_playlist_replace_description',
       desc: '',
       args: [],
     );
