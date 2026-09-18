@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
+import 'package:utopia_music/providers/sponsor_block_provider.dart';
+import 'package:utopia_music/pages/sponsor_block/sponsor_block_page.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
@@ -164,6 +166,41 @@ class PlaySettingsPage extends StatelessWidget {
                 value: settingsProvider.enableComments,
                 onChanged: (bool value) {
                   settingsProvider.setEnableComments(value);
+                },
+              ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '小电视空降助手',
+            children: [
+              Consumer<SponsorBlockProvider>(
+                builder: (context, sbProvider, child) {
+                  return Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('启用小电视空降助手'),
+                        subtitle: const Text('自动跳过音频中的赞助广告、片头片尾等片段'),
+                        value: sbProvider.enableSponsorBlock,
+                        onChanged: (bool value) {
+                          sbProvider.setEnableSponsorBlock(value);
+                        },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        title: const Text('空降助手详细设置'),
+                        subtitle: const Text('自定义跳过行为、片段类别、颜色及统计'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SponsorBlockPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
                 },
               ),
             ],

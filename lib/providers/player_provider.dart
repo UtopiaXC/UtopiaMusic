@@ -10,6 +10,8 @@ import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:utopia_music/providers/sponsor_block_provider.dart';
 import 'package:utopia_music/utils/log.dart';
 import 'package:utopia_music/providers/player/managers/history_manager.dart';
 import 'package:utopia_music/providers/player/managers/recommendation_manager.dart';
@@ -237,6 +239,13 @@ class PlayerProvider extends ChangeNotifier {
       currentSong: newSong,
       saveProgress: _saveProgress,
     );
+
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      try {
+        context.read<SponsorBlockProvider>().loadSegmentsForSong(newSong);
+      } catch (_) {}
+    }
 
     _recommendationManager.checkAndLoad(
       currentSong: newSong,

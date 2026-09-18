@@ -10,6 +10,7 @@ import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/providers/discover_provider.dart';
+import 'package:utopia_music/providers/sponsor_block_provider.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:utopia_music/connection/utils/request.dart';
@@ -60,6 +61,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SecurityProvider()),
         ChangeNotifierProvider(create: (_) => LibraryProvider()),
         ChangeNotifierProvider(create: (_) => DiscoverProvider()),
+        ChangeNotifierProvider(create: (_) => SponsorBlockProvider()),
       ],
       child: const UtopiaMusicApp(),
     ),

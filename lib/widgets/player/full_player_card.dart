@@ -10,8 +10,10 @@ import 'package:utopia_music/widgets/player/components/lyrics_card.dart';
 import 'package:utopia_music/widgets/player/components/player_content.dart';
 import 'package:utopia_music/widgets/player/components/player_controls.dart';
 import 'package:utopia_music/widgets/player/dialogs/playlist_sheet.dart';
+import 'package:utopia_music/widgets/player/dialogs/sb_detail_dialog.dart';
 import 'package:utopia_music/widgets/player/components/swipeable_player_card.dart';
 import 'package:utopia_music/widgets/player/components/player_background.dart';
+import 'package:utopia_music/providers/sponsor_block_provider.dart';
 import 'package:utopia_music/widgets/player/dialogs/timer_dialog.dart';
 import 'package:utopia_music/widgets/player/dialogs/quality_dialog.dart';
 import 'package:utopia_music/generated/l10n.dart';
@@ -58,7 +60,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   void initState() {
     super.initState();
     _checkDownloadStatus();
-    _updatePalette();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updatePalette();
+        context.read<SponsorBlockProvider>().loadSegmentsForSong(widget.song);
+      }
+    });
   }
 
   @override
@@ -67,7 +74,12 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     if (oldWidget.song.bvid != widget.song.bvid ||
         oldWidget.song.cid != widget.song.cid) {
       _checkDownloadStatus();
-      _updatePalette();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _updatePalette();
+          context.read<SponsorBlockProvider>().loadSegmentsForSong(widget.song);
+        }
+      });
     }
   }
 
@@ -590,10 +602,38 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           ),
                         ],
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.more_vert),
-                        onPressed: _showMoreMenu,
-                        tooltip: S.of(context).common_more,
+                      trailing: Consumer<SponsorBlockProvider>(
+                        builder: (context, sbProvider, child) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (sbProvider.enableSponsorBlock &&
+                                    sbProvider.currentSegments.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.shield_outlined),
+                                    tooltip: '片段信息',
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => SBDetailDialog(
+                                          onSeek: (target) {
+                                            playerProvider.player.seek(target);
+                                          },
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.more_vert),
+                                  onPressed: _showMoreMenu,
+                                  tooltip: S.of(context).common_more,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                       centerMiddle: true,
                     ),
@@ -677,8 +717,77 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                               final position =
                                   positionSnapshot.data ?? Duration.zero;
 
-                              return PlayerControls(
-                                isPlaying: playerProvider.isPlaying,
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Consumer<SponsorBlockProvider>(
+                                    builder: (context, sbProvider, child) {
+                                      final prompt = sbProvider.manualPromptSegment;
+                                      if (prompt == null) return const SizedBox.shrink();
+
+                                      final color = sbProvider.getColor(prompt.segmentType);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 8.0),
+                                        child: Material(
+                                          elevation: 3,
+                                          borderRadius: BorderRadius.circular(20),
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(20),
+                                            onTap: () {
+                                              sbProvider.skipManualSegment(
+                                                prompt,
+                                                seekTo: (pos) => playerProvider.player.seek(pos),
+                                                showToast: (msg) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(msg),
+                                                      duration: const Duration(seconds: 2),
+                                                      behavior: SnackBarBehavior.floating,
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 14.0,
+                                                vertical: 6.0,
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    width: 10,
+                                                    height: 10,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: color,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    '跳过: ${prompt.segmentType.shortTitle}',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  GestureDetector(
+                                                    onTap: sbProvider.dismissManualPrompt,
+                                                    child: const Icon(Icons.close, size: 16),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  PlayerControls(
+                                    isPlaying: playerProvider.isPlaying,
                                 isLoading:
                                     (playerProvider.player.processingState ==
                                         ProcessingState.buffering ||
@@ -722,7 +831,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                                 onComment: _showQualityDialog,
                                 onInfo: _showSpeedDialog,
                                 onMore: _showVideoDetail,
-                              );
+                              ),
+                            ],
+                          );
                             },
                           );
                         },

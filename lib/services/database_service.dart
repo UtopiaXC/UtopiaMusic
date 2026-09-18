@@ -63,7 +63,7 @@ class DatabaseService {
     }
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -116,6 +116,7 @@ class DatabaseService {
     await _createCacheMetaTable(db);
     await _createDownloadsTable(db);
     await _createListCacheTable(db);
+    await _createSponsorBlockTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -153,6 +154,22 @@ class DatabaseService {
     if (oldVersion < 7) {
       await _createListCacheTable(db);
     }
+    if (oldVersion < 8) {
+      await _createSponsorBlockTable(db);
+    }
+  }
+
+  Future<void> _createSponsorBlockTable(DatabaseExecutor db) async {
+    Log.v(_tag, "_createSponsorBlockTable");
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sponsor_block_cache(
+        bvid TEXT,
+        cid INTEGER,
+        data TEXT,
+        update_time INTEGER,
+        PRIMARY KEY (bvid, cid)
+      )
+    ''');
   }
 
   Future<void> _createCacheMetaTable(DatabaseExecutor db) async {
@@ -930,6 +947,73 @@ class DatabaseService {
       Log.i(_tag, 'DatabaseService: Updated CID for $bvid to $newCid');
     } catch (e) {
       Log.e(_tag, 'Failed to update CID', e);
+    }
+  }
+
+  Future<void> saveSponsorBlockSegments(
+    String bvid,
+    int cid,
+    String data,
+  ) async {
+    try {
+      final db = await database;
+      await db.insert(
+        'sponsor_block_cache',
+        {
+          'bvid': bvid,
+          'cid': cid,
+          'data': data,
+          'update_time': DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      Log.i(_tag, 'DatabaseService: Saved sponsor block segments for ${bvid}_$cid');
+    } catch (e) {
+      Log.e(_tag, 'Failed to save sponsor block segments', e);
+    }
+  }
+
+  Future<String?> getSponsorBlockSegments(String bvid, int cid) async {
+    try {
+      final db = await database;
+      var res = await db.query(
+        'sponsor_block_cache',
+        columns: ['data'],
+        where: 'bvid = ? AND cid = ?',
+        whereArgs: [bvid, cid],
+        limit: 1,
+      );
+      if (res.isNotEmpty && res.first['data'] != null) {
+        return res.first['data'] as String;
+      }
+      if (cid == 0) {
+        res = await db.query(
+          'sponsor_block_cache',
+          columns: ['data'],
+          where: 'bvid = ?',
+          whereArgs: [bvid],
+          limit: 1,
+        );
+        if (res.isNotEmpty && res.first['data'] != null) {
+          return res.first['data'] as String;
+        }
+      }
+    } catch (e) {
+      Log.e(_tag, 'Failed to get sponsor block segments', e);
+    }
+    return null;
+  }
+
+  Future<void> deleteSponsorBlockSegments(String bvid, int cid) async {
+    try {
+      final db = await database;
+      await db.delete(
+        'sponsor_block_cache',
+        where: 'bvid = ? AND cid = ?',
+        whereArgs: [bvid, cid],
+      );
+    } catch (e) {
+      Log.e(_tag, 'Failed to delete sponsor block segments', e);
     }
   }
 

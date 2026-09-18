@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/providers/sponsor_block_provider.dart';
+import 'package:utopia_music/widgets/player/components/segment_slider_track_shape.dart';
 import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "PLAYER_CONTROLS";
@@ -200,13 +202,33 @@ class PlayerControls extends StatelessWidget {
             ],
           ),
         const SizedBox(height: 16),
-        Slider(
-          value: sliderValue,
-          min: 0,
-          max: maxDuration > 0 ? maxDuration : 1.0,
-          onChanged: onSeekUpdate ?? onSeek,
-          onChangeStart: onSeekStart,
-          onChangeEnd: onSeek,
+        Consumer<SponsorBlockProvider>(
+          builder: (context, sbProvider, child) {
+            final slider = Slider(
+              value: sliderValue,
+              min: 0,
+              max: maxDuration > 0 ? maxDuration : 1.0,
+              onChanged: onSeekUpdate ?? onSeek,
+              onChangeStart: onSeekStart,
+              onChangeEnd: onSeek,
+            );
+
+            if (sbProvider.enableSponsorBlock &&
+                sbProvider.currentSegments.isNotEmpty &&
+                duration > Duration.zero) {
+              return SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackShape: SegmentSliderTrackShape(
+                    segments: sbProvider.currentSegments,
+                    duration: duration,
+                    blockColor: sbProvider.blockColor,
+                  ),
+                ),
+                child: slider,
+              );
+            }
+            return slider;
+          },
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),

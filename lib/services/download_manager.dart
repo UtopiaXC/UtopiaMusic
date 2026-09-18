@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/services/sponsor_block/sponsor_block_service.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/connection/audio/audio_stream.dart';
 import 'package:utopia_music/connection/video/search.dart';
@@ -473,6 +475,7 @@ class DownloadManager {
         progress: 1.0,
       );
       _progressController.add(DownloadUpdate(id, 1.0, 3));
+      unawaited(_fetchAndSaveSponsorBlockSegments(task.song.bvid, task.song.cid));
     } catch (e) {
       Log.e(_tag, "Download failed: $e");
       if (_activeTaskIds.containsKey(id)) {
@@ -516,6 +519,7 @@ class DownloadManager {
   Future<void> deleteDownload(String bvid, int cid) async {
     await pauseDownload(bvid, cid);
     await _dbService.deleteDownload(bvid, cid);
+    await _dbService.deleteSponsorBlockSegments(bvid, cid);
     _queue.removeWhere((t) => t.song.bvid == bvid && t.song.cid == cid);
     if (_downloadDir == null) await _initDirs();
     final dir = Directory(_downloadDir!);
@@ -527,6 +531,34 @@ class DownloadManager {
           } catch (_) {}
         }
       }
+    }
+  }
+
+  Future<void> _fetchAndSaveSponsorBlockSegments(String bvid, int cid) async {
+    try {
+      if (cid <= 0) {
+        try {
+          final resolvedCid = await SearchApi().fetchCid(bvid);
+          if (resolvedCid > 0) {
+            cid = resolvedCid;
+          }
+        } catch (_) {}
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final server = prefs.getString('sponsor_block_server') ??
+          SponsorBlockService.defaultServer;
+      final segments = await SponsorBlockService().getSkipSegments(
+        server: server,
+        bvid: bvid,
+        cid: cid,
+      );
+      if (segments != null && segments.isNotEmpty) {
+        final jsonStr = jsonEncode(segments.map((s) => s.toJson()).toList());
+        await _dbService.saveSponsorBlockSegments(bvid, cid, jsonStr);
+        Log.i(_tag, 'Saved SponsorBlock segments for downloaded song ${bvid}_$cid');
+      }
+    } catch (e) {
+      Log.w(_tag, 'Failed to fetch SponsorBlock segments for download: $e');
     }
   }
 
