@@ -48,7 +48,7 @@ class SponsorBlockProvider extends ChangeNotifier {
   bool? _serverStatus;
   UserInfo? _userInfo;
   bool _isLoadingUserInfo = false;
-  int? _lastCheckedSecond;
+  int _lastCheckedMs = 0;
   StreamSubscription? _indexSub;
   StreamSubscription? _positionSub;
 
@@ -320,7 +320,7 @@ class SponsorBlockProvider extends ChangeNotifier {
     if (!_enableSponsorBlock || song == null || song.bvid.isEmpty) {
       _currentSegments = [];
       _manualPromptSegment = null;
-      _lastCheckedSecond = null;
+      _lastCheckedMs = 0;
       notifyListeners();
       return;
     }
@@ -392,7 +392,7 @@ class SponsorBlockProvider extends ChangeNotifier {
 
     list.sort();
     _currentSegments = list;
-    _lastCheckedSecond = null;
+    _lastCheckedMs = 0;
     notifyListeners();
 
     final audioService = AudioPlayerService();
@@ -434,15 +434,32 @@ class SponsorBlockProvider extends ChangeNotifier {
   }) {
     if (!_enableSponsorBlock || _currentSegments.isEmpty) return;
 
-    final currentSecond = position.inSeconds;
-    if (_lastCheckedSecond == currentSecond) return;
-    _lastCheckedSecond = currentSecond;
-
     final currentMs = position.inMilliseconds;
 
+    // Check if manual prompt is active and whether current position is still within its segment
+    if (_manualPromptSegment != null) {
+      final (pStart, pEnd) = _manualPromptSegment!.segment;
+      if (currentMs < pStart || currentMs >= pEnd) {
+        dismissManualPrompt();
+      }
+    }
+
+    // Throttle frequent ticks to ~200ms unless seeking occurred (gap >= 1000ms)
+    final diff = (currentMs - _lastCheckedMs).abs();
+    if (diff < 200) {
+      return;
+    }
+    _lastCheckedMs = currentMs;
+
     for (final item in _currentSegments) {
-      // If position is within the segment's start trigger range (within 1 second of start)
-      if (currentMs >= item.segment.$1 && currentMs <= item.segment.$1 + 1200) {
+      // If position is before the segment, reset hasSkipped so it can skip if re-entered later
+      if (currentMs < item.segment.$1 - 1000) {
+        item.hasSkipped = false;
+      }
+
+      // If position falls anywhere within the skippable segment
+      // (from start up to end - 500ms to avoid infinite skip loop at the very end edge)
+      if (currentMs >= item.segment.$1 && currentMs < item.segment.$2 - 500) {
         switch (item.skipType) {
           case SkipType.alwaysSkip:
             _executeSkip(item, seekTo: seekTo, showToast: showToast);

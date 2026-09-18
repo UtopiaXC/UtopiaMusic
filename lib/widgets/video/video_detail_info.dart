@@ -47,11 +47,28 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
     final bvid = widget.data['bvid'] as String? ?? '';
     final cid = widget.data['cid'] as int? ?? 0;
     if (bvid.isNotEmpty) {
-      final isDownloaded = await DownloadManager().isDownloaded(bvid, cid);
-      if (mounted) {
-        setState(() {
-          _isDownloaded = isDownloaded;
-        });
+      final pages = widget.data['pages'];
+      if (pages is List && pages.length > 1) {
+        bool allDownloaded = true;
+        for (final p in pages) {
+          final pCid = p['cid'] as int? ?? 0;
+          if (!await DownloadManager().isDownloaded(bvid, pCid)) {
+            allDownloaded = false;
+            break;
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _isDownloaded = allDownloaded;
+          });
+        }
+      } else {
+        final isDownloaded = await DownloadManager().isDownloaded(bvid, cid);
+        if (mounted) {
+          setState(() {
+            _isDownloaded = isDownloaded;
+          });
+        }
       }
     }
   }
@@ -69,6 +86,12 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
   }
 
   Future<void> _handleDownload() async {
+    final pages = widget.data['pages'];
+    if (pages is List && pages.length > 1) {
+      await _showMultiPartDownloadSheet(context, pages, widget.data);
+      return;
+    }
+
     if (_isDownloaded) {
       ScaffoldMessenger.of(
         context,
@@ -109,6 +132,7 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
       );
 
       await DownloadManager().startDownload(song);
+      _checkDownloadStatus();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -119,6 +143,190 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
         );
       }
     }
+  }
+
+  Future<void> _showMultiPartDownloadSheet(
+    BuildContext context,
+    List<dynamic> pages,
+    Map<String, dynamic> data,
+  ) async {
+    final bvid = data['bvid'] ?? '';
+    final title = data['title'] ?? '';
+    final artist = data['owner']?['name'] ?? '';
+    final coverUrl = data['pic'] ?? '';
+
+    final Set<int> downloadedCids = {};
+    for (final p in pages) {
+      final cid = p['cid'] as int? ?? 0;
+      if (await DownloadManager().isDownloaded(bvid, cid)) {
+        downloadedCids.add(cid);
+      }
+    }
+
+    if (!mounted) return;
+
+    final Set<int> selectedCids = {};
+    for (final p in pages) {
+      final cid = p['cid'] as int? ?? 0;
+      if (!downloadedCids.contains(cid)) {
+        selectedCids.add(cid);
+      }
+    }
+    if (selectedCids.isEmpty) {
+      selectedCids.addAll(pages.map((p) => p['cid'] as int? ?? 0));
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final allSelected = selectedCids.length == pages.length;
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.75,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.download),
+                        const SizedBox(width: 8),
+                        Text(
+                          '下载分P (${selectedCids.length}/${pages.length})',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            setSheetState(() {
+                              if (allSelected) {
+                                selectedCids.clear();
+                              } else {
+                                selectedCids.clear();
+                                selectedCids.addAll(pages.map((p) => p['cid'] as int? ?? 0));
+                              }
+                            });
+                          },
+                          child: Text(allSelected ? '取消全选' : '全选'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: pages.length,
+                      itemBuilder: (context, index) {
+                        final page = pages[index];
+                        final pageCid = page['cid'] as int? ?? 0;
+                        final pageNum = page['page'] ?? (index + 1);
+                        final partTitle = page['part'] ?? '';
+                        final isDownloaded = downloadedCids.contains(pageCid);
+                        final isSelected = selectedCids.contains(pageCid);
+
+                        return CheckboxListTile(
+                          value: isSelected,
+                          onChanged: (val) {
+                            setSheetState(() {
+                              if (val == true) {
+                                selectedCids.add(pageCid);
+                              } else {
+                                selectedCids.remove(pageCid);
+                              }
+                            });
+                          },
+                          title: Text(
+                            'P$pageNum $partTitle',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDownloaded
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                          ),
+                          subtitle: isDownloaded
+                              ? Text(
+                                  S.of(context).common_downloaded,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                )
+                              : null,
+                          controlAffinity: ListTileControlAffinity.leading,
+                        );
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: ElevatedButton(
+                        onPressed: selectedCids.isEmpty
+                            ? null
+                            : () async {
+                                Navigator.pop(sheetContext);
+                                int queuedCount = 0;
+                                for (final page in pages) {
+                                  final pageCid = page['cid'] as int? ?? 0;
+                                  if (selectedCids.contains(pageCid)) {
+                                    final pageNum = page['page'] ?? 1;
+                                    final partTitle = page['part'] ?? '';
+                                    final song = Song(
+                                      title: '$title - ${pageNum}P $partTitle',
+                                      artist: artist,
+                                      coverUrl: coverUrl,
+                                      lyrics: '',
+                                      colorValue: 0,
+                                      bvid: bvid,
+                                      cid: pageCid,
+                                    );
+                                    await DownloadManager().startDownload(song);
+                                    queuedCount++;
+                                  }
+                                }
+                                _checkDownloadStatus();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '已添加 $queuedCount 个分P到下载队列',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                        child: Text(
+                          selectedCids.isEmpty
+                              ? '请选择要下载的分P'
+                              : '下载选中 (${selectedCids.length})',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override

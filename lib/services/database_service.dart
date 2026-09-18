@@ -859,6 +859,39 @@ class DatabaseService {
     await db.update('downloads', values, where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> updateDownloadPath(String bvid, int cid, String newPath) async {
+    Log.v(_tag, "updateDownloadPath, bvid: $bvid, cid: $cid, newPath: $newPath");
+    final db = await database;
+    final id = '${bvid}_${cid}';
+    await db.update('downloads', {'save_path': newPath}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateDownloadResolvedCid(
+    String bvid,
+    int oldCid,
+    int newCid,
+    String newSavePath,
+  ) async {
+    Log.v(_tag, "updateDownloadResolvedCid, bvid: $bvid, oldCid: $oldCid, newCid: $newCid");
+    final db = await database;
+    final oldId = '${bvid}_$oldCid';
+    final newId = '${bvid}_$newCid';
+
+    // Delete any stale record with newId to prevent primary key collision
+    await db.delete('downloads', where: 'id = ?', whereArgs: [newId]);
+
+    await db.update(
+      'downloads',
+      {
+        'id': newId,
+        'cid': newCid,
+        'save_path': newSavePath,
+      },
+      where: 'id = ?',
+      whereArgs: [oldId],
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getAllDownloads() async {
     Log.v(_tag, "getAllDownloads");
     final db = await database;
@@ -883,14 +916,24 @@ class DatabaseService {
   Future<bool> isDownloaded(String bvid, int cid) async {
     Log.v(_tag, "isDownloaded, bvid: $bvid, cid: $cid");
     final db = await database;
-    final id = '${bvid}_${cid}';
-    final List<Map<String, dynamic>> res = await db.query(
-      'downloads',
-      columns: ['status'],
-      where: 'id = ? AND status = 3',
-      whereArgs: [id],
-    );
-    return res.isNotEmpty;
+    if (cid > 0) {
+      final id = '${bvid}_$cid';
+      final List<Map<String, dynamic>> res = await db.query(
+        'downloads',
+        columns: ['status'],
+        where: 'id = ? AND status = 3',
+        whereArgs: [id],
+      );
+      return res.isNotEmpty;
+    } else {
+      final List<Map<String, dynamic>> res = await db.query(
+        'downloads',
+        columns: ['status'],
+        where: 'bvid = ? AND status = 3',
+        whereArgs: [bvid],
+      );
+      return res.isNotEmpty;
+    }
   }
 
   Future<List<String>> getDownloadedIds(List<String> ids) async {

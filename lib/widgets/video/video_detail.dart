@@ -15,6 +15,7 @@ import 'package:utopia_music/widgets/video/favorite_sheet.dart';
 import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
+import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
 import 'package:utopia_music/utils/log.dart';
 
@@ -353,6 +354,46 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     }
   }
 
+  Future<void> _handleDownloadAllCollection() async {
+    if (_collectionVideos.isEmpty) return;
+
+    final String title = _isParts ? '下载全部分P' : '下载全部曲目';
+    final String msg = '确定要下载全部 ${_collectionVideos.length} 首${_isParts ? "分P" : "曲目"}吗？';
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(S.of(context).common_cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(S.of(context).common_download),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      int queuedCount = 0;
+      for (final s in _collectionVideos) {
+        await DownloadManager().startDownload(s);
+        queuedCount++;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已添加 $queuedCount 首到下载队列'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleFav() async {
     if (_videoDetail == null) return;
 
@@ -640,10 +681,24 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       children: [
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: ElevatedButton.icon(
-            onPressed: _handleCollectionReplace,
-            icon: const Icon(Icons.playlist_play),
-            label: Text(S.of(context).common_replace_playlist),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _handleCollectionReplace,
+                  icon: const Icon(Icons.playlist_play),
+                  label: Text(S.of(context).common_replace_playlist),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _handleDownloadAllCollection,
+                  icon: const Icon(Icons.download),
+                  label: Text(_isParts ? '下载全部分P' : '全部下载'),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -683,6 +738,32 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                   child: SongListItem(
                     song: song,
                     contextList: _collectionVideos,
+                    menuItems: [
+                      PopupMenuItem(
+                        value: 'download_single',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.download, size: 20),
+                            const SizedBox(width: 12),
+                            Text(S.of(context).common_download),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onMenuSelected: (value) async {
+                      if (value == 'download_single') {
+                        await DownloadManager().startDownload(song);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                S.of(context).weight_video_detail_added_to_download_queue,
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
                     onPlayAction: () {
                       Navigator.pop(context);
                     },

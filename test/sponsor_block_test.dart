@@ -102,5 +102,51 @@ void main() {
       expect(segmentsWithRealCid!.isNotEmpty, true);
       expect(segmentsWithRealCid.first.category, 'sponsor');
     });
+
+    test('Seeking directly into skippable segment triggers skip and backwards seek resets', () {
+      final model = SegmentModel(
+        uuid: 'test-uuid',
+        segmentType: SegmentType.sponsor,
+        segment: (10000, 30000),
+        skipType: SkipType.skipOnce,
+      );
+
+      Duration? seekTarget;
+      String? toastMessage;
+
+      void testTick(Duration pos, List<SegmentModel> segments) {
+        final currentMs = pos.inMilliseconds;
+        for (final item in segments) {
+          if (currentMs < item.segment.$1 - 1000) {
+            item.hasSkipped = false;
+          }
+          if (currentMs >= item.segment.$1 && currentMs < item.segment.$2 - 500) {
+            if (item.skipType == SkipType.alwaysSkip ||
+                (item.skipType == SkipType.skipOnce && !item.hasSkipped)) {
+              item.hasSkipped = true;
+              seekTarget = Duration(milliseconds: item.segment.$2);
+              toastMessage = '已跳过${item.segmentType.shortTitle}片段';
+              return;
+            }
+          }
+        }
+      }
+
+      // 1. Seek directly into middle of segment (20s)
+      testTick(const Duration(seconds: 20), [model]);
+      expect(seekTarget, const Duration(milliseconds: 30000));
+      expect(model.hasSkipped, true);
+      expect(toastMessage, '已跳过赞助片段');
+
+      // 2. Seek backwards to 5s (resets hasSkipped)
+      seekTarget = null;
+      testTick(const Duration(seconds: 5), [model]);
+      expect(model.hasSkipped, false);
+
+      // 3. Re-enter segment at 15s (triggers skip again)
+      testTick(const Duration(seconds: 15), [model]);
+      expect(seekTarget, const Duration(milliseconds: 30000));
+      expect(model.hasSkipped, true);
+    });
   });
 }

@@ -194,20 +194,27 @@ class SearchApi {
     );
   }
 
+  static final Map<String, int> _cidMemoryCache = {};
+
   Future<int> fetchCid(String bvid) async {
     if (bvid.isEmpty) return 0;
+    if (_cidMemoryCache.containsKey(bvid) && _cidMemoryCache[bvid]! > 0) {
+      return _cidMemoryCache[bvid]!;
+    }
     try {
       final detailData = await Request().get(
         Api.urlVideoDetail,
         baseUrl: Api.urlBase,
         params: {'bvid': bvid},
+        suppressErrorDialog: true,
       );
       if (detailData != null && detailData is Map && detailData['code'] == 0) {
-        int cid = detailData['data']['cid'];
+        int cid = detailData['data']?['cid'] ?? 0;
         if (cid != 0) {
+          _cidMemoryCache[bvid] = cid;
           _dbService.updateCid(bvid, cid);
         }
-        return detailData['data']['cid'] ?? 0;
+        return cid;
       }
     } catch (e) {
       Log.w(_tag, 'Error fetching video detail for cid: $e');
