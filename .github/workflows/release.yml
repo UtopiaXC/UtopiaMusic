@@ -10,6 +10,7 @@ permissions:
 
 env:
   FLUTTER_CHANNEL: "stable"
+  FLUTTER_VERSION: "3.38.9"
 
 jobs:
   version:
@@ -62,10 +63,11 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - uses: actions/cache@v4
         with:
           path: |
@@ -111,6 +113,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - uses: actions/cache@v4
         with:
           path: |
@@ -178,6 +181,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Flutter pub get
         run: flutter pub get
       - name: Build iOS unsigned
@@ -236,6 +240,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Decode PFX Certificate
         run: |
           $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_PFX_BASE64 }}")
