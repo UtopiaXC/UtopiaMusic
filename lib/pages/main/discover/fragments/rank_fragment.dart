@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/models/song.dart';
-import 'package:utopia_music/widgets/song_list/song_list_item.dart';
+import 'package:utopia_music/widgets/song_list/song_list.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class RankFragment extends StatefulWidget {
@@ -104,23 +104,14 @@ class _RankFragmentState extends State<RankFragment>
     return RefreshIndicator(
       key: widget.refreshIndicatorKey,
       onRefresh: _handleRefresh,
-      child: Scrollbar(
-        controller: widget.scrollController,
-        thumbVisibility: false,
-        interactive: true,
-        thickness: 6,
-        radius: const Radius.circular(3),
-        child: ListView.builder(
-          controller: widget.scrollController,
-          itemCount: _songs.length,
-          itemBuilder: (context, index) {
-            return SongListItem(
-              song: _songs[index],
-              contextList: _songs,
-              useCardStyle: true,
-            );
-          },
-        ),
+      child: SongList(
+        songs: _songs,
+        scrollController: widget.scrollController,
+        isLoading: _isLoading,
+        hasMore: false,
+        showFooter: false,
+        followGlobalStyle: true,
+        useCardStyle: true,
       ),
     );
   }

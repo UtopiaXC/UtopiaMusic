@@ -2,23 +2,27 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/pages/main/settings/widgets/settings_widgets.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class SecuritySettingsPage extends StatelessWidget {
-  const SecuritySettingsPage({super.key});
+  final bool embedded;
+
+  const SecuritySettingsPage({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
     final securityProvider = Provider.of<SecurityProvider>(context);
     final isWindows = !kIsWeb && Platform.isWindows;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_security)),
+    return SettingsFragmentScaffold(
+      title: S.of(context).pages_settings_tag_security,
+      embedded: embedded,
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_security_lock,
             children: [
               SwitchListTile(
@@ -163,50 +167,6 @@ class SecuritySettingsPage extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _SettingsGroup extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _SettingsGroup({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Column(children: children),
-          ),
-        ],
-      ),
     );
   }
 }

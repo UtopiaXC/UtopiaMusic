@@ -6,15 +6,16 @@
 <br>
 **界面设计效果见底部[UI/UX Demo](#uiux-demo)**  
 <br>
-本项目适用平台：iOS，Android，macOS，Windows，Linux。目前，我将会把主要精力放在移动端样式适配上，希望使用桌面端的可以尝试[Biu](https://github.com/wood3n/biu)
-，完成度真的很高。  
+本项目适用平台：iOS，Android，macOS，Windows，Linux。  
+
+
 <br>
 警告：本项目大量使用Gemini等生成式AI。  
 开发工具：IDEA + Antigravity。  
 
 ## 下载
 请在下载后的24小时内删除  
-[最新测试版](https://github.com/UtopiaXC/UtopiaMusic/releases)
+[最新正式版](https://github.com/UtopiaXC/UtopiaMusic/releases)
 
 ## 演示视频
 

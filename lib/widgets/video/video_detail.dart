@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:utopia_music/widgets/user/space_sheet.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 import 'package:utopia_music/widgets/video/video_detail_info.dart';
 import 'package:utopia_music/widgets/video/favorite_sheet.dart';
 import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
@@ -534,8 +535,9 @@ class _VideoDetailPageState extends State<VideoDetailPage>
         }
         return false;
       },
-      child: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
+      child: LiquidGlassSheetSurface(
+        fallbackColor: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         child: Column(
           children: [
             Padding(
@@ -655,6 +657,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                       return SongListItem(
                         song: _relatedVideos[index],
                         contextList: _relatedVideos,
+                        followGlobalStyle: false,
+                        useCardStyle: false,
                         onPlayAction: () {
                           Navigator.pop(context);
                         },
@@ -736,6 +740,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                   child: SongListItem(
                     song: song,
                     contextList: _collectionVideos,
+                    followGlobalStyle: false,
+                    useCardStyle: false,
                     menuItems: [
                       PopupMenuItem(
                         value: 'download_single',

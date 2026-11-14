@@ -1,7 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import 'intl/messages_all.dart';
 
 // **************************************************************************
@@ -1290,7 +1289,8 @@ class S {
   get pages_settings_tag_player_control_quick_playlist_replace_description {
     return Intl.message(
       'Execute preset replacement action directly without showing the options dialog',
-      name: 'pages_settings_tag_player_control_quick_playlist_replace_description',
+      name:
+          'pages_settings_tag_player_control_quick_playlist_replace_description',
       desc: '',
       args: [],
     );
@@ -4101,6 +4101,256 @@ class S {
     return Intl.message(
       'The requested resource has stopped playing due to network issues, copyright problems, or the video being unplayable.\n\nAutomatically skip and clean up invalid resources thereafter?',
       name: 'dialog_source_invalid_description',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Experimental`
+  String get pages_settings_appearance_experimental {
+    return Intl.message(
+      'Experimental',
+      name: 'pages_settings_appearance_experimental',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Liquid Glass`
+  String get pages_settings_appearance_liquid_glass {
+    return Intl.message(
+      'Liquid Glass',
+      name: 'pages_settings_appearance_liquid_glass',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Frosted glass surfaces and floating navigation`
+  String get pages_settings_appearance_liquid_glass_desc {
+    return Intl.message(
+      'Frosted glass surfaces and floating navigation',
+      name: 'pages_settings_appearance_liquid_glass_desc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Dynamic Color`
+  String get pages_settings_appearance_monet_color {
+    return Intl.message(
+      'Dynamic Color',
+      name: 'pages_settings_appearance_monet_color',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Adapt theme palette to system wallpaper`
+  String get pages_settings_appearance_monet_color_desc {
+    return Intl.message(
+      'Adapt theme palette to system wallpaper',
+      name: 'pages_settings_appearance_monet_color_desc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Disabled while Liquid Glass is active`
+  String get pages_settings_appearance_monet_disabled_by_glass {
+    return Intl.message(
+      'Disabled while Liquid Glass is active',
+      name: 'pages_settings_appearance_monet_disabled_by_glass',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Using system wallpaper palette`
+  String get pages_settings_appearance_monet_active {
+    return Intl.message(
+      'Using system wallpaper palette',
+      name: 'pages_settings_appearance_monet_active',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `My Music`
+  String get desktop_sidebar_my_music {
+    return Intl.message(
+      'My Music',
+      name: 'desktop_sidebar_my_music',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Downloads`
+  String get desktop_sidebar_downloads {
+    return Intl.message(
+      'Downloads',
+      name: 'desktop_sidebar_downloads',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Playlists`
+  String get desktop_sidebar_playlists {
+    return Intl.message(
+      'Playlists',
+      name: 'desktop_sidebar_playlists',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Back`
+  String get desktop_top_back {
+    return Intl.message('Back', name: 'desktop_top_back', desc: '', args: []);
+  }
+
+  /// `Lyrics`
+  String get desktop_player_lyrics {
+    return Intl.message(
+      'Lyrics',
+      name: 'desktop_player_lyrics',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Speed`
+  String get desktop_player_speed {
+    return Intl.message(
+      'Speed',
+      name: 'desktop_player_speed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Track List Style`
+  String get pages_settings_appearance_track_list_style {
+    return Intl.message(
+      'Track List Style',
+      name: 'pages_settings_appearance_track_list_style',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Card Grid`
+  String get pages_settings_appearance_track_list_style_grid {
+    return Intl.message(
+      'Card Grid',
+      name: 'pages_settings_appearance_track_list_style_grid',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Card List`
+  String get pages_settings_appearance_track_list_style_card {
+    return Intl.message(
+      'Card List',
+      name: 'pages_settings_appearance_track_list_style_card',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Seamless List`
+  String get pages_settings_appearance_track_list_style_seamless {
+    return Intl.message(
+      'Seamless List',
+      name: 'pages_settings_appearance_track_list_style_seamless',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Followed Live Rooms`
+  String get live_followed_section {
+    return Intl.message(
+      'Followed Live Rooms',
+      name: 'live_followed_section',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Recommended Live Rooms`
+  String get live_recommend_section {
+    return Intl.message(
+      'Recommended Live Rooms',
+      name: 'live_recommend_section',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No followed streamers are live`
+  String get live_followed_empty {
+    return Intl.message(
+      'No followed streamers are live',
+      name: 'live_followed_empty',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `LIVE`
+  String get live_badge_live {
+    return Intl.message('LIVE', name: 'live_badge_live', desc: '', args: []);
+  }
+
+  /// `Followed`
+  String get live_badge_followed {
+    return Intl.message(
+      'Followed',
+      name: 'live_badge_followed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enter Live Room`
+  String get live_enter_room {
+    return Intl.message(
+      'Enter Live Room',
+      name: 'live_enter_room',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Search live rooms`
+  String get live_search_hint {
+    return Intl.message(
+      'Search live rooms',
+      name: 'live_search_hint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Stop Live`
+  String get live_stop_listening {
+    return Intl.message(
+      'Stop Live',
+      name: 'live_stop_listening',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Failed to load live audio stream`
+  String get live_stream_load_failed {
+    return Intl.message(
+      'Failed to load live audio stream',
+      name: 'live_stream_load_failed',
       desc: '',
       args: [],
     );

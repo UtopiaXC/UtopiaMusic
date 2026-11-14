@@ -46,7 +46,7 @@ class _SearchPageState extends State<SearchPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this, initialIndex: 1);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
     _searchController.addListener(_onSearchChanged);
     _loadHistory().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -417,7 +417,10 @@ class _SearchPageState extends State<SearchPage>
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            SearchLiveFragment(keyword: _currentKeyword),
+                            SearchLiveFragment(
+                              keyword: _currentKeyword,
+                              searchTimestamp: _searchTimestamp,
+                            ),
                             SearchVideoFragment(
                               onSongSelected: _handleSongSelected,
                               keyword: _currentKeyword,

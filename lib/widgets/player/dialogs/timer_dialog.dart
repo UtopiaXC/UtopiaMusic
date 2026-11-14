@@ -82,6 +82,10 @@ class _TimerDialogState extends State<TimerDialog>
   @override
   Widget build(BuildContext context) {
     Log.v(_tag, "build");
+    final bool isLiveMode = Provider.of<PlayerProvider>(
+      context,
+      listen: false,
+    ).isLiveMode;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -91,12 +95,15 @@ class _TimerDialogState extends State<TimerDialog>
             children: [
               const SizedBox(height: 16),
               CheckboxListTile(
-                value: _stopAfterCurrent,
-                onChanged: (value) {
-                  setState(() {
-                    _stopAfterCurrent = value ?? false;
-                  });
-                },
+                enabled: !isLiveMode,
+                value: isLiveMode ? false : _stopAfterCurrent,
+                onChanged: isLiveMode
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _stopAfterCurrent = value ?? false;
+                        });
+                      },
                 title: Text(
                   S.of(context).weight_player_timer_stop_at_end_message,
                 ),

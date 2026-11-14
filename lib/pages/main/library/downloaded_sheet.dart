@@ -7,13 +7,16 @@ import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/utils/quality_utils.dart';
 import 'package:utopia_music/widgets/song_list/add_to_playlist_sheet.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 import 'package:utopia_music/widgets/video/video_detail.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/widgets/player/dialogs/play_options_sheet.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class DownloadedSheet extends StatefulWidget {
-  const DownloadedSheet({super.key});
+  final bool asPage;
+
+  const DownloadedSheet({super.key, this.asPage = false});
 
   @override
   State<DownloadedSheet> createState() => _DownloadedSheetState();
@@ -278,10 +281,118 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  List<Widget> _buildHeaderActions(
+    bool hasActiveDownloading,
+    bool hasPausedOrQueued,
+  ) {
+    return [
+      if (_allDownloads.isNotEmpty)
+        TextButton(
+          onPressed: _handleDeleteAll,
+          child: Text(S.of(context).pages_library_download_delete_all),
+        ),
+      if (hasActiveDownloading)
+        TextButton(
+          onPressed: _handlePauseAll,
+          child: Text(S.of(context).play_control_pause),
+        )
+      else if (hasPausedOrQueued)
+        TextButton(
+          onPressed: _handleResumeAll,
+          child: Text(S.of(context).play_control_resume),
+        ),
+    ];
+  }
+
+  Widget _buildBodyContent({
+    required List<Map<String, dynamic>> downloading,
+    required List<Map<String, dynamic>> failed,
+    required List<Map<String, dynamic>> queuedOrPaused,
+    required List<Map<String, dynamic>> completed,
+  }) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_allDownloads.isEmpty) {
+      return Center(child: Text(S.of(context).pages_library_download_empty));
+    }
+    return ListView(
+      children: [
+        if (downloading.isNotEmpty)
+          _buildSectionHeader(
+            icon: Icons.downloading,
+            iconColor: Theme.of(context).colorScheme.primary,
+            title: S.of(context).pages_library_download_status_downloading,
+            count: downloading.length,
+            isExpanded: _downloadingExpanded,
+            onToggle: () =>
+                setState(() => _downloadingExpanded = !_downloadingExpanded),
+            actionButton: TextButton.icon(
+              onPressed: _handlePauseAll,
+              icon: const Icon(Icons.pause, size: 16),
+              label: Text(S.of(context).play_control_pause),
+            ),
+          ),
+        if (downloading.isNotEmpty && _downloadingExpanded)
+          ...downloading.map((item) => _buildItemTile(item)),
+        if (failed.isNotEmpty)
+          _buildSectionHeader(
+            icon: Icons.error_outline,
+            iconColor: Theme.of(context).colorScheme.error,
+            title: S.of(context).pages_library_download_status_failed,
+            count: failed.length,
+            isExpanded: _failedExpanded,
+            onToggle: () => setState(() => _failedExpanded = !_failedExpanded),
+            actionButton: TextButton.icon(
+              onPressed: _retryAllFailed,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: Text(S.of(context).common_retry),
+            ),
+          ),
+        if (failed.isNotEmpty && _failedExpanded)
+          ...failed.map((item) => _buildItemTile(item)),
+        if (queuedOrPaused.isNotEmpty)
+          _buildSectionHeader(
+            icon: Icons.schedule,
+            iconColor: Colors.orange,
+            title: S.of(context).pages_library_download_status_queued,
+            count: queuedOrPaused.length,
+            isExpanded: _queuedExpanded,
+            onToggle: () => setState(() => _queuedExpanded = !_queuedExpanded),
+            actionButton: TextButton.icon(
+              onPressed: _handleResumeAll,
+              icon: const Icon(Icons.play_arrow, size: 16),
+              label: Text(S.of(context).play_control_resume),
+            ),
+          ),
+        if (queuedOrPaused.isNotEmpty && _queuedExpanded)
+          ...queuedOrPaused.map((item) => _buildItemTile(item)),
+        if (completed.isNotEmpty)
+          _buildSectionHeader(
+            icon: Icons.check_circle_outline,
+            iconColor: Colors.green,
+            title: S.of(context).pages_library_download_status_completed,
+            count: completed.length,
+            isExpanded: _completedExpanded,
+            onToggle: () =>
+                setState(() => _completedExpanded = !_completedExpanded),
+            actionButton: TextButton.icon(
+              onPressed: () => _playCompleted(0),
+              icon: const Icon(Icons.play_circle_fill, size: 16),
+              label: Text(S.of(context).common_play_all),
+            ),
+          ),
+        if (completed.isNotEmpty && _completedExpanded)
+          ...List.generate(
+            completed.length,
+            (idx) => _buildItemTile(completed[idx], completedIndex: idx),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double maxHeight = MediaQuery.of(context).size.height * 0.85;
-
     final downloading = _downloadingList;
     final failed = _failedList;
     final queuedOrPaused = _queuedOrPausedList;
@@ -289,140 +400,65 @@ class _DownloadedSheetState extends State<DownloadedSheet> {
 
     final bool hasActiveDownloading = downloading.isNotEmpty;
     final bool hasPausedOrQueued = queuedOrPaused.isNotEmpty;
+    final actions = _buildHeaderActions(
+      hasActiveDownloading,
+      hasPausedOrQueued,
+    );
+    final body = _buildBodyContent(
+      downloading: downloading,
+      failed: failed,
+      queuedOrPaused: queuedOrPaused,
+      completed: completed,
+    );
 
-    return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.keyboard_arrow_down),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  S.of(context).pages_library_download_manager,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+    if (widget.asPage) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(S.of(context).pages_library_download_manager),
+          actions: actions,
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: body,
+          ),
+        ),
+      );
+    }
+
+    final double maxHeight = MediaQuery.of(context).size.height * 0.85;
+    return LiquidGlassSheetSurface(
+      fallbackColor: Theme.of(context).scaffoldBackgroundColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                ),
-                const Spacer(),
-                if (_allDownloads.isNotEmpty)
-                  TextButton(
-                    onPressed: _handleDeleteAll,
-                    child: Text(
-                      S.of(context).pages_library_download_delete_all,
+                  const SizedBox(width: 8),
+                  Text(
+                    S.of(context).pages_library_download_manager,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                if (hasActiveDownloading)
-                  TextButton(
-                    onPressed: _handlePauseAll,
-                    child: Text(S.of(context).play_control_pause),
-                  )
-                else if (hasPausedOrQueued)
-                  TextButton(
-                    onPressed: _handleResumeAll,
-                    child: Text(S.of(context).play_control_resume),
-                  ),
-              ],
+                  const Spacer(),
+                  ...actions,
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _allDownloads.isEmpty
-                    ? Center(
-                        child: Text(S.of(context).pages_library_download_empty),
-                      )
-                    : ListView(
-                        children: [
-                          // 1. 下载中 (Downloading)
-                          if (downloading.isNotEmpty)
-                            _buildSectionHeader(
-                              icon: Icons.downloading,
-                              iconColor: Theme.of(context).colorScheme.primary,
-                              title: S.of(context).pages_library_download_status_downloading,
-                              count: downloading.length,
-                              isExpanded: _downloadingExpanded,
-                              onToggle: () => setState(() => _downloadingExpanded = !_downloadingExpanded),
-                              actionButton: TextButton.icon(
-                                onPressed: _handlePauseAll,
-                                icon: const Icon(Icons.pause, size: 16),
-                                label: Text(S.of(context).play_control_pause),
-                              ),
-                            ),
-                          if (downloading.isNotEmpty && _downloadingExpanded)
-                            ...downloading.map((item) => _buildItemTile(item)),
-
-                          // 2. 下载失败 (Failed)
-                          if (failed.isNotEmpty)
-                            _buildSectionHeader(
-                              icon: Icons.error_outline,
-                              iconColor: Theme.of(context).colorScheme.error,
-                              title: S.of(context).pages_library_download_status_failed,
-                              count: failed.length,
-                              isExpanded: _failedExpanded,
-                              onToggle: () => setState(() => _failedExpanded = !_failedExpanded),
-                              actionButton: TextButton.icon(
-                                onPressed: _retryAllFailed,
-                                icon: const Icon(Icons.refresh, size: 16),
-                                label: Text(S.of(context).common_retry),
-                              ),
-                            ),
-                          if (failed.isNotEmpty && _failedExpanded)
-                            ...failed.map((item) => _buildItemTile(item)),
-
-                          // 3. 队列中 / 暂停中 (Queued / Paused)
-                          if (queuedOrPaused.isNotEmpty)
-                            _buildSectionHeader(
-                              icon: Icons.schedule,
-                              iconColor: Colors.orange,
-                              title: S.of(context).pages_library_download_status_queued,
-                              count: queuedOrPaused.length,
-                              isExpanded: _queuedExpanded,
-                              onToggle: () => setState(() => _queuedExpanded = !_queuedExpanded),
-                              actionButton: TextButton.icon(
-                                onPressed: _handleResumeAll,
-                                icon: const Icon(Icons.play_arrow, size: 16),
-                                label: Text(S.of(context).play_control_resume),
-                              ),
-                            ),
-                          if (queuedOrPaused.isNotEmpty && _queuedExpanded)
-                            ...queuedOrPaused.map((item) => _buildItemTile(item)),
-
-                          // 4. 已下载 (Downloaded)
-                          if (completed.isNotEmpty)
-                            _buildSectionHeader(
-                              icon: Icons.check_circle_outline,
-                              iconColor: Colors.green,
-                              title: S.of(context).pages_library_download_status_completed,
-                              count: completed.length,
-                              isExpanded: _completedExpanded,
-                              onToggle: () => setState(() => _completedExpanded = !_completedExpanded),
-                              actionButton: TextButton.icon(
-                                onPressed: () => _playCompleted(0),
-                                icon: const Icon(Icons.play_circle_fill, size: 16),
-                                label: Text(S.of(context).common_play_all),
-                              ),
-                            ),
-                          if (completed.isNotEmpty && _completedExpanded)
-                            ...List.generate(
-                              completed.length,
-                              (idx) => _buildItemTile(completed[idx], completedIndex: idx),
-                            ),
-                        ],
-                      ),
-          ),
-        ],
+            const Divider(height: 1),
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }

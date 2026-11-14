@@ -10,9 +10,11 @@ import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
+import 'package:utopia_music/theme/app_theme.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/utils/log.dart';
 import 'package:utopia_music/widgets/common/cached_cover_image.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 
 const String _tag = "PLAYLIST_CATEGORY_WIDGET";
 
@@ -437,24 +439,35 @@ class _PlaylistCategoryWidgetState extends State<PlaylistCategoryWidget>
   Widget build(BuildContext context) {
     super.build(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final bool isLiquidGlass = AppTheme.isLiquidGlass(context);
+
+    final body = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildHeader(colorScheme),
+        _buildCoverFlow(),
+        SizeTransition(
+          sizeFactor: _animation,
+          axisAlignment: -1.0,
+          child: _buildExpandedList(),
+        ),
+      ],
+    );
+
+    if (isLiquidGlass) {
+      return LiquidGlassSurface(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        borderRadius: BorderRadius.circular(20),
+        child: body,
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildHeader(colorScheme),
-          _buildCoverFlow(),
-          SizeTransition(
-            sizeFactor: _animation,
-            axisAlignment: -1.0,
-            child: _buildExpandedList(),
-          ),
-        ],
-      ),
+      child: body,
     );
   }
 

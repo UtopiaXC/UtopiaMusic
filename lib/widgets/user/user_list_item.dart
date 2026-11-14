@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 
 class UserListItem extends StatelessWidget {
   final String avatarUrl;
@@ -84,30 +85,25 @@ class UserListItem extends StatelessWidget {
 
     if (useCardStyle) {
       final primaryColor = Theme.of(context).colorScheme.primary;
-      return Container(
+      return LiquidGlassSurface(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: primaryColor.withValues(alpha: 0.15),
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+        borderRadius: BorderRadius.circular(14),
+        fallbackColor: Theme.of(context).colorScheme.surface,
+        fallbackBorder: Border.all(
+          color: primaryColor.withValues(alpha: 0.15),
+          width: 0.5,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: onTap,
-            child: Padding(padding: const EdgeInsets.all(12), child: content),
+        fallbackShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
+        ],
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(padding: const EdgeInsets.all(12), child: content),
         ),
       );
     }

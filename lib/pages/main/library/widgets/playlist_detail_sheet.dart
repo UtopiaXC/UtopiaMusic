@@ -5,6 +5,7 @@ import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
@@ -260,11 +261,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          ),
+        return LiquidGlassSheetSurface(
+          fallbackColor: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           child: Column(
             children: [
               Stack(
@@ -448,6 +447,8 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                 ),
                                 song: song,
                                 contextList: _displaySongs,
+                                followGlobalStyle: false,
+                                useCardStyle: false,
                                 onPlayAction: () {
                                   Navigator.pop(context);
                                 },

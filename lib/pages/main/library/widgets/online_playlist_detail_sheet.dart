@@ -6,7 +6,8 @@ import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
-import 'package:utopia_music/widgets/song_list/song_list_item.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
+import 'package:utopia_music/widgets/song_list/song_list.dart';
 import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/connection/video/library.dart';
 import 'package:utopia_music/connection/user/user.dart';
@@ -334,11 +335,9 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          ),
+        return LiquidGlassSheetSurface(
+          fallbackColor: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           child: Column(
             children: [
               Stack(
@@ -535,51 +534,38 @@ class _OnlinePlaylistDetailSheetState extends State<OnlinePlaylistDetailSheet> {
                           ),
                         ),
                       )
-                    : Scrollbar(
-                        controller: scrollController,
-                        thumbVisibility: false,
-                        interactive: true,
-                        thickness: 6,
-                        radius: const Radius.circular(3),
-                        child: ListView.builder(
-                          controller: scrollController,
-                          itemCount: _displaySongs.length,
-                          itemBuilder: (context, index) {
-                            final song = _displaySongs[index];
-                            return SongListItem(
-                              song: song,
-                              contextList: _displaySongs,
-                              onPlayAction: () {
-                                Navigator.pop(context);
-                              },
-                              menuItems: [
-                                if (!_isActuallyCollection)
-                                  PopupMenuItem(
-                                    value: 'remove',
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.delete_outline,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          S
-                                              .of(context)
-                                              .pages_library_online_remove_video,
-                                        ),
-                                      ],
-                                    ),
+                    : SongList(
+                        songs: _displaySongs,
+                        scrollController: scrollController,
+                        hasMore: false,
+                        showFooter: false,
+                        followGlobalStyle: false,
+                        useCardStyle: false,
+                        onPlayAction: () {
+                          Navigator.pop(context);
+                        },
+                        itemMenuItems: [
+                          if (!_isActuallyCollection)
+                            PopupMenuItem(
+                              value: 'remove',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.delete_outline, size: 20),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    S
+                                        .of(context)
+                                        .pages_library_online_remove_video,
                                   ),
-                              ],
-                              onMenuSelected: (value) {
-                                if (value == 'remove') {
-                                  _handleRemoveSong(song);
-                                }
-                              },
-                            );
-                          },
-                        ),
+                                ],
+                              ),
+                            ),
+                        ],
+                        onItemMenuSelected: (value, song) {
+                          if (value == 'remove') {
+                            _handleRemoveSong(song);
+                          }
+                        },
                       ),
               ),
             ],

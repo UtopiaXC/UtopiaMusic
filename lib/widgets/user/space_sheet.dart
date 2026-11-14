@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/connection/live/live_api.dart';
 import 'package:utopia_music/connection/user/user.dart';
+import 'package:utopia_music/models/live_room.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/pages/main/library/widgets/online_playlist_detail_sheet.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 import 'package:utopia_music/widgets/song_list/song_list_item.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:utopia_music/utils/scheme_launch.dart';
@@ -14,8 +17,9 @@ import 'package:utopia_music/generated/l10n.dart';
 
 class SpaceSheet extends StatefulWidget {
   final int mid;
+  final LiveApi? liveApi;
 
-  const SpaceSheet({super.key, required this.mid});
+  const SpaceSheet({super.key, required this.mid, this.liveApi});
 
   @override
   State<SpaceSheet> createState() => _SpaceSheetState();
@@ -25,9 +29,11 @@ class _SpaceSheetState extends State<SpaceSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final UserApi _userApi = UserApi();
+  late final LiveApi _liveApi;
   final HtmlUnescape _unescape = HtmlUnescape();
 
   Map<String, dynamic>? _userInfo;
+  LiveRoom? _liveRoom;
   bool _isLoadingInfo = true;
   bool _isFollowing = false;
   bool _isSelf = false;
@@ -57,13 +63,27 @@ class _SpaceSheetState extends State<SpaceSheet>
   @override
   void initState() {
     super.initState();
+    _liveApi = widget.liveApi ?? LiveApi();
     _tabController = TabController(length: 3, vsync: this);
     _checkIfSelf();
     _loadUserInfo();
+    _loadLiveStatus();
     _loadVideos();
     _loadCreatedPlaylists();
     _loadCollectedPlaylists();
     _loadSeasonsSeries();
+  }
+
+  Future<void> _loadLiveStatus() async {
+    final room = await _liveApi.getUserLiveRoom(widget.mid);
+    if (!mounted || room == null) return;
+    final card = _userInfo?['card'];
+    setState(() {
+      _liveRoom = room.copyWith(
+        uname: room.uname.isNotEmpty ? room.uname : (card?['name']?.toString() ?? ''),
+        face: room.face.isNotEmpty ? room.face : LiveRoom.normalizeImageUrl(card?['face']?.toString()),
+      );
+    });
   }
 
   void _checkIfSelf() {
@@ -77,9 +97,20 @@ class _SpaceSheetState extends State<SpaceSheet>
     setState(() => _isLoadingInfo = true);
     final data = await _userApi.getUserCard(widget.mid);
     if (mounted && data != null) {
+      final card = data['card'];
       setState(() {
         _userInfo = data;
         _isFollowing = data['following'] ?? false;
+        if (_liveRoom != null && card is Map) {
+          _liveRoom = _liveRoom!.copyWith(
+            uname: _liveRoom!.uname.isNotEmpty
+                ? _liveRoom!.uname
+                : (card['name']?.toString() ?? ''),
+            face: _liveRoom!.face.isNotEmpty
+                ? _liveRoom!.face
+                : LiveRoom.normalizeImageUrl(card['face']?.toString()),
+          );
+        }
         _isLoadingInfo = false;
       });
     } else if (mounted) {
@@ -363,11 +394,9 @@ class _SpaceSheetState extends State<SpaceSheet>
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          ),
+        return LiquidGlassSheetSurface(
+          fallbackColor: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           child: Column(
             children: [
               Padding(
@@ -394,6 +423,8 @@ class _SpaceSheetState extends State<SpaceSheet>
                 ),
               ),
               _buildHeader(context),
+              if (_liveRoom != null && _liveRoom!.isLive)
+                _buildLiveBanner(context),
               TabBar(
                 controller: _tabController,
                 tabs: [
@@ -423,6 +454,95 @@ class _SpaceSheetState extends State<SpaceSheet>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLiveBanner(BuildContext context) {
+    final room = _liveRoom!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final card = _userInfo?['card'];
+    final enrichedRoom = room.copyWith(
+      uname: room.uname.isNotEmpty
+          ? room.uname
+          : (card?['name']?.toString() ?? ''),
+      face: room.face.isNotEmpty
+          ? room.face
+          : LiveRoom.normalizeImageUrl(card?['face']?.toString()),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Material(
+        color: colorScheme.errorContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            final playerProvider = Provider.of<PlayerProvider>(
+              context,
+              listen: false,
+            );
+            Navigator.of(context).pop();
+            playerProvider.playLiveRoom(enrichedRoom);
+            playerProvider.expandPlayer();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.error,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    S.of(context).live_badge_live,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    enrichedRoom.title.isNotEmpty
+                        ? enrichedRoom.title
+                        : S.of(context).live_enter_room,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  S.of(context).live_enter_room,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.error,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: colorScheme.error,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -682,6 +802,8 @@ class _SpaceSheetState extends State<SpaceSheet>
                         return SongListItem(
                           song: song,
                           contextList: _videos,
+                          followGlobalStyle: false,
+                          useCardStyle: false,
                           onPlayAction: () {
                             Navigator.pop(context);
                           },

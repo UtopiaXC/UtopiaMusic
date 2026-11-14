@@ -124,6 +124,8 @@ class _WebLoginPageState extends State<WebLoginPage> {
       await cookieJar.saveFromResponse(Uri.parse(Api.urlBase), allCookies);
       await cookieJar.saveFromResponse(Uri.parse(Api.urlLoginBase), allCookies);
       await cookieJar.saveFromResponse(Uri.parse(Api.urlSiteBase), allCookies);
+      await cookieJar.saveFromResponse(Uri.parse(Api.urlLiveBase), allCookies);
+      await request.ensureBuvidCookies();
 
       Log.i(_tag, 'Cookies saved successfully');
 

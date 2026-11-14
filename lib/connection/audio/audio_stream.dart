@@ -68,6 +68,7 @@ class AudioStreamApi {
     int qn,
     int preferredQuality, {
     required bool isRetry,
+    bool useLegacyFallback = false,
   }) async {
     final params = {
       'bvid': bvid,
@@ -80,9 +81,9 @@ class AudioStreamApi {
 
     try {
       final data = await Request().get(
-        Api.urlPlayUrlWbi,
+        useLegacyFallback ? Api.urlVideoPlay : Api.urlPlayUrlWbi,
         params: params,
-        useWbi: true,
+        useWbi: !useLegacyFallback,
         suppressErrorDialog: true,
       );
 
@@ -175,13 +176,15 @@ class AudioStreamApi {
             'GetAudioStream Error Code: ${data['code']}, Message: ${data['message']}',
           );
           if (!isRetry &&
-              (data['code'] == -403 ||
+              (data['code'] == -352 ||
+                  data['code'] == -403 ||
                   data['code'] == -412 ||
                   data['code'] == -400)) {
             Log.d(
               _tag,
               "WBI signature might be invalid. Refreshing keys and retrying...",
             );
+            await Request().ensureBuvidCookies(forceRefresh: true);
             await WbiUtil.invalidateKeys();
             return await _getAudioStreamInternal(
               bvid,
@@ -189,6 +192,16 @@ class AudioStreamApi {
               qn,
               preferredQuality,
               isRetry: true,
+            );
+          }
+          if (isRetry && !useLegacyFallback) {
+            return await _getAudioStreamInternal(
+              bvid,
+              cid,
+              qn,
+              preferredQuality,
+              isRetry: true,
+              useLegacyFallback: true,
             );
           }
         }

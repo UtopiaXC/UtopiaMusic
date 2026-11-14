@@ -20,11 +20,20 @@ class VideoDetailApi {
         Api.urlVideoDetail,
         baseUrl: Api.urlBase,
         params: {'bvid': bvid},
-        useWbi: true,
       );
 
       if (data != null && data is Map && data['code'] == 0) {
         return data['data'];
+      }
+
+      final wbiData = await Request().get(
+        Api.urlVideoDetailWbi,
+        baseUrl: Api.urlBase,
+        params: {'bvid': bvid},
+        useWbi: true,
+      );
+      if (wbiData != null && wbiData is Map && wbiData['code'] == 0) {
+        return wbiData['data'];
       }
     } catch (e) {
       Log.w(_tag, 'Error fetching video detail: $e');

@@ -3,15 +3,18 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  dynamic_color
   flutter_inappwebview_windows
   just_audio_windows
   local_auth_windows
   media_kit_libs_windows_audio
+  restart_app
   share_plus
   url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  jni
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

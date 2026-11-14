@@ -4,12 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:utopia_music/connection/live/live_api.dart';
 import 'package:utopia_music/main.dart';
+import 'package:utopia_music/models/live_room.dart';
 import 'package:utopia_music/models/play_mode.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/services/download_manager.dart';
+import 'package:utopia_music/services/live/live_audio_service.dart';
 import 'package:provider/provider.dart';
 import 'package:utopia_music/providers/sponsor_block_provider.dart';
 import 'package:utopia_music/utils/log.dart';
@@ -22,17 +25,25 @@ const String _tag = "PLAYER_PROVIDER";
 class PlayerProvider extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DatabaseService _databaseService = DatabaseService();
+  final LiveApi _liveApi;
+  final LiveAudioServiceProtocol _liveAudioService;
   late final HistoryManager _historyManager;
   late final RecommendationManager _recommendationManager;
   late final SleepTimerManager _sleepTimerManager;
   List<Song> _playlist = [];
   Song? _currentSong;
+  LiveRoom? _currentLiveRoom;
   bool _isPlaying = false;
   bool _isBuffering = false;
+  bool _isLiveLoading = false;
+  bool _hasLiveError = false;
   int _currentPlayingQuality = 30280;
   bool _isPlayerExpanded = false;
   bool _showFullPlayer = false;
+  bool _showFullPlayerLyrics = false;
   Timer? _expandTimer;
+  StreamSubscription<PlayerState>? _liveStateSubscription;
+  int _playbackSessionToken = 0;
   PlayMode _playMode = PlayMode.sequence;
   bool _saveProgress = true;
   bool _autoPlay = false;
@@ -40,17 +51,30 @@ class PlayerProvider extends ChangeNotifier {
   bool _isTogglingPlayMode = false;
   int? _expectedIndexAfterToggle;
 
+  VoidCallback? _onPlaybackStartCallback;
   Song? get currentSong => _currentSong;
+
+  LiveRoom? get currentLiveRoom => _currentLiveRoom;
+
+  bool _disposed = false;
+
+  bool get isLiveMode => _currentLiveRoom != null;
+
+  bool get isLiveLoading => _isLiveLoading;
+
+  bool get hasLiveError => _hasLiveError;
 
   List<Song> get playlist => _playlist;
 
   bool get isPlaying => _isPlaying;
 
-  bool get isBuffering => _isBuffering;
+  bool get isBuffering => _isBuffering || _isLiveLoading;
 
   bool get isPlayerExpanded => _isPlayerExpanded;
 
   bool get showFullPlayer => _showFullPlayer;
+
+  bool get showFullPlayerLyrics => _showFullPlayerLyrics;
 
   PlayMode get playMode => _playMode;
 
@@ -86,7 +110,11 @@ class PlayerProvider extends ChangeNotifier {
 
   static String get autoSkipInvalidKey => _autoSkipInvalidKey;
 
-  PlayerProvider() {
+  PlayerProvider({
+    LiveApi? liveApi,
+    LiveAudioServiceProtocol? liveAudioService,
+  }) : _liveApi = liveApi ?? LiveApi(),
+       _liveAudioService = liveAudioService ?? LiveAudioService() {
     _initManagers();
     _init();
     _bindPlayerEvents();
@@ -134,6 +162,7 @@ class PlayerProvider extends ChangeNotifier {
   void _bindPlayerEvents() {
     Log.v(_tag, "_bindPlayerEvents");
     player.playerStateStream.listen((state) {
+      if (_currentLiveRoom != null) return;
       final playing = state.playing;
       final processingState = state.processingState;
 
@@ -157,7 +186,34 @@ class PlayerProvider extends ChangeNotifier {
         _sleepTimerManager.onPlaybackCompleted();
       }
     });
+    _liveStateSubscription = _liveAudioService.playerStateStream.listen((state) {
+      if (_currentLiveRoom == null) return;
+      final playing = state.playing;
+      final processingState = state.processingState;
+      final bool newIsPlaying =
+          playing && processingState != ProcessingState.completed;
+      final bool newIsBuffering =
+          processingState == ProcessingState.buffering ||
+          processingState == ProcessingState.loading;
+      bool changed = false;
+      if (_isPlaying != newIsPlaying) {
+        _isPlaying = newIsPlaying;
+        changed = true;
+      }
+      if (_isBuffering != newIsBuffering) {
+        _isBuffering = newIsBuffering;
+        changed = true;
+      }
+      if (!newIsBuffering && newIsPlaying && _isLiveLoading) {
+        _isLiveLoading = false;
+        changed = true;
+      }
+      if (changed) {
+        notifyListeners();
+      }
+    });
     _audioPlayerService.currentIndexStream.listen((index) {
+      if (_currentLiveRoom != null) return;
       Log.i(_tag, "_bindPlayerEvents, index: $index, isTogglingPlayMode: $_isTogglingPlayMode, expectedIndex: $_expectedIndexAfterToggle");
       
       // During play mode toggle, only accept the expected correct index
@@ -184,6 +240,7 @@ class PlayerProvider extends ChangeNotifier {
       }
     });
     _audioPlayerService.playbackErrorStream.listen((error) {
+      if (_currentLiveRoom != null) return;
       Log.e(_tag, "Playback Error", error);
       _handlePlaybackError(error);
     });
@@ -263,13 +320,83 @@ class PlayerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _exitLiveModeSession() {
+    _playbackSessionToken++;
+    _currentLiveRoom = null;
+    _isLiveLoading = false;
+    _hasLiveError = false;
+    _audioPlayerService.setLiveMode(false);
+  }
+
+  /// Starts a live room inside the unified player UI while delegating stream
+  /// fetching and playback to the dedicated live pipeline and aborting stale loads.
+  Future<void> playLiveRoom(LiveRoom room) async {
+    Log.v(_tag, "playLiveRoom, roomId: ${room.roomId}");
+    final token = ++_playbackSessionToken;
+    _audioPlayerService.setLiveMode(true);
+    _historyManager.updateState(
+      isPlaying: false,
+      currentSong: null,
+      saveProgress: false,
+    );
+    _currentLiveRoom = room;
+    _currentSong = room.toDisplaySong();
+    _isLiveLoading = true;
+    _hasLiveError = false;
+    _isPlaying = false;
+    _showFullPlayer = true;
+    notifyListeners();
+
+    await _liveAudioService.stop();
+    if (token != _playbackSessionToken) return;
+    _audioPlayerService.setLiveMode(true);
+
+    final freshRoom = await _liveApi.getRoomInfo(room.roomId, fallback: room);
+    if (token != _playbackSessionToken) return;
+    if (freshRoom != null) {
+      _currentLiveRoom = freshRoom;
+      _currentSong = freshRoom.toDisplaySong();
+      notifyListeners();
+    }
+
+    final urls = await _liveApi.getLiveStreamUrls(room.roomId);
+    if (token != _playbackSessionToken) return;
+    if (urls.isEmpty) {
+      _isLiveLoading = false;
+      _hasLiveError = true;
+      notifyListeners();
+      return;
+    }
+
+    final started = await _liveAudioService.playStreamUrls(
+      urls,
+      room: _currentLiveRoom ?? room,
+      isCancelled: () => token != _playbackSessionToken,
+    );
+    if (token != _playbackSessionToken) return;
+
+    _isLiveLoading = false;
+    _hasLiveError = !started;
+    _isPlaying = started;
+    notifyListeners();
+  }
+
+  Future<void> retryLiveRoom() async {
+    final room = _currentLiveRoom;
+    if (room == null) return;
+    await playLiveRoom(room);
+  }
+
   Future<void> playSong(Song song) async {
     Log.v(_tag, "playSong, song: ${song.title}");
+    final wasLive = _currentLiveRoom != null;
+    _exitLiveModeSession();
     int index = _playlist.indexWhere(
       (s) => s.bvid == song.bvid && s.cid == song.cid,
     );
     if (index != -1) {
-      if (_currentSong?.bvid == song.bvid &&
+      if (!wasLive &&
+          _currentSong?.bvid == song.bvid &&
           _currentSong?.cid == song.cid &&
           _isPlaying) {
         return;
@@ -285,6 +412,8 @@ class PlayerProvider extends ChangeNotifier {
       _tag,
       "setPlaylistAndPlay, songs: ${songs.length}, initialSong: ${initialSong.title}",
     );
+    _exitLiveModeSession();
+    final token = _playbackSessionToken;
 
     try {
       // Save the recommendation state at the start for consistency
@@ -315,7 +444,9 @@ class PlayerProvider extends ChangeNotifier {
       }
 
       await _databaseService.replacePlaylist(newSongs);
+      if (token != _playbackSessionToken) return;
       await _reloadPlaylistFromDb();
+      if (token != _playbackSessionToken) return;
 
       int index = _playlist.indexWhere(
         (s) =>
@@ -326,6 +457,7 @@ class PlayerProvider extends ChangeNotifier {
 
       // Start playback immediately
       await _startPlay(index);
+      if (token != _playbackSessionToken) return;
 
       // Trigger recommendation load immediately (non-blocking)
       // Use the saved state to ensure consistency
@@ -436,8 +568,15 @@ class PlayerProvider extends ChangeNotifier {
     await closePlayer();
   }
 
+  void setOnPlaybackStartCallback(VoidCallback? callback) {
+    _onPlaybackStartCallback = callback;
+  }
+
   Future<void> _startPlay(int index) async {
     Log.v(_tag, "_startPlay, index: $index");
+    _exitLiveModeSession();
+    final token = _playbackSessionToken;
+    _onPlaybackStartCallback?.call();
     _currentSong = _playlist[index];
     _historyManager.updateState(
       isPlaying: true,
@@ -445,6 +584,7 @@ class PlayerProvider extends ChangeNotifier {
       saveProgress: _saveProgress,
     );
     await _audioPlayerService.playWithQueue(_playlist, index, autoPlay: true);
+    if (token != _playbackSessionToken) return;
     await _setPlayerLoopMode();
   }
 
@@ -490,7 +630,7 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> togglePlayMode() async {
     Log.v(_tag, "togglePlayMode");
-    if (recommendationAutoPlay) {
+    if (isLiveMode || recommendationAutoPlay) {
       return;
     }
 
@@ -620,9 +760,9 @@ class PlayerProvider extends ChangeNotifier {
     await prefs.setBool(_saveProgressKey, value);
     notifyListeners();
     _historyManager.updateState(
-      isPlaying: _isPlaying,
-      currentSong: _currentSong,
-      saveProgress: _saveProgress,
+      isPlaying: isLiveMode ? false : _isPlaying,
+      currentSong: isLiveMode ? null : _currentSong,
+      saveProgress: isLiveMode ? false : _saveProgress,
     );
   }
 
@@ -643,7 +783,7 @@ class PlayerProvider extends ChangeNotifier {
 
     await _recommendationManager.setEnabled(value);
     notifyListeners();
-    if (value && _currentSong != null) {
+    if (value && !isLiveMode && _currentSong != null) {
       _recommendationManager.checkAndLoad(
         currentSong: _currentSong!,
         currentPlaylist: _playlist,
@@ -690,17 +830,60 @@ class PlayerProvider extends ChangeNotifier {
 
   void cancelStopTimer() => _sleepTimerManager.cancel();
 
-  Future<void> playNext() async => await _audioPlayerService.playNext();
+  Future<void> playNext() async {
+    if (isLiveMode) return;
+    await _audioPlayerService.playNext();
+  }
 
-  Future<void> playPrevious() async => await _audioPlayerService.playPrevious();
+  Future<void> playPrevious() async {
+    if (isLiveMode) return;
+    await _audioPlayerService.playPrevious();
+  }
 
-  Future<void> togglePlayPause() async =>
-      await _audioPlayerService.togglePlayPause();
+  Future<void> togglePlayPause() async {
+    if (isLiveMode) {
+      if (_isPlaying) {
+        await _liveAudioService.pause();
+        _isPlaying = false;
+        notifyListeners();
+      } else if (_hasLiveError || player.processingState == ProcessingState.idle) {
+        await retryLiveRoom();
+      } else {
+        await _liveAudioService.resume();
+        _isPlaying = true;
+        notifyListeners();
+      }
+      return;
+    }
+    if (!_isPlaying) {
+      _onPlaybackStartCallback?.call();
+    }
+    await _audioPlayerService.togglePlayPause();
+  }
 
-  Future<void> seek(Duration position) async => await player.seek(position);
+  Future<void> seek(Duration position) async {
+    if (isLiveMode) return;
+    await player.seek(position);
+  }
 
   Future<void> closePlayer() async {
     Log.v(_tag, "closePlayer");
+    final bool wasLive = isLiveMode;
+    _exitLiveModeSession();
+    _showFullPlayerLyrics = false;
+
+    if (wasLive) {
+      await _liveAudioService.stop();
+      _currentSong = null;
+      _isPlaying = false;
+      _isBuffering = false;
+      _showFullPlayer = false;
+      _isPlayerExpanded = false;
+      _sleepTimerManager.cancel();
+      notifyListeners();
+      return;
+    }
+
     await _audioPlayerService.resetState();
     _currentSong = null;
     _playlist = [];
@@ -721,15 +904,27 @@ class PlayerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void expandPlayer() {
-    Log.v(_tag, "expandPlayer");
+  void expandPlayer({bool showLyrics = false}) {
+    Log.v(_tag, "expandPlayer(showLyrics=$showLyrics)");
     _expandTimer?.cancel();
     _showFullPlayer = true;
+    _showFullPlayerLyrics = showLyrics;
     notifyListeners();
     _expandTimer = Timer(const Duration(milliseconds: 50), () {
       _isPlayerExpanded = true;
       notifyListeners();
     });
+  }
+
+  void expandToLyrics() {
+    Log.v(_tag, "expandToLyrics");
+    expandPlayer(showLyrics: true);
+  }
+
+  void setFullPlayerLyrics(bool show) {
+    if (_showFullPlayerLyrics == show) return;
+    _showFullPlayerLyrics = show;
+    notifyListeners();
   }
 
   void collapsePlayer() {
@@ -740,6 +935,7 @@ class PlayerProvider extends ChangeNotifier {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!_isPlayerExpanded) {
         _showFullPlayer = false;
+        _showFullPlayerLyrics = false;
         notifyListeners();
       }
     });
@@ -777,6 +973,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   bool get hasNext {
+    if (isLiveMode) return false;
     if (_playlist.isEmpty || _currentSong == null) return false;
     if (_playMode == PlayMode.loop || _playMode == PlayMode.shuffle) {
       return true;
@@ -786,6 +983,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   bool get hasPrevious {
+    if (isLiveMode) return false;
     if (_playlist.isEmpty || _currentSong == null) return false;
     if (_playMode == PlayMode.loop || _playMode == PlayMode.shuffle) {
       return true;
@@ -795,8 +993,17 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
+  }
+
+  @override
   void dispose() {
     Log.v(_tag, "dispose");
+    _disposed = true;
+    _liveStateSubscription?.cancel();
+    _liveAudioService.dispose();
     _historyManager.dispose();
     _sleepTimerManager.dispose();
     _expandTimer?.cancel();

@@ -7,6 +7,7 @@ import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/services/database_service.dart';
+import 'package:utopia_music/theme/app_theme.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/generated/l10n.dart';
@@ -126,6 +127,9 @@ class _MusicPageState extends State<MusicPage> {
         Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     return Scaffold(
+      backgroundColor: AppTheme.isLiquidGlass(context)
+          ? Colors.transparent
+          : null,
       appBar: AppBar(
         centerTitle: true,
         title: Text(S.of(context).pages_tag_library),

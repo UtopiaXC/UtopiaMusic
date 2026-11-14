@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/connection/user/user.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 
 class FavoriteSheet extends StatefulWidget {
   final int aid;
@@ -104,13 +105,12 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
   Widget build(BuildContext context) {
     final double maxHeight = MediaQuery.of(context).size.height * 0.75;
 
-    return Container(
+    return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Column(
+      child: LiquidGlassSheetSurface(
+        fallbackColor: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
@@ -190,6 +190,7 @@ class _FavoriteSheetState extends State<FavoriteSheet> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

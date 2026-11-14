@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/connection/live/live_danmaku_service.dart';
 import 'package:utopia_music/connection/subtitles/danmaku_api.dart';
 import 'package:utopia_music/connection/subtitles/subtitle_api.dart';
 import 'package:utopia_music/connection/video/video_detail.dart';
 import 'package:utopia_music/models/danmaku.dart' as model;
 import 'package:utopia_music/models/subtitle.dart';
 import 'package:utopia_music/models/song.dart';
+import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/widgets/player/components/player_controls.dart';
@@ -79,10 +81,16 @@ class _LyricsCache {
 }
 
 class LyricsPage extends StatefulWidget {
+  final Song? song;
   final VoidCallback onBack;
   final VoidCallback onPlaylist;
 
-  const LyricsPage({super.key, required this.onBack, required this.onPlaylist});
+  const LyricsPage({
+    super.key,
+    this.song,
+    required this.onBack,
+    required this.onPlaylist,
+  });
 
   @override
   State<LyricsPage> createState() => _LyricsPageState();
@@ -96,6 +104,7 @@ class _LyricsPageState extends State<LyricsPage>
   final SubtitleApi _subtitleApi = SubtitleApi();
   final DanmakuApi _danmakuApi = DanmakuApi();
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
+  final LiveDanmakuService _liveDanmakuService = LiveDanmakuService();
 
   // Subtitle state
   SubtitleResult? _subtitleResult;
@@ -105,8 +114,12 @@ class _LyricsPageState extends State<LyricsPage>
 
   // Danmaku state
   List<model.DanmakuItem> _rawDanmakus = [];
+  final List<LiveDanmakuMessage> _liveMessages = [];
   bool _isLoadingDanmaku = false;
   bool _hasDanmaku = false;
+  bool _isLiveMode = false;
+  bool _wasViewVisible = false;
+  int? _connectedLiveRoomId;
   DanmakuController? _danmakuController;
   int _lastProcessedIndex = 0;
   double _lastPositionSeconds = 0.0;
@@ -122,6 +135,8 @@ class _LyricsPageState extends State<LyricsPage>
   Timer? _danmakuTimer;
   StreamSubscription? _danmakuSyncSubscription;
   StreamSubscription? _playerStateSubscription;
+  StreamSubscription<LiveDanmakuMessage>? _liveDanmakuSubscription;
+  SettingsProvider? _settingsProvider;
 
   @override
   bool get wantKeepAlive => true;
@@ -138,27 +153,57 @@ class _LyricsPageState extends State<LyricsPage>
       context,
       listen: false,
     );
+    _settingsProvider = settingsProvider;
     _danmakuSyncSubscription = playerProvider.player.positionStream.listen((
       position,
     ) {
-      if (mounted && playerProvider.isPlaying && !_isDragging) {
+      if (mounted &&
+          !_isLiveMode &&
+          playerProvider.isPlaying &&
+          !_isDragging) {
         _syncDanmaku(position);
       }
     });
 
-    playerProvider.player.playerStateStream.listen((state) {
-      if (mounted && _danmakuController != null) {
+    _playerStateSubscription = playerProvider.player.playerStateStream.listen((
+      state,
+    ) {
+      if (!mounted) return;
+      if (_danmakuController != null) {
         if (state.playing) {
           _danmakuController!.resume();
         } else {
           _danmakuController!.pause();
         }
       }
+      _updateWakelock();
     });
 
-    _playerStateSubscription = playerProvider.player.playerStateStream.listen(
-      (_) => _updateWakelock(),
-    );
+    _liveDanmakuSubscription = _liveDanmakuService.danmakuStream.listen((msg) {
+      if (!mounted || !_isLiveMode) return;
+      setState(() {
+        _liveMessages.add(msg);
+        if (_liveMessages.length > 200) {
+          _liveMessages.removeAt(0);
+        }
+        _hasDanmaku = true;
+        _isLoadingDanmaku = false;
+      });
+      if (playerProvider.isPlaying && _danmakuController != null) {
+        _danmakuController!.addDanmaku(
+          DanmakuContentItem(
+            msg.content,
+            color: Color(msg.color | 0xFF000000),
+            type: msg.mode == 4
+                ? DanmakuItemType.bottom
+                : (msg.mode == 5
+                      ? DanmakuItemType.top
+                      : DanmakuItemType.scroll),
+          ),
+        );
+      }
+    });
+
     settingsProvider.addListener(_updateWakelock);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateWakelock());
@@ -177,10 +222,9 @@ class _LyricsPageState extends State<LyricsPage>
     _danmakuTimer?.cancel();
     _danmakuSyncSubscription?.cancel();
     _playerStateSubscription?.cancel();
-    Provider.of<SettingsProvider>(
-      context,
-      listen: false,
-    ).removeListener(_updateWakelock);
+    _liveDanmakuSubscription?.cancel();
+    _liveDanmakuService.dispose();
+    _settingsProvider?.removeListener(_updateWakelock);
     WakelockPlus.disable();
     super.dispose();
   }
@@ -192,6 +236,7 @@ class _LyricsPageState extends State<LyricsPage>
       context,
       listen: false,
     );
+    _settingsProvider = settingsProvider;
     final enable = playerProvider.isPlaying && settingsProvider.lyricsAlwaysOn;
     WakelockPlus.toggle(enable: enable);
   }
@@ -204,10 +249,11 @@ class _LyricsPageState extends State<LyricsPage>
     setState(() {
       _subtitleResult = null;
       _subtitles = [];
-      _isLoadingSubtitles = true;
+      _isLoadingSubtitles = !_isLiveMode;
       _hasSubtitles = false;
 
       _rawDanmakus = [];
+      _liveMessages.clear();
       _isLoadingDanmaku = true;
       _hasDanmaku = false;
 
@@ -218,10 +264,142 @@ class _LyricsPageState extends State<LyricsPage>
     _danmakuController?.clear();
   }
 
+  Future<void> _startLiveDanmaku(int roomId) async {
+    if (_connectedLiveRoomId == roomId) return;
+    _connectedLiveRoomId = roomId;
+    if (mounted) {
+      setState(() {
+        _isLoadingSubtitles = false;
+        _hasSubtitles = false;
+        _isLoadingDanmaku = true;
+        _hasDanmaku = true;
+        _liveMessages.clear();
+      });
+    }
+
+    int uid = 0;
+    try {
+      uid = Provider.of<AuthProvider>(context, listen: false).userInfo?.mid ?? 0;
+    } catch (_) {}
+
+    unawaited(_liveDanmakuService.connect(roomId, uid: uid));
+    final history = await _liveDanmakuService.fetchRecentMessages(roomId);
+    if (!mounted || !_isLiveMode || _connectedLiveRoomId != roomId) return;
+    setState(() {
+      _isLoadingDanmaku = false;
+      _liveMessages.clear();
+      if (history.length > 200) {
+        _liveMessages.addAll(history.sublist(history.length - 200));
+      } else {
+        _liveMessages.addAll(history);
+      }
+      _hasDanmaku = true;
+    });
+
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    if (playerProvider.isPlaying && _danmakuController != null) {
+      for (final msg in history.take(12)) {
+        _danmakuController!.addDanmaku(
+          DanmakuContentItem(
+            msg.content,
+            color: Color(msg.color | 0xFF000000),
+            type: msg.mode == 4
+                ? DanmakuItemType.bottom
+                : (msg.mode == 5
+                      ? DanmakuItemType.top
+                      : DanmakuItemType.scroll),
+          ),
+        );
+      }
+    }
+  }
+
+  void _stopLiveDanmaku() {
+    _connectedLiveRoomId = null;
+    _liveDanmakuService.disconnect();
+  }
+
+  void _showLiveDanmakuList(BuildContext context) {
+    if (_liveMessages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(S.of(context).weight_player_no_danmuku)),
+      );
+      return;
+    }
+
+    final snapshot = _liveMessages.reversed.toList(growable: false);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.list),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${S.of(context).common_danmuku} (${snapshot.length})',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: snapshot.length,
+                    itemBuilder: (context, index) {
+                      final msg = snapshot[index];
+                      return ListTile(
+                        dense: true,
+                        title: Text(msg.content),
+                        subtitle: msg.sender.isNotEmpty
+                            ? Text(
+                                msg.sender,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _loadData() {
     Log.v(_tag, "_loadData");
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    final song = playerProvider.currentSong;
+    final song = playerProvider.currentSong ?? widget.song;
     if (song == null) return;
 
     final currentId = '${song.bvid}_${song.cid}';
@@ -749,15 +927,45 @@ class _LyricsPageState extends State<LyricsPage>
     super.build(context);
     final playerProvider = Provider.of<PlayerProvider>(context);
     final settingsProvider = Provider.of<SettingsProvider>(context);
-    final song = playerProvider.currentSong;
-    if (song == null) return const SizedBox();
+    final song = playerProvider.currentSong ?? widget.song;
+    if (song == null) {
+      if (_connectedLiveRoomId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _stopLiveDanmaku();
+        });
+      }
+      return const SizedBox();
+    }
 
+    final bool isLiveMode =
+        playerProvider.isLiveMode && playerProvider.currentLiveRoom != null;
+    final int? liveRoomId = playerProvider.currentLiveRoom?.roomId;
+    final bool isViewVisible = widget.song != null;
     final newSongId = '${song.bvid}_${song.cid}';
-    if (newSongId != _currentSongId) {
+    final bool songChanged =
+        newSongId != _currentSongId || isLiveMode != _isLiveMode;
+    final bool visibilityChanged = isViewVisible != _wasViewVisible;
+
+    if (songChanged || visibilityChanged) {
       _currentSongId = newSongId;
+      _isLiveMode = isLiveMode;
+      _wasViewVisible = isViewVisible;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+        if (!mounted) return;
+        if (songChanged) {
+          _stopLiveDanmaku();
           _resetState();
+        }
+        if (isLiveMode && liveRoomId != null) {
+          if (songChanged && _tabController.index == 0) {
+            _tabController.animateTo(1);
+          }
+          if (isViewVisible) {
+            _startLiveDanmaku(liveRoomId);
+          } else {
+            _stopLiveDanmaku();
+          }
+        } else if (songChanged) {
           _loadData();
         }
       });
@@ -857,21 +1065,27 @@ class _LyricsPageState extends State<LyricsPage>
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
                               child: IconButton(
-                                key: ValueKey(isOnSubtitleTab),
-                                onPressed: () {
-                                  if (isOnSubtitleTab) {
-                                    _showSubtitleSwitcher(context);
-                                  } else {
-                                    _showDanmakuList(context);
-                                  }
-                                },
+                                key: ValueKey('${isOnSubtitleTab}_$isLiveMode'),
+                                onPressed: (isLiveMode && isOnSubtitleTab)
+                                    ? null
+                                    : () {
+                                        if (isOnSubtitleTab) {
+                                          _showSubtitleSwitcher(context);
+                                        } else if (isLiveMode) {
+                                          _showLiveDanmakuList(context);
+                                        } else {
+                                          _showDanmakuList(context);
+                                        }
+                                      },
                                 icon: Icon(
                                   isOnSubtitleTab
                                       ? Icons.translate
                                       : Icons.list,
-                                  color: useLightText
-                                      ? Colors.white.withValues(alpha: 0.9)
-                                      : Colors.black54,
+                                  color: (isLiveMode && isOnSubtitleTab)
+                                      ? themeData.disabledColor
+                                      : (useLightText
+                                            ? Colors.white.withValues(alpha: 0.9)
+                                            : Colors.black54),
                                 ),
                                 tooltip: isOnSubtitleTab ? '切换字幕' : '弹幕列表',
                               ),
@@ -921,8 +1135,16 @@ class _LyricsPageState extends State<LyricsPage>
                               ),
                             ),
                             _DanmakuPage(
-                              isLoading: _isLoadingDanmaku,
-                              hasDanmaku: _hasDanmaku,
+                              isLoading: _isLoadingDanmaku && !isLiveMode,
+                              hasDanmaku: isLiveMode || _hasDanmaku,
+                              isLiveMode: isLiveMode,
+                              isWaitingLiveMessages:
+                                  isLiveMode && _liveMessages.isEmpty,
+                              screenKey: ValueKey(
+                                isLiveMode
+                                    ? 'live_${liveRoomId ?? 0}'
+                                    : 'danmaku_${_rawDanmakus.length}',
+                              ),
                               rawDanmakus: _rawDanmakus,
                               onControllerCreated: (controller) =>
                                   _danmakuController = controller,
@@ -936,44 +1158,76 @@ class _LyricsPageState extends State<LyricsPage>
 
                       Padding(
                         padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                        child: StreamBuilder<Duration?>(
-                          stream: playerProvider.player.durationStream,
-                          builder: (context, durSnapshot) {
-                            final duration = durSnapshot.data ?? Duration.zero;
-                            return StreamBuilder<Duration>(
-                              stream: playerProvider.player.positionStream,
-                              builder: (context, posSnapshot) {
-                                final position =
-                                    posSnapshot.data ?? Duration.zero;
-                                return PlayerControls(
-                                  isPlaying: playerProvider.isPlaying,
-                                  isLoading:
-                                      playerProvider.player.processingState ==
-                                      ProcessingState.buffering,
-                                  duration: duration,
-                                  position: _isDragging
-                                      ? Duration(seconds: _dragValue.toInt())
-                                      : position,
-                                  loopMode: playerProvider.playMode,
-                                  onSeek: _onSeekEnd,
-                                  onSeekStart: _onSeekStart,
-                                  onSeekUpdate: _onSeekUpdate,
-                                  onPlayPause: playerProvider.togglePlayPause,
-                                  onNext: playerProvider.hasNext
-                                      ? () => playerProvider.playNext()
-                                      : null,
-                                  onPrevious: playerProvider.hasPrevious
-                                      ? () => playerProvider.playPrevious()
-                                      : null,
-                                  onShuffle: playerProvider.togglePlayMode,
-                                  onPlaylist: widget.onPlaylist,
-                                  onLyrics: widget.onBack,
-                                  hideExtraControls: false,
-                                  showLyricsButtonOnly: true,
-                                );
-                              },
-                            );
-                          },
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 680),
+                            child: RepaintBoundary(
+                              child: StreamBuilder<Duration?>(
+                                stream: playerProvider.player.durationStream,
+                                builder: (context, durSnapshot) {
+                                  final duration =
+                                      durSnapshot.data ?? Duration.zero;
+                                  return StreamBuilder<Duration>(
+                                    stream:
+                                        playerProvider.player.positionStream,
+                                    builder: (context, posSnapshot) {
+                                      final position =
+                                          posSnapshot.data ?? Duration.zero;
+                                      return PlayerControls(
+                                        isPlaying: playerProvider.isPlaying,
+                                        isLoading:
+                                            !playerProvider.hasLiveError &&
+                                            (playerProvider.isLiveLoading ||
+                                                playerProvider
+                                                        .player
+                                                        .processingState ==
+                                                    ProcessingState.buffering ||
+                                                playerProvider
+                                                        .player
+                                                        .processingState ==
+                                                    ProcessingState.loading),
+                                        isLiveMode: isLiveMode,
+                                        duration: duration,
+                                        position: _isDragging
+                                            ? Duration(
+                                                seconds: _dragValue.toInt(),
+                                              )
+                                            : position,
+                                        loopMode: playerProvider.playMode,
+                                        onSeek: isLiveMode ? null : _onSeekEnd,
+                                        onSeekStart:
+                                            isLiveMode ? null : _onSeekStart,
+                                        onSeekUpdate:
+                                            isLiveMode ? null : _onSeekUpdate,
+                                        onPlayPause:
+                                            playerProvider.togglePlayPause,
+                                        onNext:
+                                            (!isLiveMode &&
+                                                playerProvider.hasNext)
+                                            ? () => playerProvider.playNext()
+                                            : null,
+                                        onPrevious:
+                                            (!isLiveMode &&
+                                                playerProvider.hasPrevious)
+                                            ? () =>
+                                                  playerProvider.playPrevious()
+                                            : null,
+                                        onShuffle: isLiveMode
+                                            ? null
+                                            : playerProvider.togglePlayMode,
+                                        onPlaylist: isLiveMode
+                                            ? null
+                                            : widget.onPlaylist,
+                                        onLyrics: widget.onBack,
+                                        hideExtraControls: false,
+                                        showLyricsButtonOnly: true,
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -1089,6 +1343,9 @@ class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
 class _DanmakuPage extends StatefulWidget {
   final bool isLoading;
   final bool hasDanmaku;
+  final bool isLiveMode;
+  final bool isWaitingLiveMessages;
+  final Key screenKey;
   final List<model.DanmakuItem> rawDanmakus;
   final Function(DanmakuController) onControllerCreated;
   final Color textColor;
@@ -1096,6 +1353,9 @@ class _DanmakuPage extends StatefulWidget {
   const _DanmakuPage({
     required this.isLoading,
     required this.hasDanmaku,
+    required this.isLiveMode,
+    required this.isWaitingLiveMessages,
+    required this.screenKey,
     required this.rawDanmakus,
     required this.onControllerCreated,
     required this.textColor,
@@ -1132,18 +1392,32 @@ class _DanmakuPageState extends State<_DanmakuPage>
     }
     return Padding(
       padding: const EdgeInsets.only(top: 72.0),
-      child: DanmakuScreen(
-        key: ValueKey('danmaku_${widget.rawDanmakus.length}'),
-        createdController: widget.onControllerCreated,
-        option: DanmakuOption(
-          opacity: 0.9,
-          fontSize: 18,
-          area: 0.9,
-          duration: 8,
-          hideScroll: false,
-          hideTop: false,
-          hideBottom: false,
-        ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (widget.isLiveMode && widget.isWaitingLiveMessages)
+            Center(
+              child: Text(
+                S.of(context).weight_player_no_danmuku,
+                style: TextStyle(
+                  color: widget.textColor.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+          DanmakuScreen(
+            key: widget.screenKey,
+            createdController: widget.onControllerCreated,
+            option: DanmakuOption(
+              opacity: 0.9,
+              fontSize: 18,
+              area: 0.9,
+              duration: 8,
+              hideScroll: false,
+              hideTop: false,
+              hideBottom: false,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:utopia_music/layouts/mobile_layout.dart';
 import 'package:utopia_music/pages/main/discover/discover_page.dart';
 import 'package:utopia_music/pages/main/library/library_page.dart';
 import 'package:utopia_music/pages/main/settings/settings_page.dart';
+import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/utils/update_util.dart';
@@ -21,7 +22,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
-  late final List<Widget> _pages;
+  DiscoverCategoryType? _activeDiscoverCategory;
   final GlobalKey<DiscoverPageState> _discoverPageKey =
       GlobalKey<DiscoverPageState>();
   bool _isInit = false;
@@ -30,15 +31,6 @@ class _MainLayoutState extends State<MainLayout> {
   void initState() {
     Log.v(_tag, "initState");
     super.initState();
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    _pages = [
-      DiscoverPage(
-        key: _discoverPageKey,
-        onSongSelected: playerProvider.playSong,
-      ),
-      const MusicPage(),
-      const SettingsPage(),
-    ];
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       Log.v(_tag, "PostFrameCallback");
       final settingsProvider = Provider.of<SettingsProvider>(
@@ -60,9 +52,11 @@ class _MainLayoutState extends State<MainLayout> {
     super.didChangeDependencies();
     if (!_isInit) {
       final settingsProvider = Provider.of<SettingsProvider>(context);
+      final discoverProvider = Provider.of<DiscoverProvider>(context);
+      _activeDiscoverCategory ??= discoverProvider.firstVisibleCategory;
       if (settingsProvider.isSettingsLoaded) {
         int startIndex = settingsProvider.startPageIndex;
-        if (startIndex < 0 || startIndex >= _pages.length) {
+        if (startIndex < 0 || startIndex >= 3) {
           startIndex = 0;
         }
         _selectedIndex = startIndex;
@@ -89,6 +83,40 @@ class _MainLayoutState extends State<MainLayout> {
     });
   }
 
+  void _onSelectDiscoverCategory(DiscoverCategoryType category) {
+    setState(() {
+      _selectedIndex = 0;
+      _activeDiscoverCategory = category;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _discoverPageKey.currentState?.selectCategory(category);
+    });
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    if (playerProvider.isPlayerExpanded) {
+      playerProvider.collapsePlayer();
+    }
+  }
+
+  List<Widget> _buildPages({required bool showDiscoverHeader}) {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    return [
+      DiscoverPage(
+        key: _discoverPageKey,
+        showHeader: showDiscoverHeader,
+        onSongSelected: playerProvider.playSong,
+        onCategoryChanged: (cat) {
+          if (_activeDiscoverCategory != cat) {
+            setState(() {
+              _activeDiscoverCategory = cat;
+            });
+          }
+        },
+      ),
+      const MusicPage(),
+      const SettingsPage(),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     Log.v(_tag, "build");
@@ -97,13 +125,15 @@ class _MainLayoutState extends State<MainLayout> {
         if (constraints.maxWidth > 600) {
           return DesktopLayout(
             selectedIndex: _selectedIndex,
-            pages: _pages,
+            pages: _buildPages(showDiscoverHeader: false),
             onItemTapped: _onItemTapped,
+            activeDiscoverCategory: _activeDiscoverCategory,
+            onSelectDiscoverCategory: _onSelectDiscoverCategory,
           );
         } else {
           return MobileLayout(
             selectedIndex: _selectedIndex,
-            pages: _pages,
+            pages: _buildPages(showDiscoverHeader: true),
             onItemTapped: _onItemTapped,
           );
         }

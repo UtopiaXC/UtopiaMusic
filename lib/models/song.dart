@@ -7,6 +7,10 @@ class Song {
   final int colorValue;
   final String bvid;
   final int cid;
+  final int? durationSeconds;
+  final int? viewCount;
+  final int? danmakuCount;
+  final bool isFollowed;
 
   const Song({
     required this.title,
@@ -17,6 +21,10 @@ class Song {
     required this.colorValue,
     required this.bvid,
     required this.cid,
+    this.durationSeconds,
+    this.viewCount,
+    this.danmakuCount,
+    this.isFollowed = false,
   }) : originTitle = originTitle ?? title;
 
   Song copyWith({
@@ -28,6 +36,10 @@ class Song {
     int? colorValue,
     String? bvid,
     int? cid,
+    int? durationSeconds,
+    int? viewCount,
+    int? danmakuCount,
+    bool? isFollowed,
   }) {
     return Song(
       title: title ?? this.title,
@@ -38,6 +50,10 @@ class Song {
       colorValue: colorValue ?? this.colorValue,
       bvid: bvid ?? this.bvid,
       cid: cid ?? this.cid,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      viewCount: viewCount ?? this.viewCount,
+      danmakuCount: danmakuCount ?? this.danmakuCount,
+      isFollowed: isFollowed ?? this.isFollowed,
     );
   }
 }

@@ -27,6 +27,7 @@ class Api {
   static const String urlPlayHistoryHeartbeat =
       '/x/click-interface/web/heartbeat';
   static const String urlSearch = '/x/web-interface/search/type';
+  static const String urlSearchWbi = '/x/web-interface/wbi/search/type';
   static const String urlSearchSuggest = '/main/suggest';
   static const String urlVideoDetailWbi = '/x/web-interface/wbi/view';
   static const String urlVideoDetail = '/x/web-interface/view';
@@ -54,6 +55,8 @@ class Api {
   static const String urlTvLoginQRCodePoll = '/x/passport-tv-login/qrcode/poll';
   static const String tvAppKey = '4409e2ce8ffd12b8';
   static const String tvAppSecret = '59b43e04ad6965f34319062b478f83dd';
+  static const String androidAppKey = 'dfca71928277209b';
+  static const String androidAppSecret = 'b5475a8825547a4fc26c7d518eaaa02e';
   static const String urlExit = '/login/exit/v2';
   static const String urlUserCard = '/x/web-interface/card';
   static const String urlUserStat = '/x/space/upstat';
@@ -69,4 +72,24 @@ class Api {
   static const String urlBatchDel = '/x/v3/fav/resource/batch-del';
   static const String urlAiSubtitle = '/x/web-interface/view/conclusion/get';
   static const String urlDanmuku = '/video/av';
+  static const String urlFingerSpi = '/x/frontend/finger/spi';
+  static const String urlLiveFollowed = '/xlive/web-ucenter/user/following';
+  static const String urlLiveIndexList =
+      '/xlive/web-interface/v1/index/getList';
+  static const String urlLiveRecommend =
+      '/xlive/web-interface/v1/second/getListByArea';
+  static const String urlAppBase = 'https://app.bilibili.com';
+  static const String urlAppSpace = '/x/v2/space';
+  static const String urlAppSpaceArchive = '/x/v2/space/archive/cursor';
+  static const String urlAppRcmd = '/x/v2/feed/index';
+  static const String urlExClimbWuzhi = '/x/internal/gaia-gateway/ExClimbWuzhi';
+
+  static const String urlLiveRoomInfo = '/room/v1/Room/get_info';
+  static const String urlLiveRoomByMid = '/room/v1/Room/getRoomInfoOld';
+  static const String urlLivePlayInfo =
+      '/xlive/web-room/v2/index/getRoomPlayInfo';
+  static const String urlLivePlayUrl = '/room/v1/Room/playUrl';
+  static const String urlLiveDanmuInfo =
+      '/xlive/web-room/v1/index/getDanmuInfo';
+  static const String urlLiveDanmuHistory = '/xlive/web-room/v1/dM/gethistory';
 }

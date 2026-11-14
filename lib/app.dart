@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:utopia_music/utils/log.dart';
@@ -9,9 +10,9 @@ import 'package:utopia_music/layouts/main_layout.dart';
 import 'package:utopia_music/main.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
+import 'package:utopia_music/theme/app_theme.dart';
 import 'package:utopia_music/utils/font_utils.dart';
 import 'package:utopia_music/pages/main/lock_screen.dart';
-import 'package:utopia_music/services/audio/audio_player_service.dart';
 
 const String _tag = "APP";
 
@@ -72,47 +73,44 @@ class _UtopiaMusicAppState extends State<UtopiaMusicApp>
     Log.v(_tag, "build");
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final securityProvider = Provider.of<SecurityProvider>(context);
+    final bool useAndroidMonet =
+        !kIsWeb && Platform.isAndroid && settingsProvider.isMonetColorActive;
 
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Utopia Music',
-      locale: settingsProvider.locale,
-      supportedLocales: const [Locale('en'), Locale('zh')],
-      localizationsDelegates: [
-        S.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: settingsProvider.seedColor,
-        ),
-        useMaterial3: true,
-        fontFamily: _getMainFontFamily(),
-        fontFamilyFallback: FontUtils.systemFontFamilyFallback,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(),
-          bodyMedium: TextStyle(),
-          titleMedium: TextStyle(),
-        ).apply(fontFamilyFallback: FontUtils.systemFontFamilyFallback),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: settingsProvider.seedColor,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        fontFamily: _getMainFontFamily(),
-        fontFamilyFallback: FontUtils.systemFontFamilyFallback,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(),
-          bodyMedium: TextStyle(),
-          titleMedium: TextStyle(),
-        ).apply(fontFamilyFallback: FontUtils.systemFontFamilyFallback),
-      ),
-      themeMode: settingsProvider.themeMode,
-      home: securityProvider.isLocked ? const LockScreen() : const MainLayout(),
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          title: 'Utopia Music',
+          locale: settingsProvider.locale,
+          supportedLocales: const [Locale('en'), Locale('zh')],
+          localizationsDelegates: [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: AppTheme.buildTheme(
+            brightness: Brightness.light,
+            seedColor: settingsProvider.seedColor,
+            enableLiquidGlass: settingsProvider.enableLiquidGlass,
+            dynamicScheme: useAndroidMonet ? lightDynamic : null,
+            fontFamily: _getMainFontFamily(),
+            fontFamilyFallback: FontUtils.systemFontFamilyFallback,
+          ),
+          darkTheme: AppTheme.buildTheme(
+            brightness: Brightness.dark,
+            seedColor: settingsProvider.seedColor,
+            enableLiquidGlass: settingsProvider.enableLiquidGlass,
+            dynamicScheme: useAndroidMonet ? darkDynamic : null,
+            fontFamily: _getMainFontFamily(),
+            fontFamilyFallback: FontUtils.systemFontFamilyFallback,
+          ),
+          themeMode: settingsProvider.themeMode,
+          home: securityProvider.isLocked
+              ? const LockScreen()
+              : const MainLayout(),
+        );
+      },
     );
   }
 

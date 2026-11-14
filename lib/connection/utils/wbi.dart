@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:utopia_music/connection/utils/api.dart';
 import 'package:utopia_music/connection/utils/request.dart';
 import 'package:utopia_music/utils/log.dart';
@@ -103,6 +104,17 @@ class WbiUtil {
     return _encWbi(params, _imgKey!, _subKey!);
   }
 
+  /// Exposes deterministic WBI encoding for tests without triggering network IO.
+  @visibleForTesting
+  static Map<String, dynamic> encodeWbiForTest(
+    Map<String, dynamic> params,
+    String imgKey,
+    String subKey, {
+    int? timestamp,
+  }) {
+    return _encWbi(params, imgKey, subKey, timestamp: timestamp);
+  }
+
   static Future<void> _ensureKeys({bool force = false}) async {
     if (!force && !_isKeyExpired()) {
       return;
@@ -198,10 +210,11 @@ class WbiUtil {
   static Map<String, dynamic> _encWbi(
     Map<String, dynamic> params,
     String imgKey,
-    String subKey,
-  ) {
+    String subKey, {
+    int? timestamp,
+  }) {
     final mixinKey = _getMixinKey(imgKey + subKey);
-    final currTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final currTime = timestamp ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000);
     final newParams = Map<String, dynamic>.from(params);
     newParams['wts'] = currTime;
     final sortedKeys = newParams.keys.toList()..sort();
@@ -211,7 +224,11 @@ class WbiUtil {
       final filteredValue = value.replaceAll(RegExp(r"[!'()*]"), "");
       filteredParams[k] = filteredValue;
     }
-    final query = Uri(queryParameters: filteredParams).query;
+    final query = sortedKeys
+        .map(
+          (k) => '${Uri.encodeComponent(k)}=${Uri.encodeComponent(filteredParams[k]!)}',
+        )
+        .join('&');
     final wbiSign = md5.convert(utf8.encode(query + mixinKey)).toString();
     newParams['w_rid'] = wbiSign;
     return newParams;

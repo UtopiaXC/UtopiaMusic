@@ -49,6 +49,19 @@ class SegmentModel implements Comparable<SegmentModel> {
 
   @override
   int compareTo(SegmentModel other) => segment.$1.compareTo(other.segment.$1);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SegmentModel &&
+        other.uuid == uuid &&
+        other.segmentType == segmentType &&
+        other.segment == segment &&
+        other.skipType == skipType;
+  }
+
+  @override
+  int get hashCode => Object.hash(uuid, segmentType, segment, skipType);
 }
 
 extension IntRecordExt on (int, int) {

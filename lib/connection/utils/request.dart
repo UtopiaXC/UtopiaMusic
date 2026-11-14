@@ -13,6 +13,7 @@ import 'package:talker_dio_logger/talker_dio_logger_interceptor.dart';
 import 'package:talker_dio_logger/talker_dio_logger_settings.dart';
 import 'package:utopia_music/connection/error/error_code.dart';
 import 'package:utopia_music/connection/utils/api.dart';
+import 'package:utopia_music/connection/utils/bili_id.dart';
 import 'package:utopia_music/connection/utils/constants.dart';
 import 'package:utopia_music/connection/utils/wbi.dart';
 import 'package:utopia_music/main.dart';
@@ -39,8 +40,27 @@ class Request {
 
   factory Request() => _instance;
 
-  Request._internal() {
-    _initWait = _init();
+  /// Creates an isolated [Request] instance with an injected cookie directory
+  /// and HTTP adapter so startup cookie bootstrap can be verified in tests.
+  @visibleForTesting
+  factory Request.createForTest({
+    required Directory cookieDir,
+    HttpClientAdapter? httpClientAdapter,
+  }) => Request._withOverrides(
+    cookieDirOverride: cookieDir,
+    httpClientAdapter: httpClientAdapter,
+  );
+
+  Request._internal() : this._withOverrides();
+
+  Request._withOverrides({
+    Directory? cookieDirOverride,
+    HttpClientAdapter? httpClientAdapter,
+  }) {
+    _initWait = _init(
+      cookieDirOverride: cookieDirOverride,
+      httpClientAdapter: httpClientAdapter,
+    );
   }
 
   Future<PersistCookieJar> get cookieJar async {
@@ -48,8 +68,12 @@ class Request {
     return _cookieJar;
   }
 
-  Future<void> _init() async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
+  Future<void> _init({
+    Directory? cookieDirOverride,
+    HttpClientAdapter? httpClientAdapter,
+  }) async {
+    Directory appDocDir =
+        cookieDirOverride ?? await getApplicationDocumentsDirectory();
     String appDocPath = appDocDir.path;
     _cookieJar = PersistCookieJar(
       storage: FileStorage("$appDocPath/.cookies/"),
@@ -71,6 +95,9 @@ class Request {
     );
 
     _dio = Dio(options);
+    if (httpClientAdapter != null) {
+      _dio.httpClientAdapter = httpClientAdapter;
+    }
     _dio.interceptors.add(CookieManager(_cookieJar));
     _dio.interceptors.add(
       TalkerDioLogger(
@@ -102,16 +129,136 @@ class Request {
     _maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
   }
 
+  static final List<Uri> _cookieTargetUris = [
+    Uri.parse(Api.urlBase),
+    Uri.parse(Api.urlLoginBase),
+    Uri.parse(Api.urlSiteBase),
+    Uri.parse(Api.urlLiveBase),
+    Uri.parse(Api.urlAppBase),
+    Uri.parse('https://search.bilibili.com'),
+  ];
+
+  Completer<void>? _buvidCompleter;
+
+  Cookie _buildBiliCookie(String name, String value) {
+    return Cookie(name, value)
+      ..domain = '.bilibili.com'
+      ..path = '/'
+      ..httpOnly = false;
+  }
+
+  bool _hasCookie(List<Cookie> cookies, String name) {
+    return cookies.any((c) => c.name == name && c.value.isNotEmpty);
+  }
+
+  Future<void> syncCookiesToAllDomains(List<Cookie> cookies) async {
+    await _initWait;
+    await _syncCookiesToAllDomainsInternal(cookies);
+  }
+
+  Future<void> _syncCookiesToAllDomainsInternal(List<Cookie> cookies) async {
+    if (cookies.isEmpty) return;
+    final scoped = cookies
+        .where((c) => c.value.isNotEmpty)
+        .map((c) => _buildBiliCookie(c.name, c.value))
+        .toList();
+    if (scoped.isEmpty) return;
+    for (final uri in _cookieTargetUris) {
+      await _cookieJar.saveFromResponse(uri, scoped);
+    }
+  }
+
+  Future<void> ensureBuvidCookies({bool forceRefresh = false}) async {
+    await _initWait;
+    await _ensureBuvidCookiesInternal(forceRefresh: forceRefresh);
+  }
+
+  Future<void> _ensureBuvidCookiesInternal({bool forceRefresh = false}) async {
+    final pending = _buvidCompleter;
+    if (pending != null) {
+      return pending.future;
+    }
+
+    final completer = Completer<void>();
+    _buvidCompleter = completer;
+    try {
+      final baseCookies = await _cookieJar.loadForRequest(Uri.parse(Api.urlBase));
+      final hasBuvid3 = _hasCookie(baseCookies, 'buvid3');
+      final hasBNut = _hasCookie(baseCookies, 'b_nut');
+      if (!forceRefresh && hasBuvid3 && hasBNut) {
+        final liveCookies = await _cookieJar.loadForRequest(
+          Uri.parse(Api.urlLiveBase),
+        );
+        if (!_hasCookie(liveCookies, 'buvid3') || !_hasCookie(liveCookies, 'b_nut')) {
+          await _syncCookiesToAllDomainsInternal(
+            baseCookies
+                .where(
+                  (c) =>
+                      c.name == 'buvid3' ||
+                      c.name == 'buvid4' ||
+                      c.name == 'b_nut',
+                )
+                .toList(),
+          );
+        }
+        return;
+      }
+
+      String b3 = '';
+      String b4 = '';
+      try {
+        final resp = await _dio.get(_buildUrl(Api.urlBase, Api.urlFingerSpi));
+        final data = resp.data;
+        if (data is Map && data['code'] == 0 && data['data'] is Map) {
+          final spiData = data['data'] as Map;
+          b3 = spiData['b_3']?.toString() ?? '';
+          b4 = spiData['b_4']?.toString() ?? '';
+        }
+      } catch (e) {
+        Log.w(_tag, "Failed to fetch finger/spi: $e");
+      }
+
+      if (b3.isEmpty) {
+        final existingB3 = baseCookies.where((c) => c.name == 'buvid3');
+        b3 = existingB3.isNotEmpty && existingB3.first.value.isNotEmpty
+            ? existingB3.first.value
+            : BiliIdUtils.generateBuvid3();
+      }
+      final bNut = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+      final newCookies = <Cookie>[
+        _buildBiliCookie('buvid3', b3),
+        if (b4.isNotEmpty) _buildBiliCookie('buvid4', b4),
+        _buildBiliCookie('b_nut', bNut),
+      ];
+      await _syncCookiesToAllDomainsInternal(newCookies);
+    } catch (e) {
+      Log.w(_tag, "Failed to ensure buvid cookies: $e");
+    } finally {
+      _buvidCompleter = null;
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    }
+  }
+
   Future<void> _checkCookies() async {
     try {
       final uri = Uri.parse(Api.urlBase);
       final cookies = await _cookieJar.loadForRequest(uri);
       if (cookies.isEmpty) {
-        await fetchGuestCookies();
+        await _fetchGuestCookiesInternal();
       } else {
-        _isUserLoggedIn = cookies.any(
-          (c) => c.name == 'DedeUserID' && c.value.isNotEmpty,
+        _isUserLoggedIn = _hasCookie(cookies, 'DedeUserID');
+        final liveCookies = await _cookieJar.loadForRequest(
+          Uri.parse(Api.urlLiveBase),
         );
+        final hasLiveAuth = _hasCookie(liveCookies, 'DedeUserID');
+        if (_isUserLoggedIn && !hasLiveAuth) {
+          await _syncCookiesToAllDomainsInternal(cookies);
+        }
+        if (!_hasCookie(cookies, 'buvid3') || !_hasCookie(cookies, 'b_nut')) {
+          await _fetchGuestCookiesInternal();
+        }
       }
     } catch (e) {
       Log.w(_tag, "Failed to ensure cookies: $e");
@@ -119,12 +266,21 @@ class Request {
   }
 
   Future<void> fetchGuestCookies() async {
+    await _initWait;
+    await _fetchGuestCookiesInternal();
+  }
+
+  Future<void> _fetchGuestCookiesInternal() async {
     try {
       if (kDebugMode) {
         Log.d(_tag, "Fetching guest cookies...");
       }
-      final url = _buildUrl(Api.urlBase, Api.urlNav);
-      await _dio.get(url);
+      try {
+        await _dio.get(_buildUrl(Api.urlBase, Api.urlNav));
+      } catch (_) {}
+      await _ensureBuvidCookiesInternal(forceRefresh: true);
+      final cookies = await _cookieJar.loadForRequest(Uri.parse(Api.urlBase));
+      _isUserLoggedIn = _hasCookie(cookies, 'DedeUserID');
     } catch (e) {
       Log.w(_tag, "Failed to fetch guest cookies: $e");
     }
@@ -139,6 +295,29 @@ class Request {
     return {...params, 'sign': sign};
   }
 
+  /// Signs parameters for Bilibili mobile App API endpoints.
+  Map<String, dynamic> signAppParams(Map<String, dynamic> params) {
+    final signed = <String, dynamic>{
+      ...params,
+      'appkey': Api.androidAppKey,
+      'ts': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'mobi_app': 'android',
+      'platform': 'android',
+      'build': 2001100,
+    };
+    final sortedKeys = signed.keys.toList()..sort();
+    final query = sortedKeys
+        .map(
+          (k) =>
+              '${Uri.encodeComponent(k)}=${Uri.encodeComponent('${signed[k]}')}',
+        )
+        .join('&');
+    final sign = md5
+        .convert(utf8.encode(query + Api.androidAppSecret))
+        .toString();
+    return {...signed, 'sign': sign};
+  }
+
   Future<void> setManualCookies(String cookieString) async {
     await _initWait;
     List<Cookie> cookies = [];
@@ -150,14 +329,14 @@ class Request {
       if (parts.length >= 2) {
         final name = parts[0].trim();
         final value = parts.sublist(1).join('=').trim();
-        cookies.add(Cookie(name, value));
+        cookies.add(_buildBiliCookie(name, value));
       }
     }
 
     if (cookies.isNotEmpty) {
-      await _cookieJar.saveFromResponse(Uri.parse(Api.urlBase), cookies);
-      await _cookieJar.saveFromResponse(Uri.parse(Api.urlLoginBase), cookies);
+      await _syncCookiesToAllDomainsInternal(cookies);
       _isUserLoggedIn = true;
+      await _ensureBuvidCookiesInternal(forceRefresh: true);
       Log.i(_tag, "Manual cookies set (${cookies.length} items)");
     }
   }
@@ -181,6 +360,7 @@ class Request {
     String baseUrl = Api.urlBase,
     Map<String, dynamic>? params,
     bool useWbi = false,
+    bool useAppSign = false,
     ResponseType responseType = ResponseType.data,
     Options? options,
     bool suppressErrorDialog = true,
@@ -191,6 +371,7 @@ class Request {
       baseUrl: baseUrl,
       params: params,
       useWbi: useWbi,
+      useAppSign: useAppSign,
       responseType: responseType,
       options: options,
       suppressErrorDialog: suppressErrorDialog,
@@ -203,6 +384,7 @@ class Request {
     dynamic data,
     Map<String, dynamic>? params,
     bool useWbi = false,
+    bool useAppSign = false,
     ResponseType responseType = ResponseType.data,
     Options? options,
     bool suppressErrorDialog = true,
@@ -214,10 +396,30 @@ class Request {
       data: data,
       params: params,
       useWbi: useWbi,
+      useAppSign: useAppSign,
       responseType: responseType,
       options: options,
       suppressErrorDialog: suppressErrorDialog,
     );
+  }
+
+  bool _isRiskControlResponse(int? statusCode, dynamic data) {
+    if (statusCode == 412) return true;
+    if (data is Map) {
+      final int code = data['code'] ?? 0;
+      if (code == ErrorCode.riskControlFail ||
+          code == ErrorCode.unauthorized ||
+          code == ErrorCode.ipRiskControl ||
+          code == -403 ||
+          code == -412) {
+        return true;
+      }
+      final inner = data['data'];
+      if (inner is Map && inner['v_voucher'] != null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<dynamic> _request({
@@ -227,17 +429,36 @@ class Request {
     dynamic data,
     Map<String, dynamic>? params,
     required bool useWbi,
+    required bool useAppSign,
     required ResponseType responseType,
     Options? options,
     required bool suppressErrorDialog,
   }) async {
     await _initWait;
 
-    return _requestWithRetry(
+    final result = await _requestWithRetry(
       () async {
         Map<String, dynamic> finalParams = params ?? {};
-        if (useWbi) {
-          finalParams = await WbiUtil.signParams(finalParams);
+        Options? requestOptions = options;
+        if (useAppSign) {
+          finalParams = signAppParams(finalParams);
+          final mergedHeaders = <String, dynamic>{
+            'User-Agent': HttpConstants.userAgentApp,
+            'env': HttpConstants.appEnv,
+            'app-key': HttpConstants.appKeyHeader,
+            'x-bili-aurora-zone': HttpConstants.auroraZone,
+            ...?options?.headers,
+          };
+          requestOptions = (options ?? Options()).copyWith(
+            headers: mergedHeaders,
+          );
+        } else {
+          if (useWbi && path != Api.urlFingerSpi && path != Api.urlNav) {
+            await ensureBuvidCookies();
+          }
+          if (useWbi) {
+            finalParams = await WbiUtil.signParams(finalParams);
+          }
         }
 
         final url = _buildUrl(baseUrl, path);
@@ -247,40 +468,65 @@ class Request {
           response = await _dio.get(
             url,
             queryParameters: finalParams,
-            options: options,
+            options: requestOptions,
           );
         } else {
           response = await _dio.post(
             url,
             data: data,
             queryParameters: finalParams,
-            options: options,
+            options: requestOptions,
           );
         }
 
-        if (responseType == ResponseType.response) {
-          return response;
-        }
-        return response.data;
+        return response;
       },
       retryCount: 0,
       suppressErrorDialog: suppressErrorDialog,
+      onRiskControlRefresh: useAppSign || path == Api.urlFingerSpi
+          ? null
+          : () async {
+              await ensureBuvidCookies(forceRefresh: true);
+              if (useWbi) {
+                await WbiUtil.invalidateKeys();
+              }
+            },
     );
+
+    if (responseType == ResponseType.response) {
+      return result;
+    }
+    return result is Response ? result.data : result;
   }
 
   Future<dynamic> _requestWithRetry(
     Future<dynamic> Function() requestFunc, {
     int retryCount = 0,
+    bool riskControlRefreshed = false,
+    Future<void> Function()? onRiskControlRefresh,
     required bool suppressErrorDialog,
   }) async {
     try {
       final result = await requestFunc();
 
-      dynamic data;
-      if (result is Response) {
-        data = result.data;
-      } else {
-        data = result;
+      final int? statusCode = result is Response ? result.statusCode : null;
+      final dynamic data = result is Response ? result.data : result;
+
+      if (!riskControlRefreshed &&
+          onRiskControlRefresh != null &&
+          _isRiskControlResponse(statusCode, data)) {
+        if (kDebugMode) {
+          Log.d(_tag, "Risk control triggered ($statusCode), refreshing session...");
+        }
+        await onRiskControlRefresh();
+        await Future.delayed(const Duration(milliseconds: 350));
+        return await _requestWithRetry(
+          requestFunc,
+          retryCount: retryCount,
+          riskControlRefreshed: true,
+          onRiskControlRefresh: onRiskControlRefresh,
+          suppressErrorDialog: suppressErrorDialog,
+        );
       }
 
       if (data is String &&
@@ -290,6 +536,8 @@ class Request {
           return await _requestWithRetry(
             requestFunc,
             retryCount: retryCount + 1,
+            riskControlRefreshed: riskControlRefreshed,
+            onRiskControlRefresh: onRiskControlRefresh,
             suppressErrorDialog: suppressErrorDialog,
           );
         } else {
@@ -323,6 +571,8 @@ class Request {
             return await _requestWithRetry(
               requestFunc,
               retryCount: retryCount + 1,
+              riskControlRefreshed: riskControlRefreshed,
+              onRiskControlRefresh: onRiskControlRefresh,
               suppressErrorDialog: suppressErrorDialog,
             );
           } else {
@@ -346,6 +596,8 @@ class Request {
             return await _requestWithRetry(
               requestFunc,
               retryCount: retryCount + 1,
+              riskControlRefreshed: riskControlRefreshed,
+              onRiskControlRefresh: onRiskControlRefresh,
               suppressErrorDialog: suppressErrorDialog,
             );
           } else {
@@ -369,6 +621,8 @@ class Request {
         return await _requestWithRetry(
           requestFunc,
           retryCount: retryCount + 1,
+          riskControlRefreshed: riskControlRefreshed,
+          onRiskControlRefresh: onRiskControlRefresh,
           suppressErrorDialog: suppressErrorDialog,
         );
       }
@@ -390,6 +644,8 @@ class Request {
         return await _requestWithRetry(
           requestFunc,
           retryCount: retryCount + 1,
+          riskControlRefreshed: riskControlRefreshed,
+          onRiskControlRefresh: onRiskControlRefresh,
           suppressErrorDialog: suppressErrorDialog,
         );
       }

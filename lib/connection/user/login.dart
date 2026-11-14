@@ -68,6 +68,15 @@ class LoginApi {
                 Uri.parse(Api.urlLoginBase),
                 newCookies,
               );
+              await jar.saveFromResponse(
+                Uri.parse(Api.urlSiteBase),
+                newCookies,
+              );
+              await jar.saveFromResponse(
+                Uri.parse(Api.urlLiveBase),
+                newCookies,
+              );
+              await Request().ensureBuvidCookies();
 
               Log.i(_tag, "Login Success: Cookies saved.");
             }

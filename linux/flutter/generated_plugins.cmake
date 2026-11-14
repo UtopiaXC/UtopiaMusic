@@ -3,10 +3,13 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  dynamic_color
+  restart_app
   url_launcher_linux
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  jni
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

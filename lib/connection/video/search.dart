@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,19 +23,58 @@ class SearchApi {
     int page = 1,
     int retryCount = 0,
   }) async {
-    final params = {'search_type': 'video', 'keyword': keyword, 'page': page};
+    final params = {
+      'search_type': 'video',
+      'keyword': keyword,
+      'page': page,
+      'platform': 'pc',
+      'web_location': 1430654,
+    };
+    final searchOptions = Options(
+      headers: {
+        'Origin': 'https://search.bilibili.com',
+        'Referer':
+            'https://search.bilibili.com/video?keyword=${Uri.encodeComponent(keyword)}',
+      },
+    );
 
     try {
-      final data = await Request().get(
+      await Request().ensureBuvidCookies();
+      var data = await Request().get(
         Api.urlSearch,
         baseUrl: Api.urlBase,
         params: params,
-        useWbi: true,
+        options: searchOptions,
       );
+
+      final bool hasVoucher =
+          data is Map &&
+          data['data'] is Map &&
+          data['data']['v_voucher'] != null;
+      if (data == null ||
+          data is! Map ||
+          data['code'] != 0 ||
+          hasVoucher) {
+        await Request().ensureBuvidCookies(forceRefresh: true);
+        if (!context.mounted) return [];
+        data = await Request().get(
+          Api.urlSearchWbi,
+          baseUrl: Api.urlBase,
+          params: params,
+          useWbi: true,
+          options: searchOptions,
+        );
+      }
+
       final prefs = await SharedPreferences.getInstance();
       final maxRetries = prefs.getInt(SettingsProvider.maxRetriesKey) ?? 3;
 
-      if (data != null && data is Map && data['code'] == 0) {
+      final bool fallbackVoucher =
+          data is Map &&
+          data['data'] is Map &&
+          data['data']['v_voucher'] != null;
+
+      if (data != null && data is Map && data['code'] == 0 && !fallbackVoucher) {
         if (data['data'] == null) {
           if (retryCount < maxRetries) {
             Log.d(
@@ -42,6 +82,7 @@ class SearchApi {
               'Search response data is null, retrying... ($retryCount)',
             );
             await Future.delayed(const Duration(milliseconds: 500));
+            if (!context.mounted) return [];
             return searchVideos(
               context,
               keyword,
@@ -65,9 +106,10 @@ class SearchApi {
         if (retryCount < maxRetries) {
           Log.d(
             _tag,
-            'Search failed (code: ${data is Map ? data['code'] : 'invalid'}), retrying... ($retryCount)',
+            'Search failed (code: ${data is Map ? data['code'] : 'invalid'}, voucher: $fallbackVoucher), retrying... ($retryCount)',
           );
           await Future.delayed(const Duration(milliseconds: 500));
+          if (!context.mounted) return [];
           return searchVideos(
             context,
             keyword,
@@ -89,6 +131,7 @@ class SearchApi {
       if (retryCount < maxRetries) {
         Log.d(_tag, 'Error searching videos: $e, retrying... ($retryCount)');
         await Future.delayed(const Duration(milliseconds: 500));
+        if (!context.mounted) return [];
         return searchVideos(
           context,
           keyword,
@@ -191,7 +234,21 @@ class SearchApi {
       colorValue: 0xFF2196F3,
       bvid: bvid,
       cid: cid,
+      durationSeconds: _parseDuration(item['duration']?.toString()),
+      viewCount: item['play'] is int ? item['play'] as int : null,
+      danmakuCount: item['video_review'] is int
+          ? item['video_review'] as int
+          : null,
     );
+  }
+
+  int? _parseDuration(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split(':').map(int.tryParse).toList();
+    if (parts.any((e) => e == null)) return null;
+    if (parts.length == 2) return parts[0]! * 60 + parts[1]!;
+    if (parts.length == 3) return parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
+    return null;
   }
 
   static final Map<String, int> _cidMemoryCache = {};

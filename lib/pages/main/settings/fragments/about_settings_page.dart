@@ -4,12 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:utopia_music/pages/main/settings/widgets/settings_widgets.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
 import 'package:utopia_music/utils/update_util.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class AboutSettingsPage extends StatefulWidget {
-  const AboutSettingsPage({super.key});
+  final bool embedded;
+
+  const AboutSettingsPage({super.key, this.embedded = false});
 
   @override
   State<AboutSettingsPage> createState() => _AboutSettingsPageState();
@@ -50,50 +53,55 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         insetPadding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Expanded(
-              child: FutureBuilder(
-                future: rootBundle.loadString('assets/documentations/EULA.md'),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return Markdown(data: snapshot.data!);
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        '${S.of(context).common_loaded_failed}: ${snapshot.error}',
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 680),
+          child: Column(
+            children: [
+              Expanded(
+                child: FutureBuilder(
+                  future: rootBundle.loadString(
+                    'assets/documentations/EULA.md',
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return Markdown(data: snapshot.data!);
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          '${S.of(context).common_loaded_failed}: ${snapshot.error}',
+                        ),
+                      );
+                    }
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () async {
+                        await AudioPlayerService().stop();
+                        exit(0);
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
                       ),
-                    );
-                  }
-                  return const Center(child: CircularProgressIndicator());
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () async {
-                      await AudioPlayerService().stop();
-                      exit(0);
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error,
+                      child: Text(
+                        S.of(context).pages_settings_about_disagree_and_exit,
+                      ),
                     ),
-                    child: Text(
-                      S.of(context).pages_settings_about_disagree_and_exit,
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(S.of(context).pages_settings_about_agree),
                     ),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(S.of(context).pages_settings_about_agree),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -104,36 +112,39 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
       context: context,
       builder: (context) => Dialog(
         insetPadding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Expanded(
-              child: FutureBuilder(
-                future: rootBundle.loadString('assets/documentations/QA.md'),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return Markdown(data: snapshot.data!);
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        '${S.of(context).common_loaded_failed}: ${snapshot.error}',
-                      ),
-                    );
-                  }
-                  return const Center(child: CircularProgressIndicator());
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(S.of(context).common_close),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 680),
+          child: Column(
+            children: [
+              Expanded(
+                child: FutureBuilder(
+                  future: rootBundle.loadString('assets/documentations/QA.md'),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return Markdown(data: snapshot.data!);
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          '${S.of(context).common_loaded_failed}: ${snapshot.error}',
+                        ),
+                      );
+                    }
+                    return const Center(child: CircularProgressIndicator());
+                  },
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(S.of(context).common_close),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -141,8 +152,9 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_about)),
+    return SettingsFragmentScaffold(
+      title: S.of(context).pages_settings_tag_about,
+      embedded: widget.embedded,
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
@@ -166,7 +178,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           Center(
             child: Text(
               S.of(context).common_title,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 8),
@@ -178,78 +190,59 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
               ),
             ),
           ),
-          const SizedBox(height: 32),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Card(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.3),
-                ),
+          const SizedBox(height: 24),
+          SettingsGroup(
+            children: [
+              _buildItem(
+                context,
+                title: S.of(context).pages_settings_about_developer,
+                subtitle: 'UtopiaXC',
+                onTap: () => _launchUrl('https://github.com/UtopiaXC'),
               ),
-              child: Column(
-                children: [
-                  _buildItem(
-                    context,
-                    title: S.of(context).pages_settings_about_developer,
-                    subtitle: 'UtopiaXC',
-                    onTap: () => _launchUrl('https://github.com/UtopiaXC'),
-                  ),
-                  _buildItem(
-                    context,
-                    title: S.of(context).pages_settings_about_github,
-                    subtitle: 'https://github.com/UtopiaXC/UtopiaMusic',
-                    onTap: () =>
-                        _launchUrl('https://github.com/UtopiaXC/UtopiaMusic'),
-                  ),
-                  _buildItem(
-                    context,
-                    title: S.of(context).pages_settings_about_check_update,
-                    onTap: () {
-                      UpdateUtil.checkAndShow(context, isManualCheck: true);
-                    },
-                  ),
-                  _buildItem(
-                    context,
-                    title: S.of(context).pages_settings_about_eurl,
-                    onTap: () => _showEulaDialog(context),
-                  ),
-                  _buildItem(
-                    context,
-                    title: S.of(context).pages_settings_about_qa,
-                    onTap: () => _showFaqDialog(context),
-                  ),
-                  _buildItem(
-                    context,
-                    title: S
-                        .of(context)
-                        .pages_settings_about_open_source_license,
-                    onTap: () {
-                      showLicensePage(
-                        context: context,
-                        applicationName: S.of(context).common_title,
-                        applicationVersion: _version,
-                        applicationIcon: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            Icons.music_note,
-                            size: 48,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+              _buildItem(
+                context,
+                title: S.of(context).pages_settings_about_github,
+                subtitle: 'https://github.com/UtopiaXC/UtopiaMusic',
+                onTap: () =>
+                    _launchUrl('https://github.com/UtopiaXC/UtopiaMusic'),
               ),
-            ),
+              _buildItem(
+                context,
+                title: S.of(context).pages_settings_about_check_update,
+                onTap: () {
+                  UpdateUtil.checkAndShow(context, isManualCheck: true);
+                },
+              ),
+              _buildItem(
+                context,
+                title: S.of(context).pages_settings_about_eurl,
+                onTap: () => _showEulaDialog(context),
+              ),
+              _buildItem(
+                context,
+                title: S.of(context).pages_settings_about_qa,
+                onTap: () => _showFaqDialog(context),
+              ),
+              _buildItem(
+                context,
+                title: S.of(context).pages_settings_about_open_source_license,
+                onTap: () {
+                  showLicensePage(
+                    context: context,
+                    applicationName: S.of(context).common_title,
+                    applicationVersion: _version,
+                    applicationIcon: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.music_note,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

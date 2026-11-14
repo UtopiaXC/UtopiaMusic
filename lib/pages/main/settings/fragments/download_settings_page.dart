@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/pages/main/settings/widgets/settings_widgets.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/services/audio/audio_player_service.dart';
@@ -10,7 +11,9 @@ import 'package:utopia_music/utils/quality_utils.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class DownloadSettingsPage extends StatefulWidget {
-  const DownloadSettingsPage({super.key});
+  final bool embedded;
+
+  const DownloadSettingsPage({super.key, this.embedded = false});
 
   @override
   State<DownloadSettingsPage> createState() => _DownloadSettingsPageState();
@@ -329,14 +332,13 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(S.of(context).pages_settings_tag_download_performance),
-      ),
+    return SettingsFragmentScaffold(
+      title: S.of(context).pages_settings_tag_download_performance,
+      embedded: widget.embedded,
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_download_performance_cache,
             children: [
               ListTile(
@@ -404,7 +406,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
               ),
             ],
           ),
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_download_other_title,
             children: [
               ListTile(
@@ -469,7 +471,7 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
               ),
             ],
           ),
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).common_download,
             children: [
               ListTile(
@@ -527,50 +529,6 @@ class _DownloadSettingsPageState extends State<DownloadSettingsPage> {
                 onTap: _handleClearDownloads,
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsGroup extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _SettingsGroup({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Column(children: children),
           ),
         ],
       ),

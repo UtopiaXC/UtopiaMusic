@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:utopia_music/services/download_manager.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/theme/app_theme.dart';
 
 class VideoDetailInfo extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -179,9 +180,11 @@ class _VideoDetailInfoState extends State<VideoDetailInfo> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppTheme.isLiquidGlass(context)
+          ? null
+          : Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
         return StatefulBuilder(

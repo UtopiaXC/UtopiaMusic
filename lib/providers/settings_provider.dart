@@ -11,6 +11,8 @@ import 'package:utopia_music/utils/log.dart';
 
 const String _tag = "SETTINGS_PROVIDER";
 
+enum SongListStyle { cardGrid, cardList, seamlessList }
+
 class SettingsProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
   static const String _seedColorKey = 'seed_color';
@@ -43,6 +45,9 @@ class SettingsProvider extends ChangeNotifier {
   static const String _lyricsAlwaysOnKey = 'lyrics_always_on';
   static const String _quickPlayKey = 'quick_play';
   static const String _quickPlaylistReplaceKey = 'quick_playlist_replace';
+  static const String _enableLiquidGlassKey = 'enable_liquid_glass';
+  static const String _enableMonetColorKey = 'enable_monet_color';
+  static const String _songListStyleKey = 'song_list_style';
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.deepPurple;
@@ -71,6 +76,9 @@ class SettingsProvider extends ChangeNotifier {
   bool _lyricsAlwaysOn = true;
   bool _quickPlay = true;
   int _quickPlaylistReplace = 0;
+  bool _enableLiquidGlass = false;
+  bool _enableMonetColor = false;
+  SongListStyle _songListStyle = SongListStyle.cardGrid;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -125,6 +133,14 @@ class SettingsProvider extends ChangeNotifier {
   bool get quickPlay => _quickPlay;
 
   int get quickPlaylistReplace => _quickPlaylistReplace;
+
+  bool get enableLiquidGlass => _enableLiquidGlass;
+
+  bool get enableMonetColor => _enableMonetColor;
+
+  bool get isMonetColorActive => _enableMonetColor && !_enableLiquidGlass;
+
+  SongListStyle get songListStyle => _songListStyle;
 
   SettingsProvider() {
     _loadSettings();
@@ -182,9 +198,38 @@ class SettingsProvider extends ChangeNotifier {
     _lyricsAlwaysOn = prefs.getBool(_lyricsAlwaysOnKey) ?? true;
     _quickPlay = prefs.getBool(_quickPlayKey) ?? true;
     _quickPlaylistReplace = prefs.getInt(_quickPlaylistReplaceKey) ?? 0;
+    _enableLiquidGlass = prefs.getBool(_enableLiquidGlassKey) ?? false;
+    _enableMonetColor = prefs.getBool(_enableMonetColorKey) ?? false;
+    final listStyleIndex =
+        prefs.getInt(_songListStyleKey) ?? SongListStyle.cardGrid.index;
+    _songListStyle =
+        (listStyleIndex >= 0 && listStyleIndex < SongListStyle.values.length)
+        ? SongListStyle.values[listStyleIndex]
+        : SongListStyle.cardGrid;
     Log.setLevel(_logLevel);
 
     notifyListeners();
+  }
+
+  Future<void> setSongListStyle(SongListStyle style) async {
+    _songListStyle = style;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_songListStyleKey, style.index);
+  }
+
+  Future<void> setEnableLiquidGlass(bool value) async {
+    _enableLiquidGlass = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enableLiquidGlassKey, value);
+  }
+
+  Future<void> setEnableMonetColor(bool value) async {
+    _enableMonetColor = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enableMonetColorKey, value);
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -383,6 +428,11 @@ class SettingsProvider extends ChangeNotifier {
     _debugMode = false;
     _logLevel = LogLevel.warning;
     _lyricsAlwaysOn = true;
+    _quickPlay = true;
+    _quickPlaylistReplace = 0;
+    _enableLiquidGlass = false;
+    _enableMonetColor = false;
+    _songListStyle = SongListStyle.cardGrid;
     Log.setLevel(_logLevel);
     AudioPlayerService().setPreferredQuality(_defaultAudioQuality);
     notifyListeners();
@@ -410,6 +460,11 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.remove(_debugModeKey);
     await prefs.remove(_logLevelKey);
     await prefs.remove(_lyricsAlwaysOnKey);
+    await prefs.remove(_quickPlayKey);
+    await prefs.remove(_quickPlaylistReplaceKey);
+    await prefs.remove(_enableLiquidGlassKey);
+    await prefs.remove(_enableMonetColorKey);
+    await prefs.remove(_songListStyleKey);
   }
 
   Future<void> resetApp() async {
@@ -437,6 +492,11 @@ class SettingsProvider extends ChangeNotifier {
     _debugMode = false;
     _logLevel = LogLevel.warning;
     _lyricsAlwaysOn = true;
+    _quickPlay = true;
+    _quickPlaylistReplace = 0;
+    _enableLiquidGlass = false;
+    _enableMonetColor = false;
+    _songListStyle = SongListStyle.cardGrid;
     notifyListeners();
     try {
       final audioService = AudioPlayerService();

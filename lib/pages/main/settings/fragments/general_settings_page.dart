@@ -3,15 +3,17 @@ import 'package:provider/provider.dart';
 import 'package:restart_app/restart_app.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/pages/main/settings/widgets/settings_widgets.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/security_provider.dart';
 import 'package:utopia_music/utils/log.dart';
 import 'package:utopia_music/utils/update_util.dart';
-import 'package:utopia_music/generated/l10n.dart';
 
 class GeneralSettingsPage extends StatelessWidget {
-  const GeneralSettingsPage({super.key});
+  final bool embedded;
+
+  const GeneralSettingsPage({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +21,13 @@ class GeneralSettingsPage extends StatelessWidget {
     final playerProvider = Provider.of<PlayerProvider>(context);
     final securityProvider = Provider.of<SecurityProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_general)),
+    return SettingsFragmentScaffold(
+      title: S.of(context).pages_settings_tag_general,
+      embedded: embedded,
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         children: [
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_general_global,
             children: [
               ListTile(
@@ -62,7 +65,7 @@ class GeneralSettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_general_update,
             children: [
               SwitchListTile(
@@ -88,7 +91,7 @@ class GeneralSettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_general_initial,
             children: [
               ListTile(
@@ -119,7 +122,7 @@ class GeneralSettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          _SettingsGroup(
+          SettingsGroup(
             title: S.of(context).pages_settings_tag_general_development,
             children: [
               SwitchListTile(
@@ -322,50 +325,6 @@ class GeneralSettingsPage extends StatelessWidget {
               }
             },
             child: Text(S.of(context).common_confirm),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsGroup extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _SettingsGroup({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Column(children: children),
           ),
         ],
       ),

@@ -13,14 +13,23 @@ import 'package:utopia_music/pages/main/discover/fragments/subscribe_fragment.da
 import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/pages/search/search_page.dart';
+import 'package:utopia_music/theme/app_theme.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 const String _tag = "DISCOVER_PAGE";
 
 class DiscoverPage extends StatefulWidget {
   final Function(Song) onSongSelected;
+  final bool showHeader;
+  final ValueChanged<DiscoverCategoryType>? onCategoryChanged;
 
-  const DiscoverPage({super.key, required this.onSongSelected});
+  const DiscoverPage({
+    super.key,
+    required this.onSongSelected,
+    this.showHeader = true,
+    this.onCategoryChanged,
+  });
 
   @override
   State<DiscoverPage> createState() => DiscoverPageState();
@@ -76,10 +85,46 @@ class DiscoverPageState extends State<DiscoverPage>
           setState(() {
             _currentTabIndex = _tabController!.index;
           });
+          final visible = Provider.of<DiscoverProvider>(
+            context,
+            listen: false,
+          ).visibleCategories;
+          if (_currentTabIndex < visible.length) {
+            widget.onCategoryChanged?.call(visible[_currentTabIndex]);
+          }
         }
       }
     });
     _currentTabIndex = _tabController!.index;
+  }
+
+  DiscoverCategoryType? get currentCategory {
+    final visible = Provider.of<DiscoverProvider>(
+      context,
+      listen: false,
+    ).visibleCategories;
+    if (_currentTabIndex >= 0 && _currentTabIndex < visible.length) {
+      return visible[_currentTabIndex];
+    }
+    return null;
+  }
+
+  void selectCategory(DiscoverCategoryType category) {
+    final visible = Provider.of<DiscoverProvider>(
+      context,
+      listen: false,
+    ).visibleCategories;
+    final index = visible.indexOf(category);
+    if (index == -1 || _tabController == null) return;
+    if (_tabController!.index == index) {
+      handleTabTap(index);
+      return;
+    }
+    _tabController!.animateTo(index);
+    setState(() {
+      _currentTabIndex = index;
+    });
+    widget.onCategoryChanged?.call(category);
   }
 
   void handleTabTap(int index) {
@@ -242,85 +287,167 @@ class DiscoverPageState extends State<DiscoverPage>
           _initTabController(visibleCategories.length, newIndex);
         }
 
+        final bool isLiquidGlass = AppTheme.isLiquidGlass(context);
+
         return SafeArea(
           bottom: false,
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: GestureDetector(
-                  onTap: _openSearchPage,
-                  child: Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.search,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          S.of(context).pages_search_hint_search_input,
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              // Modern capsule-style TabBar
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
+              if (widget.showHeader) ...[
+                Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  onTap: handleTabTap,
-                  dividerColor: Colors.transparent,
-                  indicator: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: Theme.of(context).colorScheme.primary,
+                  child: GestureDetector(
+                    onTap: _openSearchPage,
+                    child: isLiquidGlass
+                        ? LiquidGlassContainer(
+                            height: 42,
+                            borderRadius: BorderRadius.circular(21),
+                            refractionStrength: 20.0,
+                            bezelWidth: 16.0,
+                            blurSigma: 12.0,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.search,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  S.of(context).pages_search_hint_search_input,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.search,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  S.of(context).pages_search_hint_search_input,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                   ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  labelColor: Theme.of(context).colorScheme.onPrimary,
-                  unselectedLabelColor: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant,
-                  splashFactory: NoSplash.splashFactory,
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
-                  tabs: visibleCategories
-                      .map(
-                        (type) => Tab(text: _getCategoryTitle(context, type)),
-                      )
-                      .toList(),
                 ),
-              ),
+                // Modern capsule-style TabBar
+                isLiquidGlass
+                    ? LiquidGlassContainer(
+                        height: 42,
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        borderRadius: BorderRadius.circular(21),
+                        refractionStrength: 20.0,
+                        bezelWidth: 16.0,
+                        blurSigma: 12.0,
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          onTap: handleTabTap,
+                          dividerColor: Colors.transparent,
+                          indicator: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          labelColor: Theme.of(context).colorScheme.onPrimary,
+                          unselectedLabelColor: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                          splashFactory: NoSplash.splashFactory,
+                          overlayColor: WidgetStateProperty.all(
+                            Colors.transparent,
+                          ),
+                          tabs: visibleCategories
+                              .map(
+                                (type) =>
+                                    Tab(text: _getCategoryTitle(context, type)),
+                              )
+                              .toList(),
+                        ),
+                      )
+                    : Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          onTap: handleTabTap,
+                          dividerColor: Colors.transparent,
+                          indicator: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          labelColor: Theme.of(context).colorScheme.onPrimary,
+                          unselectedLabelColor: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                          splashFactory: NoSplash.splashFactory,
+                          overlayColor: WidgetStateProperty.all(
+                            Colors.transparent,
+                          ),
+                          tabs: visibleCategories
+                              .map(
+                                (type) =>
+                                    Tab(text: _getCategoryTitle(context, type)),
+                              )
+                              .toList(),
+                        ),
+                      ),
+              ],
               Expanded(
                 child: TabBarView(
                   controller: _tabController,

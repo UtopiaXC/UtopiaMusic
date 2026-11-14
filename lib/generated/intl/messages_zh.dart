@@ -119,12 +119,29 @@ class MessageLookup extends MessageLookupByLibrary {
     "connection_error_update_no_release": MessageLookupByLibrary.simpleMessage(
       "当前仓库没有发布版本",
     ),
+    "desktop_player_lyrics": MessageLookupByLibrary.simpleMessage("歌词"),
+    "desktop_player_speed": MessageLookupByLibrary.simpleMessage("倍速"),
+    "desktop_sidebar_downloads": MessageLookupByLibrary.simpleMessage("下载管理"),
+    "desktop_sidebar_my_music": MessageLookupByLibrary.simpleMessage("我的音乐"),
+    "desktop_sidebar_playlists": MessageLookupByLibrary.simpleMessage("歌单"),
+    "desktop_top_back": MessageLookupByLibrary.simpleMessage("返回"),
     "dialog_source_invalid": MessageLookupByLibrary.simpleMessage("资源无效"),
     "dialog_source_invalid_description": MessageLookupByLibrary.simpleMessage(
       "当前请求的资源由于网络、版权原因或充电视频等无法播放，已停止播放。\n\n此后是否自动跳过并清理无效资源？",
     ),
     "item_options_add_to_play_list": MessageLookupByLibrary.simpleMessage(
       "添加播放列表",
+    ),
+    "live_badge_followed": MessageLookupByLibrary.simpleMessage("已关注"),
+    "live_badge_live": MessageLookupByLibrary.simpleMessage("直播中"),
+    "live_enter_room": MessageLookupByLibrary.simpleMessage("进入直播间"),
+    "live_followed_empty": MessageLookupByLibrary.simpleMessage("暂无关注的主播开播"),
+    "live_followed_section": MessageLookupByLibrary.simpleMessage("关注的直播间"),
+    "live_recommend_section": MessageLookupByLibrary.simpleMessage("推荐直播间"),
+    "live_search_hint": MessageLookupByLibrary.simpleMessage("输入关键词搜索直播间"),
+    "live_stop_listening": MessageLookupByLibrary.simpleMessage("停止收听"),
+    "live_stream_load_failed": MessageLookupByLibrary.simpleMessage(
+      "直播音频流加载失败",
     ),
     "number_hundred_million": MessageLookupByLibrary.simpleMessage("亿"),
     "number_million": MessageLookupByLibrary.simpleMessage("百万"),
@@ -366,9 +383,23 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("始终浅色"),
     "pages_settings_appearance_dark_mode_system":
         MessageLookupByLibrary.simpleMessage("跟随系统"),
+    "pages_settings_appearance_experimental":
+        MessageLookupByLibrary.simpleMessage("实验性"),
     "pages_settings_appearance_global": MessageLookupByLibrary.simpleMessage(
       "全局",
     ),
+    "pages_settings_appearance_liquid_glass":
+        MessageLookupByLibrary.simpleMessage("液态玻璃"),
+    "pages_settings_appearance_liquid_glass_desc":
+        MessageLookupByLibrary.simpleMessage("使用毛玻璃与悬浮导航替代默认材质风格"),
+    "pages_settings_appearance_monet_active":
+        MessageLookupByLibrary.simpleMessage("当前使用系统壁纸配色"),
+    "pages_settings_appearance_monet_color":
+        MessageLookupByLibrary.simpleMessage("莫奈取色"),
+    "pages_settings_appearance_monet_color_desc":
+        MessageLookupByLibrary.simpleMessage("跟随系统壁纸生成配色"),
+    "pages_settings_appearance_monet_disabled_by_glass":
+        MessageLookupByLibrary.simpleMessage("液态玻璃开启时已禁用"),
     "pages_settings_appearance_pages": MessageLookupByLibrary.simpleMessage(
       "页面",
     ),
@@ -419,6 +450,14 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("本地歌单"),
     "pages_settings_appearance_theme_color":
         MessageLookupByLibrary.simpleMessage("主题颜色"),
+    "pages_settings_appearance_track_list_style":
+        MessageLookupByLibrary.simpleMessage("曲目列表样式"),
+    "pages_settings_appearance_track_list_style_card":
+        MessageLookupByLibrary.simpleMessage("卡片列表"),
+    "pages_settings_appearance_track_list_style_grid":
+        MessageLookupByLibrary.simpleMessage("卡片平铺"),
+    "pages_settings_appearance_track_list_style_seamless":
+        MessageLookupByLibrary.simpleMessage("无缝列表"),
     "pages_settings_tag_about": MessageLookupByLibrary.simpleMessage("关于"),
     "pages_settings_tag_appearance": MessageLookupByLibrary.simpleMessage("外观"),
     "pages_settings_tag_download": MessageLookupByLibrary.simpleMessage("下载"),

@@ -282,6 +282,16 @@ jobs:
           path: artifacts
           merge-multiple: true
       - run: ls -R artifacts
+      - name: Render Release Body
+        run: |
+          python3 scripts/release_helpers.py render-release-body \
+            --note "${{ env.RELEASE_NOTE_PATH }}" \
+            --artifacts-dir artifacts \
+            --repo "${{ github.repository }}" \
+            --tag "${{ github.ref_name }}" \
+            --version-name "${{ env.VERSION_NAME }}" \
+            --server-url "${{ github.server_url }}" \
+            --output release_body.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -289,6 +299,6 @@ jobs:
           files: artifacts/**/*
           draft: false
           prerelease: false
-          body_path: ${{ env.RELEASE_NOTE_PATH }}
+          body_path: release_body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

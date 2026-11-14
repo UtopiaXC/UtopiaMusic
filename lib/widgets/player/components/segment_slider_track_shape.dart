@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:utopia_music/models/sponsor_block/segment_model.dart';
 import 'package:utopia_music/models/sponsor_block/segment_type.dart';
@@ -12,6 +15,22 @@ class SegmentSliderTrackShape extends RoundedRectSliderTrackShape {
     required this.duration,
     required this.blockColor,
   });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SegmentSliderTrackShape &&
+        other.duration == duration &&
+        listEquals(other.segments, segments) &&
+        mapEquals(other.blockColor, blockColor);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    duration,
+    Object.hashAll(segments),
+    Object.hashAll(blockColor.entries.map((e) => Object.hash(e.key, e.value))),
+  );
 
   @override
   void paint(
@@ -53,6 +72,7 @@ class SegmentSliderTrackShape extends RoundedRectSliderTrackShape {
       isEnabled: isEnabled,
       isDiscrete: isDiscrete,
     );
+    if (trackRect.width <= 0) return;
 
     final canvas = context.canvas;
     final paint = Paint()..style = PaintingStyle.fill;
@@ -60,6 +80,11 @@ class SegmentSliderTrackShape extends RoundedRectSliderTrackShape {
     final double activeHalfHeight = additionalActiveTrackHeight / 2.0;
     final double segTop = trackRect.top - activeHalfHeight;
     final double segHeight = trackRect.height + additionalActiveTrackHeight;
+    final double minSegmentWidth = math.min(4.0, trackRect.width);
+    final double maxSegmentLeft = math.max(
+      trackRect.left,
+      trackRect.right - minSegmentWidth,
+    );
 
     for (final seg in segments) {
       final startRatio = (seg.segment.$1 / durationMs).clamp(0.0, 1.0);
@@ -74,9 +99,12 @@ class SegmentSliderTrackShape extends RoundedRectSliderTrackShape {
       double segmentWidth = right - left;
       double segmentLeft = left;
 
-      if (segmentWidth < 4.0) {
-        segmentWidth = 4.0;
-        segmentLeft = (left - 2.0).clamp(trackRect.left, trackRect.right - 4.0);
+      if (segmentWidth < minSegmentWidth) {
+        segmentWidth = minSegmentWidth;
+        segmentLeft = (left - minSegmentWidth / 2.0).clamp(
+          trackRect.left,
+          maxSegmentLeft,
+        );
       }
 
       final segmentRect = Rect.fromLTWH(

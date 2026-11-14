@@ -7,6 +7,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:utopia_music/connection/user/login.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
 import 'package:utopia_music/generated/l10n.dart';
+import 'package:utopia_music/theme/app_theme.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 import 'package:utopia_music/widgets/login/web_login_page.dart';
 
 class LoginDialog extends StatefulWidget {
@@ -162,85 +164,98 @@ class _LoginDialogState extends State<LoginDialog>
       return _buildLoggedInView(authProvider);
     }
 
+    final bool isLiquidGlass = AppTheme.isLiquidGlass(context);
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 500),
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                const SizedBox(height: 48),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
+      backgroundColor: isLiquidGlass ? Colors.transparent : null,
+      elevation: isLiquidGlass ? 0 : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: LiquidGlassSheetSurface(
+        fallbackColor: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 500),
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  const SizedBox(height: 48),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      color: Theme.of(context).colorScheme.primary,
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      dividerColor: Colors.transparent,
+                      indicator: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      labelColor: Theme.of(context).colorScheme.onPrimary,
+                      unselectedLabelColor:
+                          Theme.of(context).colorScheme.onSurfaceVariant,
+                      splashFactory: NoSplash.splashFactory,
+                      overlayColor: WidgetStateProperty.all(Colors.transparent),
+                      tabs: [
+                        if (_isMobile)
+                          Tab(text: S.of(context).weight_login_web_login),
+                        Tab(text: S.of(context).weight_login_scan_qr),
+                        Tab(text: S.of(context).weight_login_cookie),
+                      ],
                     ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    labelColor: Theme.of(context).colorScheme.onPrimary,
-                    unselectedLabelColor:
-                        Theme.of(context).colorScheme.onSurfaceVariant,
-                    splashFactory: NoSplash.splashFactory,
-                    overlayColor: WidgetStateProperty.all(Colors.transparent),
-                    tabs: [
-                      if (_isMobile)
-                        Tab(text: S.of(context).weight_login_web_login),
-                      Tab(text: S.of(context).weight_login_scan_qr),
-                      Tab(text: S.of(context).weight_login_cookie),
-                    ],
                   ),
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      if (_isMobile) _buildWebLoginView(),
-                      _buildQrLoginView(),
-                      _buildCookieLoginView(),
-                    ],
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        if (_isMobile) _buildWebLoginView(),
+                        _buildQrLoginView(),
+                        _buildCookieLoginView(),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-                tooltip: S.of(context).common_cancel,
+                ],
               ),
-            ),
-          ],
+              Positioned(
+                right: 8,
+                top: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: S.of(context).common_cancel,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildLoggedInView(AuthProvider auth) {
+    final bool isLiquidGlass = AppTheme.isLiquidGlass(context);
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 300, maxHeight: 250),
+      backgroundColor: isLiquidGlass ? Colors.transparent : null,
+      elevation: isLiquidGlass ? 0 : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: LiquidGlassSheetSurface(
+        fallbackColor: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 300, maxHeight: 250),
         child: Stack(
           children: [
             Padding(
@@ -291,6 +306,7 @@ class _LoginDialogState extends State<LoginDialog>
             ),
           ],
         ),
+      ),
       ),
     );
   }

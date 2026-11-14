@@ -13,8 +13,8 @@ class PlayerControls extends StatelessWidget {
   final VoidCallback onPlayPause;
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
-  final VoidCallback onShuffle;
-  final VoidCallback onPlaylist;
+  final VoidCallback? onShuffle;
+  final VoidCallback? onPlaylist;
   final VoidCallback? onLyrics;
   final VoidCallback? onTimer;
   final VoidCallback? onComment;
@@ -22,9 +22,10 @@ class PlayerControls extends StatelessWidget {
   final VoidCallback? onMore;
   final bool isPlaying;
   final bool isLoading;
+  final bool isLiveMode;
   final Duration duration;
   final Duration position;
-  final ValueChanged<double> onSeek;
+  final ValueChanged<double>? onSeek;
   final ValueChanged<double>? onSeekStart;
   final ValueChanged<double>? onSeekUpdate;
   final PlayMode loopMode;
@@ -36,8 +37,8 @@ class PlayerControls extends StatelessWidget {
     required this.onPlayPause,
     required this.onNext,
     required this.onPrevious,
-    required this.onShuffle,
-    required this.onPlaylist,
+    this.onShuffle,
+    this.onPlaylist,
     this.onLyrics,
     this.onTimer,
     this.onComment,
@@ -45,9 +46,10 @@ class PlayerControls extends StatelessWidget {
     this.onMore,
     this.isPlaying = false,
     this.isLoading = false,
+    this.isLiveMode = false,
     this.duration = Duration.zero,
     this.position = Duration.zero,
-    required this.onSeek,
+    this.onSeek,
     this.onSeekStart,
     this.onSeekUpdate,
     this.loopMode = PlayMode.sequence,
@@ -68,10 +70,15 @@ class PlayerControls extends StatelessWidget {
   }
 
   Widget _getLoopModeIcon(BuildContext context) {
-    // Log.v(_tag, "_getLoopModeIcon");
+    if (onShuffle == null) {
+      return Icon(
+        Icons.repeat,
+        color: Theme.of(context).disabledColor,
+      );
+    }
     switch (loopMode) {
       case PlayMode.sequence:
-        return const Icon(Icons.repeat, color: Colors.grey);
+        return Icon(Icons.repeat, color: Theme.of(context).disabledColor);
       case PlayMode.loop:
         return const Icon(Icons.repeat);
       case PlayMode.single:
@@ -82,17 +89,15 @@ class PlayerControls extends StatelessWidget {
   }
 
   Color? _getLoopModeColor(BuildContext context) {
-    // Log.v(_tag, "_getLoopModeColor");
-    if (loopMode == PlayMode.sequence) {
+    if (onShuffle == null || loopMode == PlayMode.sequence) {
       return Theme.of(context).disabledColor;
     }
     return Theme.of(context).colorScheme.primary;
   }
 
   Widget _getSpeedIcon(BuildContext context) {
-    // Log.v(_tag, "_getSpeedIcon");
     final playerProvider = Provider.of<PlayerProvider>(context);
-    final speed = playerProvider.player.speed;
+    final speed = isLiveMode ? 1.0 : playerProvider.player.speed;
 
     String text;
     if (speed == 1.0) {
@@ -120,7 +125,9 @@ class PlayerControls extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).iconTheme.color,
+            color: onInfo == null
+                ? Theme.of(context).disabledColor
+                : Theme.of(context).iconTheme.color,
           ),
         ),
       ),
@@ -202,34 +209,39 @@ class PlayerControls extends StatelessWidget {
             ],
           ),
         const SizedBox(height: 16),
-        Consumer<SponsorBlockProvider>(
-          builder: (context, sbProvider, child) {
-            final slider = Slider(
-              value: sliderValue,
-              min: 0,
-              max: maxDuration > 0 ? maxDuration : 1.0,
-              onChanged: onSeekUpdate ?? onSeek,
-              onChangeStart: onSeekStart,
-              onChangeEnd: onSeek,
-            );
-
-            if (sbProvider.enableSponsorBlock &&
-                sbProvider.currentSegments.isNotEmpty &&
-                sbProvider.currentSongBvid == playerProvider.currentSong?.bvid &&
-                duration > Duration.zero) {
-              return SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackShape: SegmentSliderTrackShape(
-                    segments: sbProvider.currentSegments,
-                    duration: duration,
-                    blockColor: sbProvider.blockColor,
-                  ),
-                ),
-                child: slider,
+        RepaintBoundary(
+          child: Consumer<SponsorBlockProvider>(
+            builder: (context, sbProvider, child) {
+              final bool seekEnabled = !isLiveMode && onSeek != null;
+              final slider = Slider(
+                value: isLiveMode ? 0.0 : sliderValue,
+                min: 0,
+                max: (!isLiveMode && maxDuration > 0) ? maxDuration : 1.0,
+                onChanged: seekEnabled ? (onSeekUpdate ?? onSeek) : null,
+                onChangeStart: seekEnabled ? onSeekStart : null,
+                onChangeEnd: seekEnabled ? onSeek : null,
               );
-            }
-            return slider;
-          },
+
+              if (!isLiveMode &&
+                  sbProvider.enableSponsorBlock &&
+                  sbProvider.currentSegments.isNotEmpty &&
+                  sbProvider.currentSongBvid ==
+                      playerProvider.currentSong?.bvid &&
+                  duration > Duration.zero) {
+                return SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackShape: SegmentSliderTrackShape(
+                      segments: sbProvider.currentSegments,
+                      duration: duration,
+                      blockColor: sbProvider.blockColor,
+                    ),
+                  ),
+                  child: slider,
+                );
+              }
+              return slider;
+            },
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -237,8 +249,15 @@ class PlayerControls extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _formatDuration(position),
-                style: Theme.of(context).textTheme.bodySmall,
+                isLiveMode
+                    ? S.of(context).live_badge_live
+                    : _formatDuration(position),
+                style: isLiveMode
+                    ? Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      )
+                    : Theme.of(context).textTheme.bodySmall,
               ),
               if (isTimerActive && playerProvider.stopTime != null)
                 Consumer<PlayerProvider>(
@@ -271,8 +290,12 @@ class PlayerControls extends StatelessWidget {
                   },
                 ),
               Text(
-                _formatDuration(duration),
-                style: Theme.of(context).textTheme.bodySmall,
+                isLiveMode ? '--:--' : _formatDuration(duration),
+                style: isLiveMode
+                    ? Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).disabledColor,
+                      )
+                    : Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:utopia_music/connection/video/discover.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/auth_provider.dart';
-import 'package:utopia_music/widgets/song_list/song_list_item.dart';
+import 'package:utopia_music/widgets/song_list/song_list.dart';
 import 'package:utopia_music/widgets/login/login_dialog.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
@@ -165,44 +165,15 @@ class _FeedFragmentState extends State<FeedFragment>
         return RefreshIndicator(
           key: widget.refreshIndicatorKey,
           onRefresh: _handleRefresh,
-          child: Scrollbar(
-            controller: widget.scrollController,
-            thumbVisibility: false,
-            interactive: true,
-            thickness: 6,
-            radius: const Radius.circular(3),
-            child: ListView.builder(
-              controller: widget.scrollController,
-              itemCount: _songs.length + 1,
-              itemBuilder: (context, index) {
-                if (index == _songs.length) {
-                  if (_hasMore) {
-                    if (!_isLoading) {
-                      Future.microtask(() => _loadData());
-                    }
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  } else {
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Center(
-                        child: Text(
-                          S.of(context).common_at_bottom,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    );
-                  }
-                }
-                return SongListItem(
-                  song: _songs[index],
-                  contextList: _songs,
-                  useCardStyle: true,
-                );
-              },
-            ),
+          child: SongList(
+            songs: _songs,
+            scrollController: widget.scrollController,
+            isLoading: _isLoading && _songs.isEmpty,
+            isLoadingMore: _isLoading && _songs.isNotEmpty,
+            hasMore: _hasMore,
+            followGlobalStyle: true,
+            useCardStyle: true,
+            onLoadMore: _hasMore && !_isLoading ? () => _loadData() : null,
           ),
         );
       },

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
@@ -5,57 +8,85 @@ import 'package:utopia_music/providers/settings_provider.dart';
 import 'package:utopia_music/providers/library_provider.dart';
 import 'package:utopia_music/providers/discover_provider.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_category_widget.dart';
+import 'package:utopia_music/pages/main/settings/widgets/settings_widgets.dart';
 import 'package:utopia_music/generated/l10n.dart';
 
 class AppearanceSettingsPage extends StatelessWidget {
-  const AppearanceSettingsPage({super.key});
+  final bool? isAndroidOverride;
+  final bool embedded;
+
+  const AppearanceSettingsPage({
+    super.key,
+    @visibleForTesting this.isAndroidOverride,
+    this.embedded = false,
+  });
+
+  bool get _isAndroid => isAndroidOverride ?? (!kIsWeb && Platform.isAndroid);
 
   @override
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(S.of(context).pages_settings_tag_appearance)),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        children: [
-          _SettingsGroup(
-            title: S.of(context).pages_settings_appearance_global,
-            children: [
-              _buildThemeModeItem(context, settingsProvider),
-              _buildColorItem(context, settingsProvider),
-            ],
-          ),
-          _SettingsGroup(
-            title: S.of(context).pages_settings_appearance_pages,
-            children: [
-              _buildStartPageItem(context, settingsProvider),
-              _buildLibraryOrderItem(context),
-              _buildDiscoverOrderItem(context),
-            ],
-          ),
-          _SettingsGroup(
-            title: S.of(context).pages_settings_appearance_player,
-            children: [
-              _buildPlayerBackgroundItem(context, settingsProvider),
-              SwitchListTile(
-                title: Text(
-                  S.of(context).pages_settings_appearance_always_turn_on,
-                ),
-                subtitle: Text(
-                  S
-                      .of(context)
-                      .pages_settings_appearance_always_turn_on_description,
-                ),
-                value: settingsProvider.lyricsAlwaysOn,
-                onChanged: (bool value) {
-                  settingsProvider.setLyricsAlwaysOn(value);
-                },
+    final listView = ListView(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      children: [
+        SettingsGroup(
+          title: S.of(context).pages_settings_appearance_global,
+          children: [
+            _buildThemeModeItem(context, settingsProvider),
+            if (_isAndroid) _buildMonetColorItem(context, settingsProvider),
+            _buildColorItem(context, settingsProvider),
+            _buildSongListStyleItem(context, settingsProvider),
+          ],
+        ),
+        SettingsGroup(
+          title: S.of(context).pages_settings_appearance_pages,
+          children: [
+            _buildStartPageItem(context, settingsProvider),
+            _buildLibraryOrderItem(context),
+            _buildDiscoverOrderItem(context),
+          ],
+        ),
+        SettingsGroup(
+          title: S.of(context).pages_settings_appearance_player,
+          children: [
+            _buildPlayerBackgroundItem(context, settingsProvider),
+            SwitchListTile(
+              title: Text(
+                S.of(context).pages_settings_appearance_always_turn_on,
               ),
-            ],
-          ),
-        ],
-      ),
+              subtitle: Text(
+                S
+                    .of(context)
+                    .pages_settings_appearance_always_turn_on_description,
+              ),
+              value: settingsProvider.lyricsAlwaysOn,
+              onChanged: (bool value) {
+                settingsProvider.setLyricsAlwaysOn(value);
+              },
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: S.of(context).pages_settings_appearance_experimental,
+          children: [
+            SwitchListTile(
+              title: Text(S.of(context).pages_settings_appearance_liquid_glass),
+              subtitle: Text(
+                S.of(context).pages_settings_appearance_liquid_glass_desc,
+              ),
+              value: settingsProvider.enableLiquidGlass,
+              onChanged: settingsProvider.setEnableLiquidGlass,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return SettingsFragmentScaffold(
+      title: S.of(context).pages_settings_tag_appearance,
+      embedded: embedded,
+      body: listView,
     );
   }
 
@@ -91,28 +122,95 @@ class AppearanceSettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildColorItem(BuildContext context, SettingsProvider provider) {
+  Widget _buildSongListStyleItem(
+    BuildContext context,
+    SettingsProvider provider,
+  ) {
     return ListTile(
-      title: Text(S.of(context).pages_settings_appearance_theme_color),
-      trailing: GestureDetector(
-        onTap: () => _showColorPicker(context, provider),
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: provider.seedColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              width: 1.5,
+      title: Text(S.of(context).pages_settings_appearance_track_list_style),
+      trailing: DropdownButton<SongListStyle>(
+        value: provider.songListStyle,
+        underline: const SizedBox(),
+        alignment: Alignment.centerRight,
+        items: [
+          DropdownMenuItem(
+            value: SongListStyle.cardGrid,
+            child: Text(
+              S.of(context).pages_settings_appearance_track_list_style_grid,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+          ),
+          DropdownMenuItem(
+            value: SongListStyle.cardList,
+            child: Text(
+              S.of(context).pages_settings_appearance_track_list_style_card,
+            ),
+          ),
+          DropdownMenuItem(
+            value: SongListStyle.seamlessList,
+            child: Text(
+              S.of(context).pages_settings_appearance_track_list_style_seamless,
+            ),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) provider.setSongListStyle(value);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMonetColorItem(BuildContext context, SettingsProvider provider) {
+    final bool isDisabled = provider.enableLiquidGlass;
+    return SwitchListTile(
+      title: Text(S.of(context).pages_settings_appearance_monet_color),
+      subtitle: Text(
+        isDisabled
+            ? S.of(context).pages_settings_appearance_monet_disabled_by_glass
+            : S.of(context).pages_settings_appearance_monet_color_desc,
+      ),
+      value: provider.enableMonetColor,
+      onChanged: isDisabled ? null : provider.setEnableMonetColor,
+    );
+  }
+
+  Widget _buildColorItem(BuildContext context, SettingsProvider provider) {
+    final bool overriddenByMonet = _isAndroid && provider.isMonetColorActive;
+    final bool overriddenByGlass = provider.enableLiquidGlass;
+    final bool disabled = overriddenByMonet || overriddenByGlass;
+    final Color previewColor = overriddenByMonet
+        ? Theme.of(context).colorScheme.primary
+        : provider.seedColor;
+
+    return ListTile(
+      enabled: !disabled,
+      title: Text(S.of(context).pages_settings_appearance_theme_color),
+      subtitle: overriddenByMonet
+          ? Text(S.of(context).pages_settings_appearance_monet_active)
+          : (overriddenByGlass
+                ? Text(S.of(context).pages_settings_appearance_liquid_glass)
+                : null),
+      trailing: GestureDetector(
+        onTap: disabled ? null : () => _showColorPicker(context, provider),
+        child: Opacity(
+          opacity: disabled ? 0.45 : 1.0,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: previewColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                width: 1.5,
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -273,52 +371,8 @@ class AppearanceSettingsPage extends StatelessWidget {
   }
 }
 
-class _SettingsGroup extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _SettingsGroup({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 4.0),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Column(children: children),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _LibraryOrderDialog extends StatelessWidget {
-  const _LibraryOrderDialog({super.key});
+  const _LibraryOrderDialog();
 
   @override
   Widget build(BuildContext context) {
@@ -490,7 +544,7 @@ class _LibraryOrderDialog extends StatelessWidget {
 }
 
 class _DiscoverOrderDialog extends StatelessWidget {
-  const _DiscoverOrderDialog({super.key});
+  const _DiscoverOrderDialog();
 
   @override
   Widget build(BuildContext context) {

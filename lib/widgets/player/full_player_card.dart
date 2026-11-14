@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
+import 'package:utopia_music/models/live_room.dart';
 import 'package:utopia_music/models/song.dart';
 import 'package:utopia_music/providers/player_provider.dart';
 import 'package:utopia_music/providers/settings_provider.dart';
@@ -50,7 +51,6 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
   bool _isDragging = false;
   double _dragValue = 0.0;
-  bool _showLyrics = false;
   final VideoDetailApi _videoDetailApi = VideoDetailApi();
   bool _isDownloaded = false;
   double _dragAccumulator = 0.0;
@@ -59,11 +59,16 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   @override
   void initState() {
     super.initState();
-    _checkDownloadStatus();
+    final playerProvider = context.read<PlayerProvider>();
+    if (!playerProvider.isLiveMode) {
+      _checkDownloadStatus();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _updatePalette();
-        context.read<SponsorBlockProvider>().loadSegmentsForSong(widget.song);
+        if (!context.read<PlayerProvider>().isLiveMode) {
+          context.read<SponsorBlockProvider>().loadSegmentsForSong(widget.song);
+        }
       }
     });
   }
@@ -73,11 +78,18 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.song.bvid != widget.song.bvid ||
         oldWidget.song.cid != widget.song.cid) {
-      _checkDownloadStatus();
+      final playerProvider = context.read<PlayerProvider>();
+      if (!playerProvider.isLiveMode) {
+        _checkDownloadStatus();
+      } else {
+        setState(() => _isDownloaded = false);
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _updatePalette();
-          context.read<SponsorBlockProvider>().loadSegmentsForSong(widget.song);
+          if (!context.read<PlayerProvider>().isLiveMode) {
+            context.read<SponsorBlockProvider>().loadSegmentsForSong(widget.song);
+          }
         }
       });
     }
@@ -155,9 +167,8 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   void _toggleLyrics() {
-    setState(() {
-      _showLyrics = !_showLyrics;
-    });
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    playerProvider.setFullPlayerLyrics(!playerProvider.showFullPlayerLyrics);
   }
 
   void _showTimerDialog() {
@@ -274,7 +285,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
             maxChildSize: 0.95,
             builder: (context, scrollController) {
               return ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: VideoDetailPage(
                   bvid: widget.song.bvid,
                   scrollController: scrollController,
@@ -385,6 +398,10 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   void _showMoreMenu() {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final bool isLiveMode = playerProvider.isLiveMode;
+    final LiveRoom? liveRoom = playerProvider.currentLiveRoom;
+
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -396,41 +413,66 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
               title: Text(S.of(context).common_open_in_bilibili),
               onTap: () {
                 Navigator.pop(context);
-                SchemeLauncher.launchVideo(context, widget.song.bvid);
+                if (isLiveMode && liveRoom != null) {
+                  SchemeLauncher.launchBilibili(
+                    context,
+                    schemePath: 'live/${liveRoom.roomId}',
+                    webUrl: 'https://live.bilibili.com/${liveRoom.roomId}',
+                  );
+                } else {
+                  SchemeLauncher.launchVideo(context, widget.song.bvid);
+                }
               },
             ),
             ListTile(
-              leading: const Icon(Icons.star_border),
+              enabled: !isLiveMode,
+              leading: Icon(
+                Icons.star_border,
+                color: isLiveMode ? Theme.of(context).disabledColor : null,
+              ),
               title: Text(
                 S.of(context).common_save_in_bilibili_favourite_folder,
               ),
-              onTap: () {
-                Navigator.pop(context);
-                _handleAddToFav();
-              },
+              onTap: isLiveMode
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      _handleAddToFav();
+                    },
             ),
             ListTile(
-              leading: const Icon(Icons.playlist_add),
+              enabled: !isLiveMode,
+              leading: Icon(
+                Icons.playlist_add,
+                color: isLiveMode ? Theme.of(context).disabledColor : null,
+              ),
               title: Text(S.of(context).weight_song_list_add_to_local),
-              onTap: () {
-                Navigator.pop(context);
-                _handleAddToLocalPlaylist();
-              },
+              onTap: isLiveMode
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      _handleAddToLocalPlaylist();
+                    },
             ),
             ListTile(
+              enabled: !isLiveMode,
               leading: Icon(
                 Icons.download,
-                color: _isDownloaded ? Colors.green : null,
+                color: isLiveMode
+                    ? Theme.of(context).disabledColor
+                    : (_isDownloaded ? Colors.green : null),
               ),
               title: Text(
-                _isDownloaded
+                !isLiveMode && _isDownloaded
                     ? S.of(context).common_downloaded
                     : S.of(context).common_download,
               ),
-              onTap: () {
-                Navigator.pop(context);
-                _handleDownload();
-              },
+              onTap: isLiveMode
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      _handleDownload();
+                    },
             ),
           ],
         ),
@@ -439,6 +481,24 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
   }
 
   Future<void> _showArtistSpace(BuildContext context) async {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    if (playerProvider.isLiveMode) {
+      final uid = playerProvider.currentLiveRoom?.uid ?? 0;
+      if (uid > 0) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => SpaceSheet(mid: uid),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(S.of(context).weight_player_no_user_fetched)),
+        );
+      }
+      return;
+    }
+
     if (widget.song.bvid.isEmpty) return;
     showDialog(
       context: context,
@@ -481,6 +541,18 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
     // Log.v(_tag, "build");
     final topPadding = MediaQuery.of(context).padding.top;
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final showLyrics = context.select<PlayerProvider, bool>(
+      (p) => p.showFullPlayerLyrics,
+    );
+    final isLiveMode = context.select<PlayerProvider, bool>(
+      (p) => p.isLiveMode,
+    );
+    final isLiveLoading = context.select<PlayerProvider, bool>(
+      (p) => p.isLiveLoading,
+    );
+    final hasLiveError = context.select<PlayerProvider, bool>(
+      (p) => p.hasLiveError,
+    );
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final hasNext = playerProvider.hasNext;
     final hasPrevious = playerProvider.hasPrevious;
@@ -519,7 +591,7 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          if (_showLyrics) {
+          if (showLyrics) {
             _toggleLyrics();
             return;
           }
@@ -541,131 +613,161 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                   SizedBox(height: topPadding + 12),
                   SizedBox(
                     height: kToolbarHeight,
-                    child: NavigationToolbar(
-                      leading: IconButton(
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        onPressed: () {
-                          if (_showLyrics) _toggleLyrics();
-                          widget.onCollapse();
-                        },
-                        tooltip: S.of(context).common_retract,
-                      ),
-                      middle: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
                         children: [
-                          SizedBox(
-                            height: 24,
-                            width: MediaQuery.of(context).size.width * 0.6,
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final textStyle = TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: themeData.textTheme.bodyLarge?.color,
-                                );
-                                if (widget.song.title.length > 15) {
-                                  return Marquee(
-                                    text: widget.song.title,
-                                    style: textStyle,
-                                    scrollAxis: Axis.horizontal,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    blankSpace: 20.0,
-                                    velocity: 30.0,
-                                    pauseAfterRound: const Duration(seconds: 1),
-                                    startPadding: 0.0,
-                                    accelerationDuration: const Duration(
-                                      seconds: 1,
+                          IconButton(
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                            onPressed: () {
+                              if (showLyrics) _toggleLyrics();
+                              widget.onCollapse();
+                            },
+                            tooltip: S.of(context).common_retract,
+                          ),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final textStyle = TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: themeData
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.color,
+                                      );
+                                      final textPainter = TextPainter(
+                                        text: TextSpan(
+                                          text: widget.song.title,
+                                          style: textStyle,
+                                        ),
+                                        textDirection: TextDirection.ltr,
+                                        maxLines: 1,
+                                      )..layout();
+
+                                      if (textPainter.width >
+                                              constraints.maxWidth &&
+                                          constraints.maxWidth > 0) {
+                                        return RepaintBoundary(
+                                          child: ClipRect(
+                                            child: Marquee(
+                                              text: widget.song.title,
+                                              style: textStyle,
+                                              scrollAxis: Axis.horizontal,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              blankSpace: 20.0,
+                                              velocity: 30.0,
+                                              pauseAfterRound: const Duration(
+                                                seconds: 1,
+                                              ),
+                                              startPadding: 0.0,
+                                              accelerationDuration:
+                                                  const Duration(seconds: 1),
+                                              accelerationCurve: Curves.linear,
+                                              decelerationDuration:
+                                                  const Duration(
+                                                    milliseconds: 500,
+                                                  ),
+                                              decelerationCurve: Curves.easeOut,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      return Text(
+                                        widget.song.title,
+                                        style: textStyle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showArtistSpace(context),
+                                  behavior: HitTestBehavior.translucent,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                      horizontal: 8.0,
                                     ),
-                                    accelerationCurve: Curves.linear,
-                                    decelerationDuration: const Duration(
-                                      milliseconds: 500,
+                                    child: Text(
+                                      widget.song.artist,
+                                      style: themeData.textTheme.bodySmall
+                                          ?.copyWith(
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    decelerationCurve: Curves.easeOut,
-                                  );
-                                } else {
-                                  return Text(
-                                    widget.song.title,
-                                    style: textStyle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                  );
-                                }
-                              },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => _showArtistSpace(context),
-                            behavior: HitTestBehavior.translucent,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4.0,
-                                horizontal: 8.0,
-                              ),
-                              child: Text(
-                                widget.song.artist,
-                                style: themeData.textTheme.bodySmall?.copyWith(
-                                  decoration: TextDecoration.underline,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          RepaintBoundary(
+                            child: Consumer<SponsorBlockProvider>(
+                              builder: (context, sbProvider, child) {
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (!isLiveMode &&
+                                        sbProvider.enableSponsorBlock &&
+                                        sbProvider.currentSegments.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(Icons.shield_outlined),
+                                        tooltip: '片段信息',
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) => SBDetailDialog(
+                                              onSeek: (target) {
+                                                playerProvider.player.seek(
+                                                  target,
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    IconButton(
+                                      icon: const Icon(Icons.more_vert),
+                                      onPressed: _showMoreMenu,
+                                      tooltip: S.of(context).common_more,
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ],
                       ),
-                      trailing: Consumer<SponsorBlockProvider>(
-                        builder: (context, sbProvider, child) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (sbProvider.enableSponsorBlock &&
-                                    sbProvider.currentSegments.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(Icons.shield_outlined),
-                                    tooltip: '片段信息',
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (ctx) => SBDetailDialog(
-                                          onSeek: (target) {
-                                            playerProvider.player.seek(target);
-                                          },
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                IconButton(
-                                  icon: const Icon(Icons.more_vert),
-                                  onPressed: _showMoreMenu,
-                                  tooltip: S.of(context).common_more,
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      centerMiddle: true,
                     ),
                   ),
 
                   Expanded(
                     child: SwipeablePlayerCard(
                       key: _swipeKey,
-                      onNext: hasNext ? () => playerProvider.playNext() : null,
-                      onPrevious: hasPrevious
+                      onNext: (!isLiveMode && hasNext)
+                          ? () => playerProvider.playNext()
+                          : null,
+                      onPrevious: (!isLiveMode && hasPrevious)
                           ? () => playerProvider.playPrevious()
                           : null,
-                      previousChild: previousSong != null
+                      previousChild: (!isLiveMode && previousSong != null)
                           ? GestureDetector(
                               onHorizontalDragUpdate: (details) {},
                               child: PlayerContent(song: previousSong),
                             )
                           : null,
-                      nextChild: nextSong != null
+                      nextChild: (!isLiveMode && nextSong != null)
                           ? GestureDetector(
                               onHorizontalDragUpdate: (details) {},
                               child: PlayerContent(song: nextSong),
@@ -673,7 +775,9 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                           : null,
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
-                        onHorizontalDragUpdate: (details) {},
+                        onHorizontalDragUpdate: isLiveMode
+                            ? null
+                            : (details) {},
                         onVerticalDragStart: (_) {
                           _dragAccumulator = 0.0;
                         },
@@ -694,15 +798,21 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
 
                   GestureDetector(
                     behavior: HitTestBehavior.translucent,
-                    onHorizontalDragStart: (details) {
-                      _swipeKey.currentState?.handleDragStart(details);
-                    },
-                    onHorizontalDragUpdate: (details) {
-                      _swipeKey.currentState?.handleDragUpdate(details);
-                    },
-                    onHorizontalDragEnd: (details) {
-                      _swipeKey.currentState?.handleDragEnd(details);
-                    },
+                    onHorizontalDragStart: isLiveMode
+                        ? null
+                        : (details) {
+                            _swipeKey.currentState?.handleDragStart(details);
+                          },
+                    onHorizontalDragUpdate: isLiveMode
+                        ? null
+                        : (details) {
+                            _swipeKey.currentState?.handleDragUpdate(details);
+                          },
+                    onHorizontalDragEnd: isLiveMode
+                        ? null
+                        : (details) {
+                            _swipeKey.currentState?.handleDragEnd(details);
+                          },
                     onVerticalDragStart: (_) {
                       _dragAccumulator = 0.0;
                     },
@@ -718,138 +828,220 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 48.0, top: 24.0),
-                      child: StreamBuilder<Duration?>(
-                        stream: playerProvider.player.durationStream,
-                        builder: (context, durationSnapshot) {
-                          final duration =
-                              durationSnapshot.data ?? Duration.zero;
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 680),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!isLiveMode)
+                                Consumer<SponsorBlockProvider>(
+                                  builder: (context, sbProvider, child) {
+                                    final prompt = sbProvider.manualPromptSegment;
+                                    if (prompt == null) {
+                                      return const SizedBox.shrink();
+                                    }
 
-                          return StreamBuilder<Duration>(
-                            stream: playerProvider.player.positionStream,
-                            builder: (context, positionSnapshot) {
-                              final position =
-                                  positionSnapshot.data ?? Duration.zero;
-
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Consumer<SponsorBlockProvider>(
-                                    builder: (context, sbProvider, child) {
-                                      final prompt = sbProvider.manualPromptSegment;
-                                      if (prompt == null) return const SizedBox.shrink();
-
-                                      final color = sbProvider.getColor(prompt.segmentType);
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 8.0),
-                                        child: Material(
-                                          elevation: 3,
-                                          borderRadius: BorderRadius.circular(20),
-                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(20),
-                                            onTap: () {
-                                              sbProvider.skipManualSegment(
-                                                prompt,
-                                                seekTo: (pos) => playerProvider.player.seek(pos),
-                                                showToast: (msg) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(msg),
-                                                      duration: const Duration(seconds: 2),
-                                                      behavior: SnackBarBehavior.floating,
+                                    final color = sbProvider.getColor(
+                                      prompt.segmentType,
+                                    );
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8.0),
+                                      child: Material(
+                                        elevation: 3,
+                                        borderRadius: BorderRadius.circular(20),
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.surfaceContainerHighest,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          onTap: () {
+                                            sbProvider.skipManualSegment(
+                                              prompt,
+                                              seekTo: (pos) => playerProvider
+                                                  .player
+                                                  .seek(pos),
+                                              showToast: (msg) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(msg),
+                                                    duration: const Duration(
+                                                      seconds: 2,
                                                     ),
-                                                  );
-                                                },
-                                              );
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 14.0,
-                                                vertical: 6.0,
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Container(
-                                                    width: 10,
-                                                    height: 10,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: color,
-                                                    ),
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
                                                   ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    '跳过: ${prompt.segmentType.shortTitle}',
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 13,
-                                                    ),
+                                                );
+                                              },
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14.0,
+                                              vertical: 6.0,
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  width: 10,
+                                                  height: 10,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: color,
                                                   ),
-                                                  const SizedBox(width: 8),
-                                                  GestureDetector(
-                                                    onTap: sbProvider.dismissManualPrompt,
-                                                    child: const Icon(Icons.close, size: 16),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  '跳过: ${prompt.segmentType.shortTitle}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 13,
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                GestureDetector(
+                                                  onTap: sbProvider
+                                                      .dismissManualPrompt,
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                  PlayerControls(
-                                    isPlaying: playerProvider.isPlaying,
-                                isLoading:
-                                    (playerProvider.player.processingState ==
-                                        ProcessingState.buffering ||
-                                    playerProvider.player.processingState ==
-                                        ProcessingState.loading),
-                                duration: duration,
-                                position: _isDragging
-                                    ? Duration(seconds: _dragValue.toInt())
-                                    : position,
-                                loopMode: playerProvider.playMode,
-                                onShuffle: () {
-                                  if (playerProvider.recommendationAutoPlay) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          S
-                                              .of(context)
-                                              .weight_video_detail_replace_by_this_collection_recommend_alert,
-                                        ),
-                                        duration: const Duration(seconds: 2),
-                                        behavior: SnackBarBehavior.floating,
                                       ),
                                     );
-                                  } else {
-                                    playerProvider.togglePlayMode();
-                                  }
-                                },
-                                onSeek: _onSeekEnd,
-                                onSeekStart: _onSeekStart,
-                                onSeekUpdate: _onSeekUpdate,
-                                onPlayPause: playerProvider.togglePlayPause,
-                                onNext: hasNext
-                                    ? () => playerProvider.playNext()
-                                    : null,
-                                onPrevious: hasPrevious
-                                    ? () => playerProvider.playPrevious()
-                                    : null,
-                                onPlaylist: _showPlaylist,
-                                onLyrics: _toggleLyrics,
-                                onTimer: _showTimerDialog,
-                                onComment: _showQualityDialog,
-                                onInfo: _showSpeedDialog,
-                                onMore: _showVideoDetail,
+                                  },
+                                ),
+                              if (isLiveMode && hasLiveError)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: ActionChip(
+                                    avatar: Icon(
+                                      Icons.error_outline,
+                                      size: 16,
+                                      color: Theme.of(context).colorScheme.error,
+                                    ),
+                                    label: Text(
+                                      '${S.of(context).live_stream_load_failed} · ${S.of(context).common_retry}',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    onPressed: playerProvider.retryLiveRoom,
+                                  ),
+                                ),
+                              RepaintBoundary(
+                                child: StreamBuilder<Duration?>(
+                                  stream: playerProvider.player.durationStream,
+                                  builder: (context, durationSnapshot) {
+                                    final duration =
+                                        durationSnapshot.data ?? Duration.zero;
+
+                                    return StreamBuilder<Duration>(
+                                      stream:
+                                          playerProvider.player.positionStream,
+                                      builder: (context, positionSnapshot) {
+                                        final position =
+                                            positionSnapshot.data ??
+                                            Duration.zero;
+
+                                        return PlayerControls(
+                                          isPlaying: playerProvider.isPlaying,
+                                          isLoading:
+                                              !hasLiveError &&
+                                              (isLiveLoading ||
+                                                  playerProvider
+                                                          .player
+                                                          .processingState ==
+                                                      ProcessingState
+                                                          .buffering ||
+                                                  playerProvider
+                                                          .player
+                                                          .processingState ==
+                                                      ProcessingState.loading),
+                                          isLiveMode: isLiveMode,
+                                          duration: duration,
+                                          position: _isDragging
+                                              ? Duration(
+                                                  seconds: _dragValue.toInt(),
+                                                )
+                                              : position,
+                                          loopMode: playerProvider.playMode,
+                                          onShuffle: isLiveMode
+                                              ? null
+                                              : () {
+                                                  if (playerProvider
+                                                      .recommendationAutoPlay) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          S
+                                                              .of(context)
+                                                              .weight_video_detail_replace_by_this_collection_recommend_alert,
+                                                        ),
+                                                        duration:
+                                                            const Duration(
+                                                              seconds: 2,
+                                                            ),
+                                                        behavior:
+                                                            SnackBarBehavior
+                                                                .floating,
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    playerProvider
+                                                        .togglePlayMode();
+                                                  }
+                                                },
+                                          onSeek: isLiveMode
+                                              ? null
+                                              : _onSeekEnd,
+                                          onSeekStart: isLiveMode
+                                              ? null
+                                              : _onSeekStart,
+                                          onSeekUpdate: isLiveMode
+                                              ? null
+                                              : _onSeekUpdate,
+                                          onPlayPause:
+                                              playerProvider.togglePlayPause,
+                                          onNext: (!isLiveMode && hasNext)
+                                              ? () => playerProvider.playNext()
+                                              : null,
+                                          onPrevious: (!isLiveMode && hasPrevious)
+                                              ? () => playerProvider
+                                                    .playPrevious()
+                                              : null,
+                                          onPlaylist: isLiveMode
+                                              ? null
+                                              : _showPlaylist,
+                                          onLyrics: _toggleLyrics,
+                                          onTimer: _showTimerDialog,
+                                          onComment: isLiveMode
+                                              ? null
+                                              : _showQualityDialog,
+                                          onInfo: isLiveMode
+                                              ? null
+                                              : _showSpeedDialog,
+                                          onMore: isLiveMode
+                                              ? null
+                                              : _showVideoDetail,
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
                               ),
                             ],
-                          );
-                            },
-                          );
-                        },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -859,10 +1051,17 @@ class _FullPlayerPageState extends State<FullPlayerPage> {
               AnimatedSlide(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                offset: _showLyrics ? Offset.zero : const Offset(0, 1),
-                child: LyricsPage(
-                  onBack: _toggleLyrics,
-                  onPlaylist: _showPlaylist,
+                offset: showLyrics ? Offset.zero : const Offset(0, 1),
+                child: IgnorePointer(
+                  ignoring: !showLyrics,
+                  child: TickerMode(
+                    enabled: showLyrics,
+                    child: LyricsPage(
+                      song: showLyrics ? widget.song : null,
+                      onBack: _toggleLyrics,
+                      onPlaylist: _showPlaylist,
+                    ),
+                  ),
                 ),
               ),
             ],

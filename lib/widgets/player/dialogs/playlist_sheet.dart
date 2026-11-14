@@ -6,6 +6,7 @@ import 'package:utopia_music/generated/l10n.dart';
 import 'package:utopia_music/pages/main/library/widgets/playlist_form_sheet.dart';
 import 'package:utopia_music/services/database_service.dart';
 import 'package:utopia_music/providers/library_provider.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 
 import 'package:utopia_music/utils/log.dart';
 
@@ -134,15 +135,14 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
   @override
   Widget build(BuildContext context) {
     Log.v(_tag, "build");
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+    return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
-      child: Consumer<PlayerProvider>(
+      child: LiquidGlassSheetSurface(
+        fallbackColor: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        child: Consumer<PlayerProvider>(
         builder: (context, playerProvider, child) {
           final playlist = playerProvider.playlist;
           final currentSong = playerProvider.currentSong ?? widget.currentSong;
@@ -250,6 +250,7 @@ class _PlaylistSheetState extends State<PlaylistSheet> {
             ],
           );
         },
+      ),
       ),
     );
   }

@@ -137,6 +137,18 @@ class MessageLookup extends MessageLookupByLibrary {
     "connection_error_update_no_release": MessageLookupByLibrary.simpleMessage(
       "No release",
     ),
+    "desktop_player_lyrics": MessageLookupByLibrary.simpleMessage("Lyrics"),
+    "desktop_player_speed": MessageLookupByLibrary.simpleMessage("Speed"),
+    "desktop_sidebar_downloads": MessageLookupByLibrary.simpleMessage(
+      "Downloads",
+    ),
+    "desktop_sidebar_my_music": MessageLookupByLibrary.simpleMessage(
+      "My Music",
+    ),
+    "desktop_sidebar_playlists": MessageLookupByLibrary.simpleMessage(
+      "Playlists",
+    ),
+    "desktop_top_back": MessageLookupByLibrary.simpleMessage("Back"),
     "dialog_source_invalid": MessageLookupByLibrary.simpleMessage(
       "Source Invalid",
     ),
@@ -145,6 +157,25 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "item_options_add_to_play_list": MessageLookupByLibrary.simpleMessage(
       "Add to Playlist",
+    ),
+    "live_badge_followed": MessageLookupByLibrary.simpleMessage("Followed"),
+    "live_badge_live": MessageLookupByLibrary.simpleMessage("LIVE"),
+    "live_enter_room": MessageLookupByLibrary.simpleMessage("Enter Live Room"),
+    "live_followed_empty": MessageLookupByLibrary.simpleMessage(
+      "No followed streamers are live",
+    ),
+    "live_followed_section": MessageLookupByLibrary.simpleMessage(
+      "Followed Live Rooms",
+    ),
+    "live_recommend_section": MessageLookupByLibrary.simpleMessage(
+      "Recommended Live Rooms",
+    ),
+    "live_search_hint": MessageLookupByLibrary.simpleMessage(
+      "Search live rooms",
+    ),
+    "live_stop_listening": MessageLookupByLibrary.simpleMessage("Stop Live"),
+    "live_stream_load_failed": MessageLookupByLibrary.simpleMessage(
+      "Failed to load live audio stream",
     ),
     "number_hundred_million": MessageLookupByLibrary.simpleMessage("100M"),
     "number_million": MessageLookupByLibrary.simpleMessage("M"),
@@ -422,9 +453,29 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("Always Light"),
     "pages_settings_appearance_dark_mode_system":
         MessageLookupByLibrary.simpleMessage("Follow System"),
+    "pages_settings_appearance_experimental":
+        MessageLookupByLibrary.simpleMessage("Experimental"),
     "pages_settings_appearance_global": MessageLookupByLibrary.simpleMessage(
       "Global",
     ),
+    "pages_settings_appearance_liquid_glass":
+        MessageLookupByLibrary.simpleMessage("Liquid Glass"),
+    "pages_settings_appearance_liquid_glass_desc":
+        MessageLookupByLibrary.simpleMessage(
+          "Frosted glass surfaces and floating navigation",
+        ),
+    "pages_settings_appearance_monet_active":
+        MessageLookupByLibrary.simpleMessage("Using system wallpaper palette"),
+    "pages_settings_appearance_monet_color":
+        MessageLookupByLibrary.simpleMessage("Dynamic Color"),
+    "pages_settings_appearance_monet_color_desc":
+        MessageLookupByLibrary.simpleMessage(
+          "Adapt theme palette to system wallpaper",
+        ),
+    "pages_settings_appearance_monet_disabled_by_glass":
+        MessageLookupByLibrary.simpleMessage(
+          "Disabled while Liquid Glass is active",
+        ),
     "pages_settings_appearance_pages": MessageLookupByLibrary.simpleMessage(
       "Pages",
     ),
@@ -475,6 +526,14 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage("Local Playlist"),
     "pages_settings_appearance_theme_color":
         MessageLookupByLibrary.simpleMessage("Theme Color"),
+    "pages_settings_appearance_track_list_style":
+        MessageLookupByLibrary.simpleMessage("Track List Style"),
+    "pages_settings_appearance_track_list_style_card":
+        MessageLookupByLibrary.simpleMessage("Card List"),
+    "pages_settings_appearance_track_list_style_grid":
+        MessageLookupByLibrary.simpleMessage("Card Grid"),
+    "pages_settings_appearance_track_list_style_seamless":
+        MessageLookupByLibrary.simpleMessage("Seamless List"),
     "pages_settings_tag_about": MessageLookupByLibrary.simpleMessage("About"),
     "pages_settings_tag_appearance": MessageLookupByLibrary.simpleMessage(
       "Appearance",

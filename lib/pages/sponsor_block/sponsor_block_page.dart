@@ -6,6 +6,8 @@ import 'package:utopia_music/models/sponsor_block/segment_type.dart';
 import 'package:utopia_music/models/sponsor_block/skip_type.dart';
 import 'package:utopia_music/pages/sponsor_block/slide_color_picker.dart';
 import 'package:utopia_music/providers/sponsor_block_provider.dart';
+import 'package:utopia_music/theme/app_theme.dart';
+import 'package:utopia_music/widgets/common/liquid_glass_container.dart';
 
 class SponsorBlockPage extends StatefulWidget {
   const SponsorBlockPage({super.key});
@@ -214,18 +216,23 @@ class _SponsorBlockPageState extends State<SponsorBlockPage> {
               ),
             ),
           ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Column(children: children),
-          ),
+          AppTheme.isLiquidGlass(context)
+              ? LiquidGlassSurface(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Column(children: children),
+                )
+              : Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(children: children),
+                ),
         ],
       ),
     );
@@ -249,8 +256,11 @@ class _SponsorBlockPageState extends State<SponsorBlockPage> {
       statusColor = theme.colorScheme.error;
     }
 
-    return Scaffold(
+    final bool isLiquidGlass = AppTheme.isLiquidGlass(context);
+    final scaffold = Scaffold(
+      backgroundColor: isLiquidGlass ? Colors.transparent : null,
       appBar: AppBar(
+        backgroundColor: isLiquidGlass ? Colors.transparent : null,
         title: const Text('小电视空降助手'),
         actions: [
           PopupMenuButton<String>(
@@ -447,5 +457,6 @@ class _SponsorBlockPageState extends State<SponsorBlockPage> {
         ],
       ),
     );
+    return isLiquidGlass ? LiquidGlassBackdrop(child: scaffold) : scaffold;
   }
 }

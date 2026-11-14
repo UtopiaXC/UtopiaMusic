@@ -6,14 +6,18 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <dynamic_color/dynamic_color_plugin_c_api.h>
 #include <flutter_inappwebview_windows/flutter_inappwebview_windows_plugin_c_api.h>
 #include <just_audio_windows/just_audio_windows_plugin.h>
 #include <local_auth_windows/local_auth_plugin.h>
 #include <media_kit_libs_windows_audio/media_kit_libs_windows_audio_plugin_c_api.h>
+#include <restart_app/restart_app_plugin_c_api.h>
 #include <share_plus/share_plus_windows_plugin_c_api.h>
 #include <url_launcher_windows/url_launcher_windows.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  DynamicColorPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("DynamicColorPluginCApi"));
   FlutterInappwebviewWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterInappwebviewWindowsPluginCApi"));
   JustAudioWindowsPluginRegisterWithRegistrar(
@@ -22,6 +26,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("LocalAuthPlugin"));
   MediaKitLibsWindowsAudioPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("MediaKitLibsWindowsAudioPluginCApi"));
+  RestartAppPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("RestartAppPluginCApi"));
   SharePlusWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("SharePlusWindowsPluginCApi"));
   UrlLauncherWindowsRegisterWithRegistrar(

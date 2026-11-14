@@ -28,7 +28,9 @@ class AudioPlayerService {
 
   factory AudioPlayerService() => _instance;
   final DownloadManager _downloadManager = DownloadManager();
-  final AudioPlayer _player = AudioPlayer();
+  final AudioPlayer _player = AudioPlayer(
+    useProxyForRequestHeaders: kIsWeb,
+  );
 
   final IosNowPlayingService _iosNowPlayingService = IosNowPlayingService();
   StreamSubscription? _positionSubscription;
@@ -39,6 +41,8 @@ class AudioPlayerService {
   bool _isHandlingError = false;
   bool _isUpdatingQueue = false;
   bool _shouldLoopQueue = false;
+  bool _isLiveMode = false;
+  int _queueSessionToken = 0;
 
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
@@ -62,6 +66,7 @@ class AudioPlayerService {
     _init();
 
     _player.currentIndexStream.listen((index) {
+      if (_isLiveMode) return;
       if (!_isDesktop && index != null && !_isUpdatingQueue) {
         final bool indexChanged = _currentIndex != index;
         _currentIndex = index;
@@ -74,7 +79,9 @@ class AudioPlayerService {
     });
 
     _player.playerStateStream.listen((state) {
-      if (_isDesktop && state.processingState == ProcessingState.completed) {
+      if (!_isLiveMode &&
+          _isDesktop &&
+          state.processingState == ProcessingState.completed) {
         _handleDesktopAutoNext();
       }
 
@@ -86,6 +93,7 @@ class AudioPlayerService {
     _player.playbackEventStream.listen(
       (event) {},
       onError: (Object e, StackTrace stackTrace) {
+        if (_isLiveMode) return;
         Log.e(_tag, "Player codec error", e);
         _handleInvalidResourceAndPlayNext();
       },
@@ -119,7 +127,17 @@ class AudioPlayerService {
     _shouldLoopQueue = shouldLoop;
   }
 
+  /// Marks whether the shared [AudioPlayer] is actively driven by live streaming
+  /// so VOD auto-next and invalid-resource skipping stay isolated from live mode.
+  void setLiveMode(bool active) {
+    if (active) {
+      _queueSessionToken++;
+    }
+    _isLiveMode = active;
+  }
+
   void notifyPlaybackError(String bvid, int cid) {
+    if (_isLiveMode) return;
     Log.w(_tag, "notifyPlaybackError, bvid: $bvid, cid: $cid");
     _playbackErrorController.add({'bvid': bvid, 'cid': cid});
     Future.microtask(() => _handleInvalidResourceAndPlayNext());
@@ -127,7 +145,7 @@ class AudioPlayerService {
 
   Future<void> _handleInvalidResourceAndPlayNext() async {
     Log.v(_tag, "handleInvalidResourceAndPlayNext");
-    if (_isHandlingError) return;
+    if (_isLiveMode || _isHandlingError) return;
 
     final prefs = await SharedPreferences.getInstance();
     _autoSkipInvalid = prefs.getBool(PlayerProvider.autoSkipInvalidKey) ?? true;
@@ -247,6 +265,8 @@ class AudioPlayerService {
     bool autoPlay = true,
     Duration? initialPosition,
   }) async {
+    final sessionToken = ++_queueSessionToken;
+    _isLiveMode = false;
     try {
       _globalQueue = queue;
       _currentIndex = index;
@@ -257,6 +277,7 @@ class AudioPlayerService {
           index,
           autoPlay: autoPlay,
           initialPosition: initialPosition,
+          sessionToken: sessionToken,
         );
       } else {
         await _playListMobile(
@@ -264,6 +285,7 @@ class AudioPlayerService {
           index,
           autoPlay: autoPlay,
           initialPosition: initialPosition,
+          sessionToken: sessionToken,
         );
       }
 
@@ -304,23 +326,30 @@ class AudioPlayerService {
     int index, {
     bool autoPlay = true,
     Duration? initialPosition,
+    int? sessionToken,
   }) async {
     Log.v(_tag, "playListMobile");
+    final token = sessionToken ?? _queueSessionToken;
     final List<AudioSource> sources = queue
         .map((s) => _createAudioSource(s))
         .toList();
 
     try {
-      // final playlist = ConcatenatingAudioSource(children: sources);
       await _player.setAudioSources(
         sources,
         initialIndex: index,
         initialPosition: initialPosition,
       );
+      if (token != _queueSessionToken || _isLiveMode) return;
       if (autoPlay) {
         await _player.play();
       }
     } catch (e) {
+      if (e is PlayerInterruptedException ||
+          token != _queueSessionToken ||
+          _isLiveMode) {
+        return;
+      }
       Log.e(_tag, "Set Audio Source Error on mobile", e);
       if (e.toString().contains("403") || e.toString().contains("404")) {
         _playbackErrorController.add({
@@ -337,14 +366,22 @@ class AudioPlayerService {
     int index, {
     bool autoPlay = true,
     Duration? initialPosition,
+    int? sessionToken,
   }) async {
     if (index < 0 || index >= _globalQueue.length) return;
+    final token = sessionToken ?? _queueSessionToken;
     final song = _globalQueue[index];
     final source = _createAudioSource(song);
     try {
       await _player.setAudioSource(source, initialPosition: initialPosition);
+      if (token != _queueSessionToken || _isLiveMode) return;
       if (autoPlay) await _player.play();
     } catch (e) {
+      if (e is PlayerInterruptedException ||
+          token != _queueSessionToken ||
+          _isLiveMode) {
+        return;
+      }
       Log.e(_tag, "Set Audio Source Error on desktop", e);
       await _handleInvalidResourceAndPlayNext();
     }
